@@ -195,6 +195,7 @@ export interface TraceOutput {
   found: boolean;
   hops: { node: NodeRef; via: EdgeRef; body: CodeBlock }[];
   destinationCallees?: NodeRef[];
+  endpoints?: { node: NodeRef; body: CodeBlock }[];
 }
 
 export interface CallersInput extends Scoped { symbol: string; limit?: number; }

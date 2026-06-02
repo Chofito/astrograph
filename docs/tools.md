@@ -85,7 +85,7 @@ Shared field types referenced below: `NodeRef` = `{ id, name, kind, qualifiedNam
 - **Utility.** Flow questions (request→handler, update→render) that are expensive to reconstruct by hand.
 - **Offline.** Graph traversal over `calls`/`references` edges + verbatim slicing. ✅
 - **Inputs.** `from: string`, `to: string`, `maxDepth?: number`.
-- **Result.** `TracePath` = `{ found: boolean, hops: { node: NodeRef, via: EdgeRef, body: CodeBlock }[], destinationCallees?: NodeRef[] }`. On `found:false`, inline both endpoints + their file siblings (the chain broke at dynamic dispatch).
+- **Result.** `TracePath` = `{ found: boolean, hops: { node: NodeRef, via: EdgeRef, body: CodeBlock }[], destinationCallees?: NodeRef[], endpoints?: { node: NodeRef, body: CodeBlock }[] }`. On `found:false`, `endpoints` inlines both endpoints + their TO-file siblings (the chain broke at dynamic dispatch).
 - **Progressive.** ⚠️ partial — works once `from`, `to`, and the path are covered; otherwise demand-index them.
 - **Core method.** `trace()` (BFS over the call graph).
 

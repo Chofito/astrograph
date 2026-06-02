@@ -245,7 +245,7 @@ export interface TraceOutput {
   found: boolean;
   hops: { node: NodeRef; via: EdgeRef; body: CodeBlock }[];
   destinationCallees?: NodeRef[];
-  // when !found: endpoints + their file siblings are inlined as hops/codeBlocks
+  endpoints?: { node: NodeRef; body: CodeBlock }[]; // only when !found: from/to endpoints + TO-file siblings
 }
 
 export interface CallersInput extends Scoped { symbol: string; limit?: number; }

@@ -162,6 +162,27 @@ export class QueryBuilder {
     ).all().map((row) => mapNode(row as NodeRow));
   }
 
+  findNodesByName(name: string, limit = 25): Node[] {
+    return this.db.prepare(
+      `SELECT * FROM nodes
+       WHERE lower(name) = lower(?) OR lower(qualified_name) = lower(?)
+       ORDER BY is_generated ASC, is_test ASC, is_exported DESC,
+         file_path ASC, start_line ASC, kind ASC, qualified_name ASC
+       LIMIT ?`,
+    ).all(name, name, limit).map((row) => mapNode(row as NodeRow));
+  }
+
+  getNodesByIds(ids: string[]): Node[] {
+    if (ids.length === 0) return [];
+    const uniqueIds = [...new Set(ids)].sort(compareStrings);
+    const placeholders = uniqueIds.map(() => '?').join(', ');
+    return this.db.prepare(
+      `SELECT * FROM nodes
+       WHERE id IN (${placeholders})
+       ORDER BY file_path ASC, start_line ASC, kind ASC, qualified_name ASC`,
+    ).all(...uniqueIds).map((row) => mapNode(row as NodeRow));
+  }
+
   deleteNode(id: string): number {
     return this.db.prepare('DELETE FROM nodes WHERE id = ?').run(id).changes;
   }
@@ -225,6 +246,14 @@ export class QueryBuilder {
       `SELECT * FROM edges
        ORDER BY source ASC, kind ASC, COALESCE(target, '') ASC, COALESCE(line, -1) ASC, id ASC`,
     ).all().map((row) => mapEdge(row as EdgeRow));
+  }
+
+  getEdgesByKind(kind: EdgeKind): Edge[] {
+    return this.db.prepare(
+      `SELECT * FROM edges
+       WHERE kind = ?
+       ORDER BY source ASC, kind ASC, COALESCE(target, '') ASC, COALESCE(line, -1) ASC, id ASC`,
+    ).all(kind).map((row) => mapEdge(row as EdgeRow));
   }
 
   getEdgesBySource(source: string, kind?: EdgeKind): Edge[] {
@@ -309,6 +338,27 @@ export class QueryBuilder {
     return this.db.prepare('SELECT * FROM files ORDER BY path ASC')
       .all()
       .map((row) => mapFile(row as FileRow));
+  }
+
+  getPendingFiles(limit = 25, paths?: string[]): string[] {
+    if (paths !== undefined) {
+      if (paths.length === 0) return [];
+      const uniquePaths = [...new Set(paths)].sort(compareStrings);
+      const placeholders = uniquePaths.map(() => '?').join(', ');
+      return this.db.prepare(
+        `SELECT path FROM files
+         WHERE state != 'resolved' AND path IN (${placeholders})
+         ORDER BY path ASC
+         LIMIT ?`,
+      ).all(...uniquePaths, limit).map((row) => (row as { path: string }).path);
+    }
+
+    return this.db.prepare(
+      `SELECT path FROM files
+       WHERE state != 'resolved'
+       ORDER BY path ASC
+       LIMIT ?`,
+    ).all(limit).map((row) => (row as { path: string }).path);
   }
 
   deleteFile(path: string): number {
@@ -537,4 +587,8 @@ function writeJson(value: unknown): string | null {
 function readJson<T>(value: string | null): T | undefined {
   if (value === null || value === '') return undefined;
   return JSON.parse(value) as T;
+}
+
+function compareStrings(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
