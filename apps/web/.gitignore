@@ -1,0 +1,7 @@
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# bun bundler / dev cache
+.bun/

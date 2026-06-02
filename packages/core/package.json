@@ -1,0 +1,21 @@
+{
+  "name": "@astrograph/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Graph, storage adapters, TS extraction, resolution, queries & traversal (see docs/graph-model.md, docs/extraction.md)",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ignore": "^7.0.0",
+    "typescript": "^5.7.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

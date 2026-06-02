@@ -1,0 +1,23 @@
+{
+  "name": "astrograph-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first code graph for JS/TS — monorepo root (see ROADMAP.md)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "scripts": {
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun test",
+    "clean": "rm -rf packages/*/dist apps/*/dist"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.0"
+  }
+}

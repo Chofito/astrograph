@@ -1,0 +1,19 @@
+{
+  "name": "@astrograph/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "astrograph command-line interface — classic args + isolated opentui (see docs/cli.md)",
+  "bin": {
+    "astrograph": "./src/bin/astrograph.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@astrograph/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

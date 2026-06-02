@@ -1,0 +1,16 @@
+{
+  "name": "@astrograph/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "3D 'constellation' web UI (Bun.serve + React + three.js) — Stage 3 (see ROADMAP §6). React/three/postprocessing deps added when implemented.",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@astrograph/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
