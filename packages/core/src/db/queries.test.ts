@@ -102,6 +102,67 @@ describe('core storage', () => {
     expect(query.getCoverage()).toEqual({ total: 3, resolved: 1, parsed: 1, pending: 1 });
   });
 
+  test('FTS search accepts natural language and punctuation deterministically', () => {
+    const query = createQueryBuilder();
+    const hook = makeNode({
+      id: 'node:use-add-to-cart',
+      name: 'useAddToCart',
+      qualifiedName: 'src/cart.ts::useAddToCart',
+      kind: 'function',
+      filePath: 'src/cart.ts',
+    });
+
+    query.upsertFile(makeFile({ path: 'src/cart.ts', state: 'resolved', nodeCount: 1 }));
+    query.upsertNode(hook);
+
+    const natural = query.search({ query: 'how does useAddToCart work' });
+    const repeat = query.search({ query: 'how does useAddToCart work' });
+
+    expect(natural.map((result) => result.node.id)).toEqual(['node:use-add-to-cart']);
+    expect(() => query.search({ query: 'how does "useAddToCart()" work? (cart:item)' })).not.toThrow();
+    expect(query.search({ query: 'useAddToCart' }).map((result) => result.node.id)).toEqual(['node:use-add-to-cart']);
+    expect(repeat).toEqual(natural);
+  });
+
+  test('FTS search ranks name matches above docstring-only matches', () => {
+    const query = createQueryBuilder();
+    const nameMatch = makeNode({
+      id: 'node:name-match',
+      name: 'useAddToCart',
+      qualifiedName: 'src/cart.ts::useAddToCart',
+      kind: 'function',
+      filePath: 'src/cart.ts',
+    });
+    const docMatch = makeNode({
+      id: 'node:doc-match',
+      name: 'cartDocs',
+      qualifiedName: 'src/docs.ts::cartDocs',
+      kind: 'function',
+      filePath: 'src/docs.ts',
+      docstring: 'Documents useAddToCart behavior for agents.',
+    });
+    const subTokenMatch = makeNode({
+      id: 'node:sub-token-match',
+      name: 'addToCart',
+      qualifiedName: 'src/add.ts::addToCart',
+      kind: 'function',
+      filePath: 'src/add.ts',
+    });
+
+    query.upsertFile(makeFile({ path: 'src/cart.ts', state: 'resolved', nodeCount: 1 }));
+    query.upsertFile(makeFile({ path: 'src/docs.ts', state: 'resolved', nodeCount: 1 }));
+    query.upsertFile(makeFile({ path: 'src/add.ts', state: 'resolved', nodeCount: 1 }));
+    query.upsertNode(docMatch);
+    query.upsertNode(subTokenMatch);
+    query.upsertNode(nameMatch);
+
+    expect(query.search({ query: 'useAddToCart' }).map((result) => result.node.id)).toEqual([
+      'node:name-match',
+      'node:sub-token-match',
+      'node:doc-match',
+    ]);
+  });
+
   test('sync-support lookups are deterministic', () => {
     const query = createQueryBuilder();
     const source = makeNode({ id: 'node:source', name: 'source', qualifiedName: 'src/a.ts::source' });

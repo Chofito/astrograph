@@ -19,6 +19,7 @@ import type {
   StorageAdapter,
   Visibility,
 } from '../types';
+import { toExactNameBoostToken, toFtsMatchQuery } from '../search/fts-query';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -368,9 +369,13 @@ export class QueryBuilder {
   search(input: SearchInput): SearchOutput {
     if (input.query.trim() === '') return [];
 
+    const matchQuery = toFtsMatchQuery(input.query);
+    if (matchQuery === '') return [];
+    const exactNameBoostToken = toExactNameBoostToken(input.query);
+
     const limit = input.limit ?? 10;
     const clauses = ['nodes_fts MATCH ?'];
-    const params: unknown[] = [input.query];
+    const params: unknown[] = [exactNameBoostToken, matchQuery];
 
     if (input.kind !== undefined) {
       clauses.push('n.kind = ?');
@@ -386,7 +391,9 @@ export class QueryBuilder {
     params.push(limit);
 
     const rows = this.db.prepare(
-      `SELECT n.*, bm25(nodes_fts) AS rank
+      `SELECT n.*,
+        bm25(nodes_fts, 0, 20, 5, 1, 2)
+          - CASE WHEN lower(n.name) = ? THEN 1000 ELSE 0 END AS rank
        FROM nodes_fts
        JOIN nodes n ON n.rowid = nodes_fts.rowid
        WHERE ${clauses.join(' AND ')}
