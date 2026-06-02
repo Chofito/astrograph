@@ -16,3 +16,7 @@ dist/
 # logs / os
 *.log
 .DS_Store
+
+# Personal repo files
+STATS.md
+TODO.md

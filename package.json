@@ -14,7 +14,11 @@
   "scripts": {
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun test",
-    "clean": "rm -rf packages/*/dist apps/*/dist"
+    "build": "bun build packages/cli/src/bin/astrograph.ts --compile --outfile dist/astrograph",
+    "dev:link": "cd packages/cli && bun link",
+    "dev:unlink": "cd packages/cli && bun unlink",
+    "install:local": "bun run build && mkdir -p ~/.local/bin && cp dist/astrograph ~/.local/bin/astrograph",
+    "clean": "rm -rf dist packages/*/dist apps/*/dist"
   },
   "devDependencies": {
     "@types/bun": "latest",
