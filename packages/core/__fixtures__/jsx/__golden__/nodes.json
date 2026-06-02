@@ -1,0 +1,116 @@
+[
+  {
+    "id": "4608021663894392256",
+    "project": "root",
+    "kind": "file",
+    "name": "sample.tsx",
+    "qualifiedName": "jsx/sample.tsx",
+    "filePath": "jsx/sample.tsx",
+    "language": "tsx",
+    "range": {
+      "startLine": 1,
+      "endLine": 14,
+      "startColumn": 0,
+      "endColumn": 0
+    },
+    "isExported": false,
+    "isAsync": false,
+    "isStatic": false,
+    "isAbstract": false,
+    "isExternal": false,
+    "isGenerated": false,
+    "isTest": false
+  },
+  {
+    "id": "13067710609632135165",
+    "project": "root",
+    "kind": "import",
+    "name": "react",
+    "qualifiedName": "jsx/sample.tsx::import(react)",
+    "filePath": "jsx/sample.tsx",
+    "language": "tsx",
+    "range": {
+      "startLine": 1,
+      "endLine": 1,
+      "startColumn": 0,
+      "endColumn": 26
+    },
+    "signature": "import React from 'react';",
+    "isExported": false,
+    "isAsync": false,
+    "isStatic": false,
+    "isAbstract": false,
+    "isExternal": false,
+    "isGenerated": false,
+    "isTest": false
+  },
+  {
+    "id": "7201530883112060622",
+    "project": "root",
+    "kind": "component",
+    "name": "Button",
+    "qualifiedName": "jsx/sample.tsx::Button",
+    "filePath": "jsx/sample.tsx",
+    "language": "tsx",
+    "range": {
+      "startLine": 3,
+      "endLine": 5,
+      "startColumn": 0,
+      "endColumn": 1
+    },
+    "signature": "export function Button(props: { label: string })",
+    "isExported": true,
+    "isAsync": false,
+    "isStatic": false,
+    "isAbstract": false,
+    "isExternal": false,
+    "isGenerated": false,
+    "isTest": false
+  },
+  {
+    "id": "7202749264039854045",
+    "project": "root",
+    "kind": "component",
+    "name": "Card",
+    "qualifiedName": "jsx/sample.tsx::Card",
+    "filePath": "jsx/sample.tsx",
+    "language": "tsx",
+    "range": {
+      "startLine": 7,
+      "endLine": 9,
+      "startColumn": 0,
+      "endColumn": 2
+    },
+    "signature": "const Card: React.FC<{ title: string }> = ({ title }) => { return <div>{title}</div>; };",
+    "isExported": false,
+    "isAsync": false,
+    "isStatic": false,
+    "isAbstract": false,
+    "isExternal": false,
+    "isGenerated": false,
+    "isTest": false
+  },
+  {
+    "id": "13312850787005301930",
+    "project": "root",
+    "kind": "function",
+    "name": "helper",
+    "qualifiedName": "jsx/sample.tsx::helper",
+    "filePath": "jsx/sample.tsx",
+    "language": "tsx",
+    "range": {
+      "startLine": 11,
+      "endLine": 13,
+      "startColumn": 0,
+      "endColumn": 1
+    },
+    "signature": "export function helper()",
+    "isExported": true,
+    "isAsync": false,
+    "isStatic": false,
+    "isAbstract": false,
+    "isExternal": false,
+    "isGenerated": false,
+    "isTest": false
+  }
+]

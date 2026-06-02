@@ -1,0 +1,139 @@
+[
+  {
+    "id": "1233663358238963091",
+    "project": "root",
+    "kind": "file",
+    "name": "sample.ts",
+    "qualifiedName": "exports/sample.ts",
+    "filePath": "exports/sample.ts",
+    "language": "typescript",
+    "range": {
+      "startLine": 1,
+      "endLine": 9,
+      "startColumn": 0,
+      "endColumn": 0
+    },
+    "isExported": false,
+    "isAsync": false,
+    "isStatic": false,
+    "isAbstract": false,
+    "isExternal": false,
+    "isGenerated": false,
+    "isTest": false
+  },
+  {
+    "id": "8496903073984327537",
+    "project": "root",
+    "kind": "function",
+    "name": "namedExport",
+    "qualifiedName": "exports/sample.ts::namedExport",
+    "filePath": "exports/sample.ts",
+    "language": "typescript",
+    "range": {
+      "startLine": 1,
+      "endLine": 1,
+      "startColumn": 0,
+      "endColumn": 38
+    },
+    "signature": "export function namedExport(): void",
+    "isExported": true,
+    "isAsync": false,
+    "isStatic": false,
+    "isAbstract": false,
+    "isExternal": false,
+    "isGenerated": false,
+    "isTest": false
+  },
+  {
+    "id": "2563524782541982888",
+    "project": "root",
+    "kind": "function",
+    "name": "defaultFn",
+    "qualifiedName": "exports/sample.ts::defaultFn",
+    "filePath": "exports/sample.ts",
+    "language": "typescript",
+    "range": {
+      "startLine": 3,
+      "endLine": 3,
+      "startColumn": 0,
+      "endColumn": 44
+    },
+    "signature": "export default function defaultFn(): void",
+    "isExported": true,
+    "isAsync": false,
+    "isStatic": false,
+    "isAbstract": false,
+    "isExternal": false,
+    "isGenerated": false,
+    "isTest": false
+  },
+  {
+    "id": "8301610889972637522",
+    "project": "root",
+    "kind": "class",
+    "name": "ExportedClass",
+    "qualifiedName": "exports/sample.ts::ExportedClass",
+    "filePath": "exports/sample.ts",
+    "language": "typescript",
+    "range": {
+      "startLine": 5,
+      "endLine": 5,
+      "startColumn": 0,
+      "endColumn": 29
+    },
+    "signature": "export class ExportedClass",
+    "isExported": true,
+    "isAsync": false,
+    "isStatic": false,
+    "isAbstract": false,
+    "isExternal": false,
+    "isGenerated": false,
+    "isTest": false
+  },
+  {
+    "id": "16029544272150747439",
+    "project": "root",
+    "kind": "constant",
+    "name": "local",
+    "qualifiedName": "exports/sample.ts::local",
+    "filePath": "exports/sample.ts",
+    "language": "typescript",
+    "range": {
+      "startLine": 7,
+      "endLine": 7,
+      "startColumn": 0,
+      "endColumn": 17
+    },
+    "signature": "const local = 42;",
+    "isExported": false,
+    "isAsync": false,
+    "isStatic": false,
+    "isAbstract": false,
+    "isExternal": false,
+    "isGenerated": false,
+    "isTest": false
+  },
+  {
+    "id": "3675339335764992228",
+    "project": "root",
+    "kind": "export",
+    "name": "{ local }",
+    "qualifiedName": "exports/sample.ts::export({ local })",
+    "filePath": "exports/sample.ts",
+    "language": "typescript",
+    "range": {
+      "startLine": 8,
+      "endLine": 8,
+      "startColumn": 0,
+      "endColumn": 17
+    },
+    "signature": "export { local };",
+    "isExported": true,
+    "isAsync": false,
+    "isStatic": false,
+    "isAbstract": false,
+    "isExternal": false,
+    "isGenerated": false,
+    "isTest": false
+  }
+]
