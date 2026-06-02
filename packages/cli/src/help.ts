@@ -1,0 +1,57 @@
+import pkg from '../package.json';
+
+export function versionText(): string {
+  return `astrograph ${pkg.version}`;
+}
+
+export function globalHelp(): string {
+  return [
+    'Usage: astrograph <command> [options]',
+    '',
+    'Lifecycle:',
+    '  init [path]              Create .astrograph and index by default',
+    '  uninit [path]            Remove .astrograph',
+    '  index [path]             Reindex project',
+    '  sync [path]              Index changed files',
+    '  status [path]            Show index status',
+    '  unlock [path]            Remove stale lock file',
+    '',
+    'Queries:',
+    '  search <query>           Find symbols (aliases: query, q)',
+    '  context <task>           Build task context',
+    '  trace <from> <to>        Trace a call/reference path',
+    '  callers <symbol>         Show callers',
+    '  callees <symbol>         Show callees',
+    '  impact <symbol>          Show reverse impact',
+    '  node <symbol>            Show one symbol',
+    '  explore <terms...>       Group related code by file',
+    '  files                    Show indexed files',
+    '',
+    'Global:',
+    '  -h, --help               Show help',
+    '  --version                Show version',
+  ].join('\n');
+}
+
+export function commandHelp(command: string): string {
+  const usage: Record<string, string> = {
+    init: 'Usage: astrograph init [path] [--no-index] [-v]',
+    uninit: 'Usage: astrograph uninit [path] [-f]',
+    index: 'Usage: astrograph index [path] [-f] [-q] [-v]',
+    sync: 'Usage: astrograph sync [path] [-q]',
+    status: 'Usage: astrograph status [path] [-j]',
+    unlock: 'Usage: astrograph unlock [path]',
+    search: 'Usage: astrograph search <query> [-l 10] [-k kind] [--lang lang] [--no-generated] [-j]',
+    query: 'Usage: astrograph query <query> [-l 10] [-k kind] [--lang lang] [--no-generated] [-j]',
+    q: 'Usage: astrograph q <query> [-l 10] [-k kind] [--lang lang] [--no-generated] [-j]',
+    context: 'Usage: astrograph context <task> [-n 20] [--no-code] [--budget tokens] [-f markdown|json]',
+    trace: 'Usage: astrograph trace <from> <to> [-d maxDepth] [-j]',
+    callers: 'Usage: astrograph callers <symbol> [-l 20] [-j]',
+    callees: 'Usage: astrograph callees <symbol> [-l 20] [-j]',
+    impact: 'Usage: astrograph impact <symbol> [-d 2] [--include-external] [-j]',
+    node: 'Usage: astrograph node <symbol> [-c] [-j]',
+    explore: 'Usage: astrograph explore <terms...> [--max-files 12] [-j]',
+    files: 'Usage: astrograph files [--filter dir] [--pattern glob] [--format tree|flat|grouped] [-j]',
+  };
+  return usage[command] ?? globalHelp();
+}
