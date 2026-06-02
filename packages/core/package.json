@@ -6,6 +6,7 @@
   "description": "Graph, storage adapters, TS extraction, resolution, queries & traversal (see docs/graph-model.md, docs/extraction.md)",
   "exports": {
     ".": "./src/index.ts",
+    "./bun": "./src/adapters/bun/index.ts",
     "./adapters/bun": "./src/adapters/bun/sqlite.ts"
   },
   "types": "./src/index.ts",
