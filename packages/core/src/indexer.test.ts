@@ -26,12 +26,12 @@ describe('Indexer', () => {
       await indexer.indexAll();
 
       const files = indexer.queries.getAllFiles();
-      expect(files.map((file) => [file.path, file.state])).toEqual([['src/user.ts', 'parsed']]);
+      expect(files.map((file) => [file.path, file.state])).toEqual([['src/user.ts', 'resolved']]);
       expect(indexer.queries.search({ query: 'greet' }).map((result) => result.node.name)).toEqual(['greet']);
       expect(indexer.queries.getStats().coverage).toEqual({
         total: 1,
-        resolved: 0,
-        parsed: 1,
+        resolved: 1,
+        parsed: 0,
         pending: 0,
       });
     } finally {

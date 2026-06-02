@@ -7,12 +7,25 @@ import type {
   Hasher,
   NodeKind,
   Language,
-  Range,
+  LoadProjectOptions,
 } from '../types';
 import { makeNodeId } from '../ids';
 import { languageFromPath } from './language';
 import { isGenerated, isTest } from './classify';
-import { buildQualifiedName, buildSignatureLocator } from './qualified-name';
+import {
+  computeNodeIdentity,
+  getRange,
+  extractDocstring,
+  extractDecorators,
+  extractTypeParameters,
+  hasExportModifier,
+  hasDefaultModifier,
+  hasAsyncModifier,
+  hasStaticModifier,
+  hasAbstractModifier,
+  getVisibility,
+} from './identity';
+import { resolveEdgesForFile } from './resolver';
 
 export interface TsExtractorOptions {
   hasher: Hasher;
@@ -25,10 +38,74 @@ export class TsExtractor implements Extractor {
   private readonly now: () => number;
   private readonly project: string;
 
+  private program: ts.Program | undefined;
+  private checker: ts.TypeChecker | undefined;
+  private rootPath: string | undefined;
+  private projectFiles: Set<string> = new Set();
+  private absolutePathMap: Map<string, string> = new Map();
+  private nodesByFile: Map<string, Node[]> = new Map();
+  private loadNodesForFile: (filePath: string) => Node[] = () => [];
+
   constructor(opts: TsExtractorOptions) {
     this.hasher = opts.hasher;
     this.now = opts.now ?? Date.now;
     this.project = opts.project ?? 'root';
+  }
+
+  loadProject(opts: LoadProjectOptions): void {
+    this.rootPath = opts.rootPath.replaceAll('\\', '/').replace(/\/$/, '');
+    this.nodesByFile = new Map();
+    this.loadNodesForFile = opts.loadNodesForFile ?? (() => []);
+
+    const configPath = opts.tsconfigPath
+      ? `${this.rootPath}/${opts.tsconfigPath}`.replaceAll('//', '/')
+      : findConfigFile(this.rootPath);
+
+    let configFileNames: string[] = [];
+    let compilerOptions: ts.CompilerOptions = {
+      allowJs: true,
+      checkJs: false,
+      target: ts.ScriptTarget.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      jsx: ts.JsxEmit.Preserve,
+      skipLibCheck: true,
+    };
+
+    if (configPath) {
+      const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
+      if (configFile.config) {
+        const parsed = ts.parseJsonConfigFileContent(
+          configFile.config,
+          ts.sys,
+          configPath.slice(0, configPath.lastIndexOf('/')),
+        );
+        configFileNames = parsed.fileNames;
+        compilerOptions = { ...parsed.options, skipLibCheck: true };
+      }
+    }
+
+    const indexedFiles = normalizeIndexedFiles(opts.fileNames, this.rootPath);
+    const indexedFileNames = indexedFiles.map((f) => this.toAbsolute(f));
+    const fileNames = uniqueStrings([...configFileNames, ...indexedFileNames]);
+
+    this.program = ts.createProgram({
+      rootNames: fileNames,
+      options: compilerOptions,
+    });
+    this.checker = this.program.getTypeChecker();
+
+    const projectFiles = opts.fileNames !== undefined
+      ? indexedFiles
+      : this.program.getRootFileNames().map((fileName) => this.toRelative(fileName));
+    this.projectFiles = new Set(projectFiles);
+    this.absolutePathMap = new Map();
+    for (const fileName of this.program.getRootFileNames()) {
+      const rel = this.toRelative(fileName);
+      this.absolutePathMap.set(rel, fileName);
+    }
+    for (const rel of projectFiles) {
+      this.absolutePathMap.set(rel, this.toAbsolute(rel));
+    }
   }
 
   extractNodes(filePath: string, source: string): { nodes: Node[]; errors: ExtractionError[] } {
@@ -52,9 +129,10 @@ export class TsExtractor implements Extractor {
 
       this.visitStatements(sourceFile, sourceFile, source, lang, generated, test, [], nodes, errors);
 
-      this.disambiguateOverloads(nodes);
-
       nodes.sort(compareNodes);
+
+      this.nodesByFile.set(filePath, nodes);
+
       return { nodes, errors };
     } catch (err) {
       return {
@@ -69,9 +147,43 @@ export class TsExtractor implements Extractor {
     }
   }
 
-  resolveEdges(_filePath: string): { edges: Edge[]; errors: ExtractionError[] } {
-    // TODO(pass-b): implement edge resolution
-    return { edges: [], errors: [] };
+  resolveEdges(filePath: string): { edges: Edge[]; errors: ExtractionError[]; externalNodes: Node[] } {
+    if (!this.program || !this.checker || !this.rootPath) {
+      return { edges: [], errors: [], externalNodes: [] };
+    }
+
+    const absPath = this.absolutePathMap.get(filePath) ?? this.toAbsolute(filePath);
+    const sourceFile = this.program.getSourceFile(absPath);
+    if (!sourceFile) {
+      return { edges: [], errors: [], externalNodes: [] };
+    }
+
+    const result = resolveEdgesForFile({
+      program: this.program,
+      checker: this.checker,
+      sourceFile,
+      filePath,
+      project: this.project,
+      hasher: this.hasher,
+      projectFiles: this.projectFiles,
+      rootPath: this.rootPath,
+      now: this.now,
+      nodesByFile: this.nodesByFile,
+      loadNodesForFile: this.loadNodesForFile,
+    });
+
+    return { edges: result.edges, errors: result.errors, externalNodes: result.externalNodes };
+  }
+
+  private toAbsolute(relPath: string): string {
+    return `${this.rootPath}/${relPath}`.replaceAll('//', '/');
+  }
+
+  private toRelative(absPath: string): string {
+    const normalized = absPath.replaceAll('\\', '/');
+    const root = this.rootPath!.replaceAll('\\', '/');
+    if (normalized.startsWith(root + '/')) return normalized.slice(root.length + 1);
+    return normalized;
   }
 
   private visitStatements(
@@ -102,27 +214,27 @@ export class TsExtractor implements Extractor {
     errors: ExtractionError[],
   ): void {
     if (ts.isFunctionDeclaration(node)) {
-      this.handleFunctionDeclaration(node, sourceFile, source, lang, generated, test, nameParts, nodes);
+      this.handleFunctionDeclaration(node, sourceFile, source, lang, generated, test, nodes);
       return;
     }
 
     if (ts.isClassDeclaration(node)) {
-      this.handleClassDeclaration(node, sourceFile, source, lang, generated, test, nameParts, nodes, errors);
+      this.handleClassDeclaration(node, sourceFile, source, lang, generated, test, nodes, errors);
       return;
     }
 
     if (ts.isInterfaceDeclaration(node)) {
-      this.handleInterfaceDeclaration(node, sourceFile, source, lang, generated, test, nameParts, nodes, errors);
+      this.handleInterfaceDeclaration(node, sourceFile, source, lang, generated, test, nodes, errors);
       return;
     }
 
     if (ts.isEnumDeclaration(node)) {
-      this.handleEnumDeclaration(node, sourceFile, source, lang, generated, test, nameParts, nodes);
+      this.handleEnumDeclaration(node, sourceFile, source, lang, generated, test, nodes);
       return;
     }
 
     if (ts.isTypeAliasDeclaration(node)) {
-      this.handleTypeAliasDeclaration(node, sourceFile, source, lang, generated, test, nameParts, nodes);
+      this.handleTypeAliasDeclaration(node, sourceFile, source, lang, generated, test, nodes);
       return;
     }
 
@@ -132,17 +244,17 @@ export class TsExtractor implements Extractor {
     }
 
     if (ts.isVariableStatement(node)) {
-      this.handleVariableStatement(node, sourceFile, source, lang, generated, test, nameParts, nodes);
+      this.handleVariableStatement(node, sourceFile, source, lang, generated, test, nodes);
       return;
     }
 
     if (ts.isImportDeclaration(node) || ts.isImportEqualsDeclaration(node)) {
-      this.handleImportDeclaration(node, sourceFile, source, lang, generated, test, nameParts, nodes);
+      this.handleImportDeclaration(node, sourceFile, source, lang, generated, test, nodes);
       return;
     }
 
     if (ts.isExportDeclaration(node) || ts.isExportAssignment(node)) {
-      this.handleExportDeclaration(node, sourceFile, source, lang, generated, test, nameParts, nodes);
+      this.handleExportDeclaration(node, sourceFile, source, lang, generated, test, nodes);
       return;
     }
   }
@@ -154,22 +266,18 @@ export class TsExtractor implements Extractor {
     lang: Language,
     generated: boolean,
     test: boolean,
-    nameParts: string[],
     nodes: Node[],
   ): void {
     const isDefault = hasDefaultModifier(node);
-    const name = node.name?.text ?? (isDefault ? 'default' : '<anonymous>');
-    const parts = [...nameParts, name];
-    const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
-    const kind: NodeKind = isComponent(name, node, sourceFile, lang) ? 'component' : 'function';
+    const identity = computeNodeIdentity(node, sourceFile, this.project, this.hasher);
+    const kind: NodeKind = isComponent(identity.name, node, sourceFile, lang) ? 'component' : 'function';
 
     nodes.push(this.buildNode({
       kind,
-      name,
-      qualifiedName,
+      identity,
       filePath: sourceFile.fileName,
       language: lang,
-      node: node,
+      node,
       sourceFile,
       source,
       generated,
@@ -186,19 +294,15 @@ export class TsExtractor implements Extractor {
     lang: Language,
     generated: boolean,
     test: boolean,
-    nameParts: string[],
     nodes: Node[],
     errors: ExtractionError[],
   ): void {
     const isDefault = hasDefaultModifier(node);
-    const name = node.name?.text ?? (isDefault ? 'default' : '<anonymous>');
-    const parts = [...nameParts, name];
-    const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
+    const identity = computeNodeIdentity(node, sourceFile, this.project, this.hasher);
 
     nodes.push(this.buildNode({
       kind: 'class',
-      name,
-      qualifiedName,
+      identity,
       filePath: sourceFile.fileName,
       language: lang,
       node,
@@ -210,7 +314,7 @@ export class TsExtractor implements Extractor {
       isAbstract: hasAbstractModifier(node),
     }));
 
-    this.visitClassMembers(node, sourceFile, source, lang, generated, test, parts, nodes, errors);
+    this.visitClassMembers(node, sourceFile, source, lang, generated, test, nodes, errors);
   }
 
   private visitClassMembers(
@@ -220,22 +324,16 @@ export class TsExtractor implements Extractor {
     lang: Language,
     generated: boolean,
     test: boolean,
-    classNameParts: string[],
     nodes: Node[],
     _errors: ExtractionError[],
   ): void {
     for (const member of classNode.members) {
       if (ts.isMethodDeclaration(member) || ts.isConstructorDeclaration(member)) {
-        const name = ts.isConstructorDeclaration(member)
-          ? 'constructor'
-          : member.name?.getText(sourceFile) ?? '<anonymous>';
-        const parts = [...classNameParts, name];
-        const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
+        const identity = computeNodeIdentity(member, sourceFile, this.project, this.hasher);
 
         nodes.push(this.buildNode({
           kind: 'method',
-          name,
-          qualifiedName,
+          identity,
           filePath: sourceFile.fileName,
           language: lang,
           node: member,
@@ -250,14 +348,11 @@ export class TsExtractor implements Extractor {
           visibility: getVisibility(member),
         }));
       } else if (ts.isPropertyDeclaration(member)) {
-        const name = member.name?.getText(sourceFile) ?? '<anonymous>';
-        const parts = [...classNameParts, name];
-        const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
+        const identity = computeNodeIdentity(member, sourceFile, this.project, this.hasher);
 
         nodes.push(this.buildNode({
           kind: 'property',
-          name,
-          qualifiedName,
+          identity,
           filePath: sourceFile.fileName,
           language: lang,
           node: member,
@@ -271,18 +366,15 @@ export class TsExtractor implements Extractor {
           visibility: getVisibility(member),
         }));
       } else if (ts.isGetAccessor(member) || ts.isSetAccessor(member)) {
-        const name = member.name?.getText(sourceFile) ?? '<anonymous>';
-        const parts = [...classNameParts, name];
-        const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
+        const identity = computeNodeIdentity(member, sourceFile, this.project, this.hasher);
 
         const existing = nodes.find(
-          (n) => n.qualifiedName === qualifiedName && n.kind === 'property',
+          (n) => n.qualifiedName === identity.qualifiedName && n.kind === 'property',
         );
         if (!existing) {
           nodes.push(this.buildNode({
             kind: 'property',
-            name,
-            qualifiedName,
+            identity,
             filePath: sourceFile.fileName,
             language: lang,
             node: member,
@@ -307,18 +399,14 @@ export class TsExtractor implements Extractor {
     lang: Language,
     generated: boolean,
     test: boolean,
-    nameParts: string[],
     nodes: Node[],
     _errors: ExtractionError[],
   ): void {
-    const name = node.name.text;
-    const parts = [...nameParts, name];
-    const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
+    const identity = computeNodeIdentity(node, sourceFile, this.project, this.hasher);
 
     nodes.push(this.buildNode({
       kind: 'interface',
-      name,
-      qualifiedName,
+      identity,
       filePath: sourceFile.fileName,
       language: lang,
       node,
@@ -331,14 +419,11 @@ export class TsExtractor implements Extractor {
 
     for (const member of node.members) {
       if (ts.isMethodSignature(member)) {
-        const memberName = member.name?.getText(sourceFile) ?? '<anonymous>';
-        const memberParts = [...parts, memberName];
-        const memberQName = buildQualifiedName({ filePath: sourceFile.fileName, parts: memberParts });
+        const memberIdentity = computeNodeIdentity(member, sourceFile, this.project, this.hasher);
 
         nodes.push(this.buildNode({
           kind: 'method',
-          name: memberName,
-          qualifiedName: memberQName,
+          identity: memberIdentity,
           filePath: sourceFile.fileName,
           language: lang,
           node: member,
@@ -349,14 +434,11 @@ export class TsExtractor implements Extractor {
           isExported: false,
         }));
       } else if (ts.isPropertySignature(member)) {
-        const memberName = member.name?.getText(sourceFile) ?? '<anonymous>';
-        const memberParts = [...parts, memberName];
-        const memberQName = buildQualifiedName({ filePath: sourceFile.fileName, parts: memberParts });
+        const memberIdentity = computeNodeIdentity(member, sourceFile, this.project, this.hasher);
 
         nodes.push(this.buildNode({
           kind: 'property',
-          name: memberName,
-          qualifiedName: memberQName,
+          identity: memberIdentity,
           filePath: sourceFile.fileName,
           language: lang,
           node: member,
@@ -377,17 +459,13 @@ export class TsExtractor implements Extractor {
     lang: Language,
     generated: boolean,
     test: boolean,
-    nameParts: string[],
     nodes: Node[],
   ): void {
-    const name = node.name.text;
-    const parts = [...nameParts, name];
-    const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
+    const identity = computeNodeIdentity(node, sourceFile, this.project, this.hasher);
 
     nodes.push(this.buildNode({
       kind: 'enum',
-      name,
-      qualifiedName,
+      identity,
       filePath: sourceFile.fileName,
       language: lang,
       node,
@@ -399,14 +477,11 @@ export class TsExtractor implements Extractor {
     }));
 
     for (const member of node.members) {
-      const memberName = member.name.getText(sourceFile);
-      const memberParts = [...parts, memberName];
-      const memberQName = buildQualifiedName({ filePath: sourceFile.fileName, parts: memberParts });
+      const memberIdentity = computeNodeIdentity(member, sourceFile, this.project, this.hasher);
 
       nodes.push(this.buildNode({
         kind: 'enum_member',
-        name: memberName,
-        qualifiedName: memberQName,
+        identity: memberIdentity,
         filePath: sourceFile.fileName,
         language: lang,
         node: member,
@@ -426,17 +501,13 @@ export class TsExtractor implements Extractor {
     lang: Language,
     generated: boolean,
     test: boolean,
-    nameParts: string[],
     nodes: Node[],
   ): void {
-    const name = node.name.text;
-    const parts = [...nameParts, name];
-    const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
+    const identity = computeNodeIdentity(node, sourceFile, this.project, this.hasher);
 
     nodes.push(this.buildNode({
       kind: 'type_alias',
-      name,
-      qualifiedName,
+      identity,
       filePath: sourceFile.fileName,
       language: lang,
       node,
@@ -459,14 +530,11 @@ export class TsExtractor implements Extractor {
     nodes: Node[],
     errors: ExtractionError[],
   ): void {
-    const name = node.name.getText(sourceFile);
-    const parts = [...nameParts, name];
-    const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
+    const identity = computeNodeIdentity(node, sourceFile, this.project, this.hasher);
 
     nodes.push(this.buildNode({
       kind: 'namespace',
-      name,
-      qualifiedName,
+      identity,
       filePath: sourceFile.fileName,
       language: lang,
       node,
@@ -478,7 +546,7 @@ export class TsExtractor implements Extractor {
     }));
 
     if (node.body && ts.isModuleBlock(node.body)) {
-      this.visitStatements(node.body, sourceFile, source, lang, generated, test, parts, nodes, errors);
+      this.visitStatements(node.body, sourceFile, source, lang, generated, test, nameParts, nodes, errors);
     }
   }
 
@@ -489,46 +557,27 @@ export class TsExtractor implements Extractor {
     lang: Language,
     generated: boolean,
     test: boolean,
-    nameParts: string[],
     nodes: Node[],
   ): void {
     const isStmtExported = hasExportModifier(stmt);
-    const flags = stmt.declarationList.flags;
-    const isConst = (flags & ts.NodeFlags.Const) !== 0;
 
     for (const decl of stmt.declarationList.declarations) {
       if (!ts.isIdentifier(decl.name)) continue;
 
-      const name = decl.name.text;
+      const identity = computeNodeIdentity(decl, sourceFile, this.project, this.hasher);
       const init = decl.initializer;
 
-      let kind: NodeKind;
-      let declNode: ts.Node = decl;
-
+      let kind: NodeKind = identity.kind;
       if (init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init))) {
-        kind = isComponent(name, init, sourceFile, lang, decl) ? 'component' : 'function';
-        declNode = stmt;
-      } else if (init && ts.isClassExpression(init)) {
-        kind = 'class';
-        declNode = stmt;
-      } else if (isConst) {
-        kind = 'constant';
-        declNode = stmt;
-      } else {
-        kind = 'variable';
-        declNode = stmt;
+        kind = isComponent(identity.name, init, sourceFile, lang, decl) ? 'component' : 'function';
       }
-
-      const parts = [...nameParts, name];
-      const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
 
       nodes.push(this.buildNode({
         kind,
-        name,
-        qualifiedName,
+        identity,
         filePath: sourceFile.fileName,
         language: lang,
-        node: declNode,
+        node: stmt,
         sourceFile,
         source,
         generated,
@@ -546,25 +595,13 @@ export class TsExtractor implements Extractor {
     lang: Language,
     generated: boolean,
     test: boolean,
-    nameParts: string[],
     nodes: Node[],
   ): void {
-    let moduleName: string;
-    if (ts.isImportDeclaration(node)) {
-      moduleName = ts.isStringLiteral(node.moduleSpecifier)
-        ? node.moduleSpecifier.text
-        : node.moduleSpecifier.getText(sourceFile);
-    } else {
-      moduleName = node.moduleReference.getText(sourceFile);
-    }
-
-    const parts = [...nameParts, `import(${moduleName})`];
-    const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
+    const identity = computeNodeIdentity(node, sourceFile, this.project, this.hasher);
 
     nodes.push(this.buildNode({
       kind: 'import',
-      name: moduleName,
-      qualifiedName,
+      identity,
       filePath: sourceFile.fileName,
       language: lang,
       node,
@@ -583,27 +620,13 @@ export class TsExtractor implements Extractor {
     lang: Language,
     generated: boolean,
     test: boolean,
-    nameParts: string[],
     nodes: Node[],
   ): void {
-    let name: string;
-    if (ts.isExportAssignment(node)) {
-      name = 'default';
-    } else if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
-      name = `re-export(${node.moduleSpecifier.text})`;
-    } else if (node.exportClause) {
-      name = node.exportClause.getText(sourceFile);
-    } else {
-      name = node.getText(sourceFile).slice(0, 40);
-    }
-
-    const parts = [...nameParts, `export(${name})`];
-    const qualifiedName = buildQualifiedName({ filePath: sourceFile.fileName, parts });
+    const identity = computeNodeIdentity(node, sourceFile, this.project, this.hasher);
 
     nodes.push(this.buildNode({
       kind: 'export',
-      name,
-      qualifiedName,
+      identity,
       filePath: sourceFile.fileName,
       language: lang,
       node,
@@ -659,8 +682,7 @@ export class TsExtractor implements Extractor {
 
   private buildNode(input: {
     kind: NodeKind;
-    name: string;
-    qualifiedName: string;
+    identity: { id: string; name: string; qualifiedName: string; signature: string; locator?: string };
     filePath: string;
     language: Language;
     node: ts.Node;
@@ -674,11 +696,9 @@ export class TsExtractor implements Extractor {
     isAbstract?: boolean;
     visibility?: Node['visibility'];
     metadata?: Record<string, unknown>;
-    locator?: string;
   }): Node {
-    const { kind, name, qualifiedName, filePath, language, node: astNode, sourceFile, source } = input;
+    const { kind, identity, filePath, language, node: astNode, sourceFile, source } = input;
     const range = getRange(astNode, sourceFile);
-    const signature = extractSignature(astNode, sourceFile);
     const docstring = extractDocstring(astNode, sourceFile, source);
     const decorators = extractDecorators(astNode, sourceFile);
     const typeParams = extractTypeParameters(astNode);
@@ -688,17 +708,17 @@ export class TsExtractor implements Extractor {
         project: this.project,
         filePath,
         kind,
-        qualifiedName,
-        locator: input.locator,
+        qualifiedName: identity.qualifiedName,
+        locator: identity.locator,
       }, this.hasher),
       project: this.project,
       kind,
-      name,
-      qualifiedName,
+      name: identity.name,
+      qualifiedName: identity.qualifiedName,
       filePath,
       language,
       range,
-      signature: signature || undefined,
+      signature: identity.signature || undefined,
       docstring: docstring || undefined,
       visibility: input.visibility,
       isExported: input.isExported,
@@ -714,51 +734,27 @@ export class TsExtractor implements Extractor {
       updatedAt: this.now(),
     };
   }
+}
 
-  private disambiguateOverloads(nodes: Node[]): void {
-    const groups = new Map<string, Node[]>();
-    for (const node of nodes) {
-      const key = `${node.kind}::${node.qualifiedName}`;
-      let group = groups.get(key);
-      if (!group) {
-        group = [];
-        groups.set(key, group);
-      }
-      group.push(node);
-    }
+function findConfigFile(rootPath: string): string | undefined {
+  const tsconfig = ts.findConfigFile(rootPath, ts.sys.fileExists, 'tsconfig.json');
+  if (tsconfig) return tsconfig;
+  const jsconfig = ts.findConfigFile(rootPath, ts.sys.fileExists, 'jsconfig.json');
+  return jsconfig;
+}
 
-    for (const group of groups.values()) {
-      if (group.length <= 1) continue;
+function normalizeIndexedFiles(fileNames: string[] | undefined, rootPath: string): string[] {
+  if (fileNames === undefined) return [];
+  const root = rootPath.replaceAll('\\', '/').replace(/\/$/, '');
+  return uniqueStrings(fileNames.map((fileName) => {
+    const normalized = fileName.replaceAll('\\', '/');
+    if (normalized.startsWith(`${root}/`)) return normalized.slice(root.length + 1);
+    return normalized.replace(/^\.\//, '');
+  }));
+}
 
-      group.sort((a, b) => a.range.startLine - b.range.startLine);
-
-      const hashCounts = new Map<string, number>();
-      for (const node of group) {
-        const sigHash = this.hasher.hash(node.signature ?? '');
-        hashCounts.set(sigHash, (hashCounts.get(sigHash) ?? 0) + 1);
-      }
-
-      const ordinalCounters = new Map<string, number>();
-      for (const node of group) {
-        const sigHash = this.hasher.hash(node.signature ?? '');
-        const needsOrdinal = (hashCounts.get(sigHash) ?? 0) > 1;
-        const ordinal = ordinalCounters.get(sigHash) ?? 0;
-        ordinalCounters.set(sigHash, ordinal + 1);
-
-        const locator = needsOrdinal
-          ? `sig:${sigHash}:${ordinal}`
-          : `sig:${sigHash}`;
-
-        node.id = makeNodeId({
-          project: this.project,
-          filePath: node.filePath,
-          kind: node.kind,
-          qualifiedName: node.qualifiedName,
-          locator,
-        }, this.hasher);
-      }
-    }
-  }
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)].sort(compareStr);
 }
 
 function scriptKindFromPath(filePath: string): ts.ScriptKind {
@@ -771,145 +767,6 @@ function scriptKindFromPath(filePath: string): ts.ScriptKind {
     case '.cjs': return ts.ScriptKind.JS;
     default: return ts.ScriptKind.TS;
   }
-}
-
-function getRange(node: ts.Node, sourceFile: ts.SourceFile): Range {
-  const start = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-  const end = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
-  return {
-    startLine: start.line + 1,
-    endLine: end.line + 1,
-    startColumn: start.character,
-    endColumn: end.character,
-  };
-}
-
-function extractSignature(node: ts.Node, sourceFile: ts.SourceFile): string {
-  const start = node.getStart(sourceFile);
-  const text = sourceFile.text;
-
-  const body = (node as ts.FunctionDeclaration | ts.MethodDeclaration).body;
-  if (body && ts.isBlock(body)) {
-    return collapse(text.slice(start, body.getStart(sourceFile)));
-  }
-
-  if (
-    ts.isClassDeclaration(node) ||
-    ts.isInterfaceDeclaration(node) ||
-    ts.isEnumDeclaration(node) ||
-    ts.isModuleDeclaration(node)
-  ) {
-    const fullText = text.slice(start, node.getEnd());
-    const braceIdx = fullText.indexOf('{');
-    if (braceIdx !== -1) return collapse(fullText.slice(0, braceIdx));
-  }
-
-  if (ts.isTypeAliasDeclaration(node)) {
-    return collapse(node.getText(sourceFile));
-  }
-
-  if (ts.isVariableStatement(node)) {
-    return collapse(node.getText(sourceFile));
-  }
-
-  if (ts.isImportDeclaration(node) || ts.isImportEqualsDeclaration(node) ||
-      ts.isExportDeclaration(node) || ts.isExportAssignment(node)) {
-    return collapse(node.getText(sourceFile));
-  }
-
-  if (ts.isPropertyDeclaration(node) || ts.isPropertySignature(node)) {
-    return collapse(node.getText(sourceFile));
-  }
-
-  if (ts.isEnumMember(node)) {
-    return collapse(node.getText(sourceFile));
-  }
-
-  return collapse(node.getText(sourceFile));
-}
-
-function collapse(s: string): string {
-  return s.trim().replace(/\s+/g, ' ');
-}
-
-function extractDocstring(node: ts.Node, sourceFile: ts.SourceFile, source: string): string | undefined {
-  const ranges = ts.getLeadingCommentRanges(source, node.getFullStart());
-  if (!ranges || ranges.length === 0) return undefined;
-
-  for (let i = ranges.length - 1; i >= 0; i--) {
-    const range = ranges[i]!;
-    const commentText = source.slice(range.pos, range.end);
-    if (commentText.startsWith('/**')) {
-      return cleanJSDoc(commentText);
-    }
-  }
-
-  return undefined;
-}
-
-function cleanJSDoc(text: string): string {
-  return text
-    .replace(/^\/\*\*\s?/, '')
-    .replace(/\s?\*\/$/, '')
-    .split('\n')
-    .map((line) => line.replace(/^\s*\*\s?/, ''))
-    .join('\n')
-    .trim();
-}
-
-function extractDecorators(node: ts.Node, sourceFile: ts.SourceFile): string[] {
-  if (!ts.canHaveDecorators(node)) return [];
-  const decorators = ts.getDecorators(node);
-  if (!decorators) return [];
-  return decorators.map((d) => d.expression.getText(sourceFile));
-}
-
-function extractTypeParameters(node: ts.Node): string[] {
-  const tp = (node as ts.FunctionDeclaration | ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration).typeParameters;
-  if (!tp) return [];
-  return tp.map((p) => p.name.text);
-}
-
-function hasExportModifier(node: ts.Node): boolean {
-  if (!ts.canHaveModifiers(node)) return false;
-  const modifiers = ts.getModifiers(node);
-  return modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
-}
-
-function hasDefaultModifier(node: ts.Node): boolean {
-  if (!ts.canHaveModifiers(node)) return false;
-  const modifiers = ts.getModifiers(node);
-  return modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword) ?? false;
-}
-
-function hasAsyncModifier(node: ts.Node): boolean {
-  if (!ts.canHaveModifiers(node)) return false;
-  const modifiers = ts.getModifiers(node);
-  return modifiers?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword) ?? false;
-}
-
-function hasStaticModifier(node: ts.Node): boolean {
-  if (!ts.canHaveModifiers(node)) return false;
-  const modifiers = ts.getModifiers(node);
-  return modifiers?.some((m) => m.kind === ts.SyntaxKind.StaticKeyword) ?? false;
-}
-
-function hasAbstractModifier(node: ts.Node): boolean {
-  if (!ts.canHaveModifiers(node)) return false;
-  const modifiers = ts.getModifiers(node);
-  return modifiers?.some((m) => m.kind === ts.SyntaxKind.AbstractKeyword) ?? false;
-}
-
-function getVisibility(node: ts.Node): Node['visibility'] {
-  if (!ts.canHaveModifiers(node)) return undefined;
-  const modifiers = ts.getModifiers(node);
-  if (!modifiers) return undefined;
-  for (const m of modifiers) {
-    if (m.kind === ts.SyntaxKind.PublicKeyword) return 'public';
-    if (m.kind === ts.SyntaxKind.PrivateKeyword) return 'private';
-    if (m.kind === ts.SyntaxKind.ProtectedKeyword) return 'protected';
-  }
-  return undefined;
 }
 
 function isComponent(

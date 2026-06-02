@@ -186,13 +186,33 @@ export interface Watcher {
   watch(paths: string[], onEvent: (e: WatchEvent) => void, opts?: { debounceMs?: number }): { close(): void };
 }
 
+export interface LoadProjectOptions {
+  rootPath: string;
+  tsconfigPath?: string;
+  fileNames?: string[];
+  loadNodesForFile?: (filePath: string) => Node[];
+}
+
+export interface EdgeResolutionResult {
+  edges: Edge[];
+  errors: ExtractionError[];
+  externalNodes: Node[];
+}
+
+export interface EdgeResolver {
+  loadProject(opts: LoadProjectOptions): void;
+  resolveEdges(filePath: string): EdgeResolutionResult;
+}
+
 /** Two-level extraction (graph-model §0 rule 3). Pass A → nodes; Pass B → edges. */
 export interface Extractor {
   /** Pass A: parse + collect declarations. No cross-file resolution. */
   extractNodes(filePath: string, source: string): { nodes: Node[]; errors: ExtractionError[] };
   /** Pass B: resolve references for one file into edges, using the program/checker. */
-  resolveEdges(filePath: string): { edges: Edge[]; errors: ExtractionError[] };
+  resolveEdges(filePath: string): EdgeResolutionResult;
 }
+
+export interface ProjectExtractor extends Extractor, EdgeResolver {}
 ```
 
 ## 6. Tool I/O (the 10 — see docs/tools.md for behavior)

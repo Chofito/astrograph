@@ -132,11 +132,12 @@ describe('extraction: error handling', () => {
   });
 });
 
-describe('extraction: resolveEdges stub', () => {
-  test('returns empty edges and errors', () => {
+describe('extraction: resolveEdges without loaded project', () => {
+  test('returns empty edges, errors, and external nodes', () => {
     const extractor = new TsExtractor({ hasher, now: () => PINNED_NOW });
     const result = extractor.resolveEdges('any.ts');
     expect(result.edges).toEqual([]);
     expect(result.errors).toEqual([]);
+    expect(result.externalNodes).toEqual([]);
   });
 });

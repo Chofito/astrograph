@@ -2,11 +2,11 @@ import ts from 'typescript';
 import type {
   AstrographConfig,
   ExtractionError,
-  Extractor,
   FileRecord,
   FileSystem,
   GlobScanner,
   Hasher,
+  ProjectExtractor,
   StorageAdapter,
 } from './types';
 import { QueryBuilder } from './db/queries';
@@ -18,7 +18,7 @@ export interface IndexerOptions {
   fs: FileSystem;
   hasher: Hasher;
   glob: GlobScanner;
-  extractor: Extractor;
+  extractor: ProjectExtractor;
   config?: AstrographConfig;
   root: string;
   now?: () => number;
@@ -35,7 +35,7 @@ export class Indexer {
   private readonly fs: FileSystem;
   private readonly hasher: Hasher;
   private readonly glob: GlobScanner;
-  private readonly extractor: Extractor;
+  private readonly extractor: ProjectExtractor;
   private readonly config: AstrographConfig;
   private readonly root: string;
   private readonly now: () => number;
@@ -56,8 +56,19 @@ export class Indexer {
     const configHash = await this.computeConfigHash();
     const files = await this.scanFiles();
 
+    this.extractor.loadProject({
+      rootPath: this.root,
+      tsconfigPath: this.config.tsconfigPath,
+      fileNames: files,
+      loadNodesForFile: (filePath) => this.queries.getNodesByFile(filePath),
+    });
+
     for (const relPath of files) {
-      await this.indexFile(relPath, { force: options.force ?? false });
+      await this.indexFilePassA(relPath, { force: options.force ?? false });
+    }
+
+    for (const relPath of files) {
+      this.indexFilePassB(relPath);
     }
 
     this.persistProjectMetadata(configHash);
@@ -96,12 +107,38 @@ export class Indexer {
       if (!scannedSet.has(file.path)) removed.push(file.path);
     }
 
-    for (const relPath of [...added, ...modified]) {
-      await this.indexFile(relPath, { force: true });
-    }
+    const changedFiles = [...added, ...modified];
+
+    const referrerFiles = this.findReferrerFilesForTargets(changedFiles);
 
     for (const relPath of removed) {
+      const priorNodeIds = this.queries.getNodesByFile(relPath).map((n) => n.id);
+      const incomingEdges = this.findIncomingEdges(priorNodeIds);
       this.queries.deleteByFile(relPath);
+      this.markIncomingEdgesUnresolved(incomingEdges);
+    }
+
+    if (changedFiles.length > 0) {
+      this.extractor.loadProject({
+        rootPath: this.root,
+        tsconfigPath: this.config.tsconfigPath,
+        fileNames: scanned,
+        loadNodesForFile: (filePath) => this.queries.getNodesByFile(filePath),
+      });
+
+      for (const relPath of changedFiles) {
+        await this.indexFilePassA(relPath, { force: true });
+      }
+
+      for (const relPath of changedFiles) {
+        this.indexFilePassB(relPath);
+      }
+
+      for (const relPath of referrerFiles) {
+        this.indexFilePassB(relPath);
+      }
+
+      this.healUnresolvedEdges(changedFiles);
     }
 
     this.persistProjectMetadata(configHash);
@@ -117,7 +154,7 @@ export class Indexer {
     this.storage.close();
   }
 
-  private async indexFile(relPath: string, options: { force: boolean }): Promise<void> {
+  private async indexFilePassA(relPath: string, options: { force: boolean }): Promise<void> {
     const absolutePath = this.joinRoot(relPath);
     const stat = await this.fs.stat(absolutePath);
     const maxFileSizeBytes = this.config.maxFileSizeBytes ?? 2_000_000;
@@ -152,7 +189,98 @@ export class Indexer {
       nodes: extraction.nodes,
       errors: extraction.errors,
     });
-    // TODO(pass-b): resolve edges for this file, then mark state 'resolved'.
+  }
+
+  private indexFilePassB(relPath: string): void {
+    const result = this.extractor.resolveEdges(relPath);
+
+    const write = this.storage.transaction(() => {
+      const fileNodes = this.queries.getNodesByFile(relPath);
+      for (const node of fileNodes) {
+        const nodeEdges = this.queries.getEdgesBySource(node.id);
+        for (const edge of nodeEdges) {
+          if (edge.id !== undefined) this.queries.deleteEdge(edge.id);
+        }
+      }
+
+      for (const node of result.externalNodes) {
+        this.queries.upsertNode(node);
+      }
+
+      for (const edge of result.edges) {
+        this.queries.upsertEdge(edge);
+      }
+
+      const file = this.queries.getFile(relPath);
+      if (file) {
+        this.queries.upsertFile({ ...file, state: 'resolved' });
+      }
+    });
+
+    write();
+  }
+
+  private healUnresolvedEdges(changedFiles: string[]): void {
+    const newNodes = new Map<string, string>();
+    for (const relPath of changedFiles) {
+      for (const node of this.queries.getNodesByFile(relPath)) {
+        newNodes.set(node.name, node.id);
+      }
+    }
+
+    for (const [name, nodeId] of newNodes) {
+      const unresolvedEdges = this.queries.getEdgesByResolutionStateAndTargetName('unresolved', name);
+      for (const edge of unresolvedEdges) {
+        if (edge.id !== undefined) {
+          this.queries.upsertEdge({
+            ...edge,
+            target: nodeId,
+            resolutionState: 'resolved',
+            confidence: 'medium',
+          });
+        }
+      }
+    }
+  }
+
+  private findReferrerFilesForTargets(changedFiles: string[]): string[] {
+    const changedNodeIds = new Set<string>();
+    for (const relPath of changedFiles) {
+      for (const node of this.queries.getNodesByFile(relPath)) {
+        changedNodeIds.add(node.id);
+      }
+    }
+
+    const referrerFiles = new Set<string>();
+    for (const nodeId of changedNodeIds) {
+      const incomingEdges = this.queries.getEdgesByTarget(nodeId);
+      for (const edge of incomingEdges) {
+        const sourceNode = this.queries.getNode(edge.source);
+        if (sourceNode) {
+          referrerFiles.add(sourceNode.filePath);
+        }
+      }
+    }
+
+    return [...referrerFiles].filter((f) => !changedFiles.includes(f));
+  }
+
+  private findIncomingEdges(targetNodeIds: string[]): ReturnType<QueryBuilder['getAllEdges']> {
+    return targetNodeIds.flatMap((nodeId) => this.queries.getEdgesByTarget(nodeId));
+  }
+
+  private markIncomingEdgesUnresolved(incomingEdges: ReturnType<QueryBuilder['getAllEdges']>): void {
+    for (const edge of incomingEdges) {
+      if (this.queries.getNode(edge.source) === undefined) continue;
+      const { id: _id, ...edgeWithoutId } = edge;
+      this.queries.upsertEdge({
+        ...edgeWithoutId,
+        target: null,
+        resolutionState: 'unresolved',
+        confidence: 'low',
+        targetName: edge.targetName ?? edge.target ?? undefined,
+      });
+    }
   }
 
   private writeParsedFile(
@@ -161,7 +289,7 @@ export class Indexer {
       contentHash: string;
       size: number;
       modifiedAt: number;
-      nodes: ReturnType<Extractor['extractNodes']>['nodes'];
+      nodes: ReturnType<ProjectExtractor['extractNodes']>['nodes'];
       errors: ExtractionError[];
     },
   ): void {

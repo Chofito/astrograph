@@ -26,16 +26,16 @@ export function normalize(graph: GraphLike, options: NormalizeOptions = {}): Nor
 
 function dropVolatileNodeFields(node: Node, options: NormalizeOptions): NormalizedNode {
   const { updatedAt: _updatedAt, ...stable } = node;
-  return {
+  return omitUndefined({
     ...stable,
     filePath: normalizePath(stable.filePath, options.rootPath),
     qualifiedName: normalizePath(stable.qualifiedName, options.rootPath),
-  };
+  }) as NormalizedNode;
 }
 
 function dropVolatileEdgeFields(edge: Edge): NormalizedEdge {
   const { id: _id, ...stable } = edge;
-  return stable;
+  return omitUndefined(stable) as NormalizedEdge;
 }
 
 function compareNodes(a: NormalizedNode, b: NormalizedNode): number {
@@ -66,4 +66,20 @@ function normalizePath(path: string, rootPath?: string): string {
     return normalizedPath.slice(normalizedRoot.length + 1);
   }
   return normalizedPath;
+}
+
+function omitUndefined(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(omitUndefined);
+  }
+
+  if (value !== null && typeof value === 'object') {
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value)) {
+      if (child !== undefined) cleaned[key] = omitUndefined(child);
+    }
+    return cleaned;
+  }
+
+  return value;
 }
