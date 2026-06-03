@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import type { AstrographCore, EdgeRef, NodeRef, ToolMeta } from '@astrograph/core';
+import type { AstrographCore, EdgeRef, NodeRef, ToolMeta, WatchEvent, Watcher } from '@astrograph/core';
 import { SERVER_INSTRUCTIONS } from '../instructions';
 import { ProjectSession } from '../project';
 import { callTool } from '../server';
@@ -90,6 +90,50 @@ describe('MCP tools', () => {
     }
   });
 
+  test('watcher event is synced by the next tool call before reading results', async () => {
+    const root = await mkdtemp(`${tmpdir()}/astrograph-mcp-tool-watch-`);
+    let synced = false;
+    let onEvent: ((event: WatchEvent) => void) | undefined;
+    try {
+      await mkdir(`${root}/.astrograph`, { recursive: true });
+      const watcher: Watcher = {
+        watch: (_paths, cb) => {
+          onEvent = cb;
+          return { close() {} };
+        },
+      };
+      const graph = {
+        ...fakeGraph(),
+        syncFiles: async () => {
+          synced = true;
+          return { added: [], modified: ['src/live.ts'], removed: [] };
+        },
+        search: async () => ({
+          data: [{ node: node(synced ? 'LiveSymbol' : 'OldSymbol', 'src/live.ts', 1, 'function'), score: 1 }],
+          meta: meta(),
+        }),
+      };
+      const session = new ProjectSession({
+        cwd: root,
+        watch: true,
+        watcher,
+        open: async () => graph as never,
+      });
+      await session.getGraph();
+      onEvent?.({ type: 'change', path: `${root}/src/live.ts` });
+
+      const result = await callTool(toolMap(createTools(session)), 'astrograph_search', { query: 'live' });
+      const text = textContent(result);
+
+      expect(result.isError).toBeUndefined();
+      expect(text).toContain('LiveSymbol');
+      expect(text).not.toContain('OldSymbol');
+      expect(text).toContain('coverage 1/1 resolved · partial: no');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test('server instructions steer agents toward Astrograph and coverage banners', () => {
     expect(SERVER_INSTRUCTIONS).toContain('Astrograph is a pre-built local code graph');
     expect(SERVER_INSTRUCTIONS).toContain('Always check the final coverage banner');
@@ -142,6 +186,7 @@ function fakeGraph(): AstrographCore {
     getStats: async () => ({ data: { nodeCount: 2, edgeCount: 1, fileCount: 1, nodesByKind: { function: 1, component: 1 }, edgesByKind: { calls: 1 }, filesByLanguage: { typescript: 1 }, coverage: meta().coverage, dbSizeBytes: 4096, lastUpdated: 0, backend: 'sqlite', journalMode: 'wal' }, meta: meta() }),
     indexAll: async () => {},
     sync: async () => ({ added: [], modified: [], removed: [] }),
+    syncFiles: async () => ({ added: [], modified: [], removed: [] }),
     close: () => {},
   };
 }

@@ -11,6 +11,7 @@ import type {
   NodeKind,
   SearchInput,
   StatusInput,
+  ToolResult,
   TraceInput,
 } from '@astrograph/core';
 import { formatCallees } from './format/callees';
@@ -41,6 +42,10 @@ export interface McpToolDefinition {
 
 export interface ToolProjectSession {
   getGraph(projectPath?: string): Promise<AstrographCore>;
+  runTool?<T>(
+    projectPath: string | undefined,
+    fn: (graph: AstrographCore) => Promise<ToolResult<T>>,
+  ): Promise<ToolResult<T>>;
 }
 
 type Args = Record<string, unknown>;
@@ -57,45 +62,54 @@ export function createTools(session: ToolProjectSession): McpToolDefinition[] {
   return [
     tool('astrograph_search', 'Astrograph Search', 'Find symbols by name across the indexed project.', searchSchema(), async (args) => {
       const input = parseSearch(args);
-      return formatSearch(await (await session.getGraph(input.projectPath)).search(input));
+      return formatSearch(await callFacade(session, input.projectPath, (graph) => graph.search(input)));
     }),
     tool('astrograph_context', 'Astrograph Context', 'Build ranked task context with related symbols and source blocks.', contextSchema(), async (args) => {
       const input = parseContext(args);
-      return formatContext(await (await session.getGraph(input.projectPath)).context(input));
+      return formatContext(await callFacade(session, input.projectPath, (graph) => graph.context(input)));
     }),
     tool('astrograph_trace', 'Astrograph Trace', 'Trace a call/reference path between two symbols.', traceSchema(), async (args) => {
       const input = parseTrace(args);
-      return formatTrace(await (await session.getGraph(input.projectPath)).trace(input));
+      return formatTrace(await callFacade(session, input.projectPath, (graph) => graph.trace(input)));
     }),
     tool('astrograph_callers', 'Astrograph Callers', 'List project symbols that call a symbol.', callersSchema(), async (args) => {
       const input = parseCallers(args);
-      return formatCallers(await (await session.getGraph(input.projectPath)).callers(input));
+      return formatCallers(await callFacade(session, input.projectPath, (graph) => graph.callers(input)));
     }),
     tool('astrograph_callees', 'Astrograph Callees', 'List project symbols called by a symbol.', calleesSchema(), async (args) => {
       const input = parseCallees(args);
-      return formatCallees(await (await session.getGraph(input.projectPath)).callees(input));
+      return formatCallees(await callFacade(session, input.projectPath, (graph) => graph.callees(input)));
     }),
     tool('astrograph_impact', 'Astrograph Impact', 'Find symbols affected by changing a symbol.', impactSchema(), async (args) => {
       const input = parseImpact(args);
-      return formatImpact(await (await session.getGraph(input.projectPath)).impact(input));
+      return formatImpact(await callFacade(session, input.projectPath, (graph) => graph.impact(input)));
     }),
     tool('astrograph_node', 'Astrograph Node', 'Show details and optional source for one symbol.', nodeSchema(), async (args) => {
       const input = parseNode(args);
-      return formatNodeDetails(await (await session.getGraph(input.projectPath)).getNode(input));
+      return formatNodeDetails(await callFacade(session, input.projectPath, (graph) => graph.getNode(input)));
     }),
     tool('astrograph_explore', 'Astrograph Explore', 'Return source blocks for related symbols grouped by file.', exploreSchema(), async (args) => {
       const input = parseExplore(args);
-      return formatExplore(await (await session.getGraph(input.projectPath)).explore(input));
+      return formatExplore(await callFacade(session, input.projectPath, (graph) => graph.explore(input)));
     }),
     tool('astrograph_files', 'Astrograph Files', 'List indexed files and their coverage state.', filesSchema(), async (args) => {
       const input = parseFiles(args);
-      return formatFiles(await (await session.getGraph(input.projectPath)).getFiles(input));
+      return formatFiles(await callFacade(session, input.projectPath, (graph) => graph.getFiles(input)));
     }),
     tool('astrograph_status', 'Astrograph Status', 'Show index health, counts, backend, and coverage.', statusSchema(), async (args) => {
       const input = parseStatus(args);
-      return formatStatus(await (await session.getGraph(input.projectPath)).getStats(input));
+      return formatStatus(await callFacade(session, input.projectPath, (graph) => graph.getStats(input)));
     }),
   ];
+}
+
+async function callFacade<T>(
+  session: ToolProjectSession,
+  projectPath: string | undefined,
+  fn: (graph: AstrographCore) => Promise<ToolResult<T>>,
+): Promise<ToolResult<T>> {
+  if (session.runTool !== undefined) return session.runTool(projectPath, fn);
+  return fn(await session.getGraph(projectPath));
 }
 
 function tool(

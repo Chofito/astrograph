@@ -9,6 +9,7 @@ import { createTools, type McpToolDefinition } from './tools';
 export interface ServeMcpOptions {
   cwd?: string;
   path?: string;
+  watch?: boolean;
 }
 
 export interface AstrographMcpServer {
@@ -26,6 +27,7 @@ export function createAstrographMcpServer(options: ServeMcpOptions = {}): Astrog
   const session = new ProjectSession({
     cwd: options.cwd,
     path: options.path,
+    watch: options.watch ?? true,
     rootsProvider: () => listClientRoots(server),
   });
   const tools = createTools(session);

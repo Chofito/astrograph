@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import type { Astrograph, AstrographCore } from '@astrograph/core';
+import type { Astrograph, AstrographCore, Watcher } from '@astrograph/core';
 import { MissingIndexError, ProjectSession, findProjectRoot } from '../project';
 
 describe('MCP project session', () => {
@@ -57,6 +57,40 @@ describe('MCP project session', () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  test('no-watch sessions do not subscribe a watcher but still reconcile on open', async () => {
+    const root = await mkdtemp(`${tmpdir()}/astrograph-mcp-no-watch-`);
+    let syncCount = 0;
+    let watchCount = 0;
+    try {
+      await mkdir(`${root}/.astrograph`, { recursive: true });
+      const watcher: Watcher = {
+        watch: () => {
+          watchCount += 1;
+          return { close() {} };
+        },
+      };
+      const graph = fakeGraph({
+        sync: async () => {
+          syncCount += 1;
+          return { added: [], modified: [], removed: [] };
+        },
+      });
+      const session = new ProjectSession({
+        cwd: root,
+        watch: false,
+        watcher,
+        open: async () => graph as Astrograph,
+      });
+
+      await session.getGraph();
+
+      expect(syncCount).toBe(1);
+      expect(watchCount).toBe(0);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });
 
 function fakeGraph(overrides: Partial<AstrographCore> = {}): AstrographCore {
@@ -73,6 +107,7 @@ function fakeGraph(overrides: Partial<AstrographCore> = {}): AstrographCore {
     getStats: async () => ({ data: { nodeCount: 0, edgeCount: 0, fileCount: 0, nodesByKind: {}, edgesByKind: {}, filesByLanguage: {}, coverage: { total: 0, resolved: 0, parsed: 0, pending: 0 }, dbSizeBytes: 0, lastUpdated: 0, backend: 'sqlite', journalMode: 'wal' }, meta: meta() }),
     indexAll: async () => {},
     sync: async () => ({ added: [], modified: [], removed: [] }),
+    syncFiles: async () => ({ added: [], modified: [], removed: [] }),
     close: () => {},
     ...overrides,
   };

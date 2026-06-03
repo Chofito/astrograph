@@ -1,6 +1,7 @@
 export { BunFileSystem } from './fs';
 export { BunGlobScanner } from './glob';
 export { BunHasher } from './hasher';
+export { BunWatcher } from './watcher';
 export { openProject } from './project';
 export type { OpenProjectOptions } from './project';
 export {

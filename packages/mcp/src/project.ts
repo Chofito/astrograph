@@ -2,8 +2,9 @@ import { existsSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Astrograph, AstrographConfig } from '@astrograph/core';
-import { openProject } from '@astrograph/core/bun';
+import type { Astrograph, AstrographConfig, AstrographCore, ToolResult, Watcher } from '@astrograph/core';
+import { BunWatcher, openProject } from '@astrograph/core/bun';
+import { FreshnessManager } from './freshness';
 
 export interface RootHint {
   uri: string;
@@ -14,6 +15,8 @@ export interface ProjectSessionOptions {
   path?: string;
   rootsProvider?: () => Promise<RootHint[]>;
   open?: (root: string, opts?: { config?: AstrographConfig }) => Promise<Astrograph>;
+  watcher?: Watcher;
+  watch?: boolean;
 }
 
 export class MissingIndexError extends Error {
@@ -28,8 +31,11 @@ export class ProjectSession {
   private readonly path: string | undefined;
   private readonly rootsProvider: (() => Promise<RootHint[]>) | undefined;
   private readonly openProjectImpl: (root: string, opts?: { config?: AstrographConfig }) => Promise<Astrograph>;
+  private readonly watcher: Watcher | undefined;
+  private readonly watch: boolean;
 
   private graph: Astrograph | undefined;
+  private freshness: FreshnessManager | undefined;
   private root: string | undefined;
 
   constructor(options: ProjectSessionOptions = {}) {
@@ -37,6 +43,8 @@ export class ProjectSession {
     this.path = options.path;
     this.rootsProvider = options.rootsProvider;
     this.openProjectImpl = options.open ?? openProject;
+    this.watcher = options.watcher ?? new BunWatcher();
+    this.watch = options.watch ?? false;
   }
 
   async getGraph(projectPath?: string): Promise<Astrograph> {
@@ -46,11 +54,26 @@ export class ProjectSession {
     const root = findProjectRoot(startPath);
     if (root === undefined) throw new MissingIndexError(startPath);
 
-    const graph = await this.openProjectImpl(root, { config: await loadConfig(root) });
+    const config = await loadConfig(root);
+    const graph = await this.openProjectImpl(root, { config });
     await graph.sync();
     this.graph = graph;
     this.root = root;
+    if (this.watch) {
+      this.freshness = new FreshnessManager({ root, config, graph, watcher: this.watcher });
+      this.freshness.start();
+    }
     return graph;
+  }
+
+  async runTool<T>(
+    projectPath: string | undefined,
+    fn: (graph: AstrographCore) => Promise<ToolResult<T>>,
+  ): Promise<ToolResult<T>> {
+    const graph = await this.getGraph(projectPath);
+    await this.freshness?.beforeQuery();
+    const result = await fn(graph);
+    return this.freshness?.decorateResult(result) ?? result;
   }
 
   get projectRoot(): string | undefined {
@@ -58,6 +81,8 @@ export class ProjectSession {
   }
 
   close(): void {
+    this.freshness?.close();
+    this.freshness = undefined;
     this.graph?.close();
     this.graph = undefined;
   }

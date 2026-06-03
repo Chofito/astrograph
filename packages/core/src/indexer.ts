@@ -8,6 +8,7 @@ import type {
   Hasher,
   ProjectExtractor,
   StorageAdapter,
+  WatchEvent,
 } from './types';
 import { QueryBuilder } from './db/queries';
 import { languageFromPath } from './extraction/language';
@@ -147,6 +148,90 @@ export class Indexer {
       added: added.sort(compareStrings),
       modified: modified.sort(compareStrings),
       removed: removed.sort(compareStrings),
+    };
+  }
+
+  async syncFiles(events: WatchEvent[]): Promise<{ added: string[]; modified: string[]; removed: string[] }> {
+    const normalizedEvents = mergeEvents(events);
+    const removed = normalizedEvents
+      .filter((event) => event.type === 'unlink')
+      .map((event) => event.path);
+    const changedCandidates = normalizedEvents
+      .filter((event) => event.type !== 'unlink')
+      .map((event) => event.path);
+
+    const added: string[] = [];
+    const modified: string[] = [];
+    const changedFiles: string[] = [];
+    const maxFileSizeBytes = this.config.maxFileSizeBytes ?? 2_000_000;
+
+    for (const relPath of changedCandidates) {
+      const absolutePath = this.joinRoot(relPath);
+      if (!(await this.fs.exists(absolutePath))) {
+        removed.push(relPath);
+        continue;
+      }
+
+      const stat = await this.fs.stat(absolutePath);
+      const contentHash = stat.size > maxFileSizeBytes
+        ? ''
+        : this.hasher.hash(await this.fs.readText(absolutePath));
+      const known = this.queries.getFile(relPath);
+
+      if (known === undefined) {
+        added.push(relPath);
+        changedFiles.push(relPath);
+      } else if (known.contentHash !== contentHash) {
+        modified.push(relPath);
+        changedFiles.push(relPath);
+      }
+    }
+
+    const removedFiles = uniqueStrings(removed);
+    const referrerFiles = this.findReferrerFilesForTargets(changedFiles);
+
+    for (const relPath of removedFiles) {
+      const priorNodeIds = this.queries.getNodesByFile(relPath).map((n) => n.id);
+      const incomingEdges = this.findIncomingEdges(priorNodeIds);
+      this.queries.deleteByFile(relPath);
+      this.markIncomingEdgesUnresolved(incomingEdges);
+    }
+
+    if (changedFiles.length > 0 || removedFiles.length > 0) {
+      const projectFiles = this.queries.getAllFiles()
+        .map((file) => file.path)
+        .filter((path) => !removedFiles.includes(path));
+      for (const relPath of added) {
+        if (!projectFiles.includes(relPath)) projectFiles.push(relPath);
+      }
+      projectFiles.sort(compareStrings);
+
+      this.extractor.loadProject({
+        rootPath: this.root,
+        tsconfigPath: this.config.tsconfigPath,
+        fileNames: projectFiles,
+        loadNodesForFile: (filePath) => this.queries.getNodesByFile(filePath),
+      });
+
+      for (const relPath of changedFiles) {
+        await this.indexFilePassA(relPath, { force: true });
+      }
+
+      for (const relPath of changedFiles) {
+        this.indexFilePassB(relPath);
+      }
+
+      for (const relPath of referrerFiles) {
+        this.indexFilePassB(relPath);
+      }
+
+      this.healUnresolvedEdges(changedFiles);
+    }
+
+    return {
+      added: added.sort(compareStrings),
+      modified: modified.sort(compareStrings),
+      removed: removedFiles,
     };
   }
 
@@ -394,4 +479,20 @@ function normalizePath(path: string): string {
 
 function compareStrings(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)].sort(compareStrings);
+}
+
+function mergeEvents(events: WatchEvent[]): WatchEvent[] {
+  const byPath = new Map<string, WatchEvent>();
+  for (const event of events) {
+    const path = normalizePath(event.path);
+    const prior = byPath.get(path);
+    if (prior === undefined || event.type === 'unlink' || prior.type === 'unlink') {
+      byPath.set(path, { type: event.type, path });
+    }
+  }
+  return [...byPath.values()].sort((a, b) => compareStrings(a.path, b.path));
 }

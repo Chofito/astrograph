@@ -21,6 +21,7 @@ import type {
   ToolResult,
   TraceInput,
   TraceOutput,
+  WatchEvent,
 } from './types';
 import type { QueryBuilder } from './db/queries';
 import type { Indexer } from './indexer';
@@ -89,6 +90,10 @@ export class Astrograph implements AstrographCore {
 
   sync(): Promise<{ added: string[]; modified: string[]; removed: string[] }> {
     return this.indexer.sync();
+  }
+
+  syncFiles(events: WatchEvent[]): Promise<{ added: string[]; modified: string[]; removed: string[] }> {
+    return this.indexer.syncFiles(events);
   }
 
   close(): void {

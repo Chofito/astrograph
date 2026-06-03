@@ -301,6 +301,7 @@ export interface AstrographCore {
   // lifecycle
   indexAll(opts?: { force?: boolean }): Promise<void>;
   sync(): Promise<{ added: string[]; modified: string[]; removed: string[] }>;
+  syncFiles(events: WatchEvent[]): Promise<{ added: string[]; modified: string[]; removed: string[] }>;
   close(): void;
 }
 ```
