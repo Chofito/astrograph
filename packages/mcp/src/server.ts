@@ -5,7 +5,6 @@ import pkg from '../package.json';
 import { SERVER_INSTRUCTIONS } from './instructions';
 import { MissingIndexError, ProjectSession, findProjectRoot, type ProjectSessionOptions } from './project';
 import { createTools, type McpToolDefinition } from './tools';
-import * as style from './style';
 
 export interface ServeMcpOptions {
   cwd?: string;
@@ -52,43 +51,33 @@ export function createAstrographMcpServer(options: ServeMcpOptions = {}): Astrog
 
 export async function serveMcp(options: ServeMcpOptions = {}): Promise<void> {
   const { server, session } = createAstrographMcpServer(options);
-  
+
   const watchEnabled = options.watch ?? true;
   const startPath = options.path ?? options.cwd ?? process.cwd();
   const projectRoot = findProjectRoot(startPath);
-  
+
+  // Plain stderr banner only: the MCP server runs as a host-spawned subprocess whose
+  // stderr is usually a pipe/log, not an interactive TTY — no colors, no TUI.
   if (projectRoot === undefined) {
-    process.stderr.write(style.error(`No index at ${startPath} — run \`astrograph init\``) + '\n');
+    process.stderr.write(`astrograph mcp: no index at ${startPath} — run \`astrograph init\`\n`);
     process.exit(1);
   }
-  
+
+  const lines = [`astrograph mcp v${pkg.version}`, `  project: ${projectRoot}`];
   try {
     const graph = await session.getGraph();
-    const stats = await graph.getStats({});
-    const { fileCount, coverage } = stats.data;
-    
-    const lines = [
-      style.bold(`Astrograph MCP v${pkg.version}`),
-      `Project   ${style.dim(projectRoot)}`,
-      `Index     ${style.num(fileCount)} files ${style.symbols.bullet} coverage ${style.num(coverage.resolved)}/${style.num(coverage.total)}`,
-      `Watch     ${watchEnabled ? 'enabled' : 'disabled'}`,
-      style.arrow('Listening on stdio'),
-    ];
-    process.stderr.write(lines.join('\n') + '\n');
-  } catch (error) {
-    const lines = [
-      style.bold(`Astrograph MCP v${pkg.version}`),
-      `Project   ${style.dim(projectRoot)}`,
-      `Watch     ${watchEnabled ? 'enabled' : 'disabled'}`,
-      style.arrow('Listening on stdio'),
-    ];
-    process.stderr.write(lines.join('\n') + '\n');
+    const { fileCount, coverage } = (await graph.getStats({})).data;
+    lines.push(`  index:   ${fileCount} files, coverage ${coverage.resolved}/${coverage.total}`);
+  } catch {
+    // index summary is best-effort; tools will surface errors per request.
   }
-  
+  lines.push(`  watch:   ${watchEnabled ? 'on' : 'off'}`, '  listening on stdio');
+  process.stderr.write(lines.join('\n') + '\n');
+
   const close = async (): Promise<void> => {
     session.close();
     await server.close();
-    process.stderr.write(style.success('Stopped') + '\n');
+    process.stderr.write('astrograph mcp: stopped\n');
   };
   process.once('SIGINT', () => {
     void close().then(() => {
