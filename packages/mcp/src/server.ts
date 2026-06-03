@@ -3,7 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema, type CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import pkg from '../package.json';
 import { SERVER_INSTRUCTIONS } from './instructions';
-import { MissingIndexError, ProjectSession, findProjectRoot, type ProjectSessionOptions } from './project';
+import { MissingIndexError, ProjectSession, type ProjectSessionOptions } from './project';
 import { createTools, type McpToolDefinition } from './tools';
 
 export interface ServeMcpOptions {
@@ -50,34 +50,14 @@ export function createAstrographMcpServer(options: ServeMcpOptions = {}): Astrog
 }
 
 export async function serveMcp(options: ServeMcpOptions = {}): Promise<void> {
+  // The MCP server runs headless as a host-spawned subprocess: no banner, no logs,
+  // no TUI, no colors. It speaks only the protocol over stdio; tools surface any
+  // missing-index/coverage state per request.
   const { server, session } = createAstrographMcpServer(options);
-
-  const watchEnabled = options.watch ?? true;
-  const startPath = options.path ?? options.cwd ?? process.cwd();
-  const projectRoot = findProjectRoot(startPath);
-
-  // Plain stderr banner only: the MCP server runs as a host-spawned subprocess whose
-  // stderr is usually a pipe/log, not an interactive TTY — no colors, no TUI.
-  if (projectRoot === undefined) {
-    process.stderr.write(`astrograph mcp: no index at ${startPath} — run \`astrograph init\`\n`);
-    process.exit(1);
-  }
-
-  const lines = [`astrograph mcp v${pkg.version}`, `  project: ${projectRoot}`];
-  try {
-    const graph = await session.getGraph();
-    const { fileCount, coverage } = (await graph.getStats({})).data;
-    lines.push(`  index:   ${fileCount} files, coverage ${coverage.resolved}/${coverage.total}`);
-  } catch {
-    // index summary is best-effort; tools will surface errors per request.
-  }
-  lines.push(`  watch:   ${watchEnabled ? 'on' : 'off'}`, '  listening on stdio');
-  process.stderr.write(lines.join('\n') + '\n');
 
   const close = async (): Promise<void> => {
     session.close();
     await server.close();
-    process.stderr.write('astrograph mcp: stopped\n');
   };
   process.once('SIGINT', () => {
     void close().then(() => {
