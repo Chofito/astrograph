@@ -3,8 +3,14 @@ import { homedir } from 'node:os';
 import type { CliContext, CliRunResult } from '../cli';
 import { CliError, ok } from '../cli';
 import { style } from '../format/style';
+import {
+  isAgentGuideInstalled,
+  resolveAgentGuideSource,
+  uninstallAgentGuide,
+  type AgentGuideResult,
+} from '../install/agent-guide';
 import { confirm } from '../install/prompt';
-import type { Location, Target } from '../install/target';
+import type { AgentGuideLink, Location, Target } from '../install/target';
 import { ALL_TARGET_IDS, getTarget } from '../install/targets/all';
 import { booleanValue, parseCommandArgs, stringValue } from './parse';
 
@@ -14,6 +20,8 @@ interface Plan {
   doc: unknown;
   newDoc: unknown;
   hasEntry: boolean;
+  guide: AgentGuideLink | undefined;
+  guideInstalled: boolean;
   skip: boolean;
   skipReason?: string;
 }
@@ -49,26 +57,39 @@ export async function runUninstallCore(args: string[], ctx: CliContext, homeDir:
     throw new CliError('--location must be "global" or "local"');
   }
   const location: Location = (locationArg as Location | undefined) ?? 'global';
+  const guideSource = resolveAgentGuideSource({ cwd: ctx.cwd });
 
   // Build plan
   const plans: Plan[] = [];
   for (const t of targets) {
     if (!t.supportsLocation(location)) {
-      plans.push({ target: t, path: '', doc: null, newDoc: null, hasEntry: false, skip: true, skipReason: `--location ${location} not supported (global only)` });
+      plans.push({
+        target: t,
+        path: '',
+        doc: null,
+        newDoc: null,
+        hasEntry: false,
+        guide: undefined,
+        guideInstalled: false,
+        skip: true,
+        skipReason: `--location ${location} not supported (global only)`,
+      });
       continue;
     }
     const path = t.configPath(location, ctx.cwd, homeDir);
+    const guide = t.agentGuide?.(location, ctx.cwd, homeDir);
+    const guideInstalled = guide === undefined ? false : isAgentGuideInstalled(guide, guideSource);
     if (!existsSync(path)) {
-      plans.push({ target: t, path, doc: null, newDoc: null, hasEntry: false, skip: false });
+      plans.push({ target: t, path, doc: null, newDoc: null, hasEntry: false, guide, guideInstalled, skip: false });
       continue;
     }
     const doc = await t.read(path);
     const has = t.hasEntry(doc);
     const newDoc = has ? t.remove(doc) : doc;
-    plans.push({ target: t, path, doc, newDoc, hasEntry: has, skip: false });
+    plans.push({ target: t, path, doc, newDoc, hasEntry: has, guide, guideInstalled, skip: false });
   }
 
-  const toWrite = plans.filter((p) => !p.skip && p.hasEntry);
+  const toWrite = plans.filter((p) => !p.skip && (p.hasEntry || p.guideInstalled));
 
   // Nothing to remove
   if (toWrite.length === 0) {
@@ -80,13 +101,18 @@ export async function runUninstallCore(args: string[], ctx: CliContext, homeDir:
   }
 
   if (booleanValue(parsed.values, 'yes')) {
+    const guideResults = new Map<Target, AgentGuideResult>();
     for (const p of toWrite) {
-      await writeBack(p.path, p.target.serialize(p.newDoc));
+      if (p.hasEntry) {
+        await writeBack(p.path, p.target.serialize(p.newDoc));
+      }
+      if (p.guide !== undefined) {
+        guideResults.set(p.target, await uninstallAgentGuide(p.guide));
+      }
     }
     const lines = plans.map((p) => {
       if (p.skip) return style.warn(`${p.target.label}  ${p.skipReason ?? 'skipped'}`);
-      if (!p.hasEntry) return style.dim(`${p.target.label}  ${style.path(p.path)}  not configured`);
-      return style.success(`${p.target.label}  ${style.path(p.path)}  removed`);
+      return uninstallLine(p, guideResults.get(p.target));
     });
     return ok(lines.join('\n'));
   }
@@ -97,9 +123,11 @@ export async function runUninstallCore(args: string[], ctx: CliContext, homeDir:
     if (p.skip) {
       planLines.push(`  ${style.warn(p.target.label)}  ${style.dim(p.skipReason ?? 'skipped')}`);
     } else if (!p.hasEntry) {
-      planLines.push(`  ${style.dim(`${p.target.label}  ${style.path(p.path)}  not configured`)}`);
+      const guideText = p.guideInstalled ? 'remove agent guide' : 'not configured';
+      planLines.push(`  ${style.dim(`${p.target.label}  ${style.path(p.path)}  ${guideText}`)}`);
     } else {
-      planLines.push(`  ${style.info(p.target.label)}  ${style.path(p.path)}  remove astrograph`);
+      const action = p.guideInstalled ? 'remove astrograph + agent guide' : 'remove astrograph';
+      planLines.push(`  ${style.info(p.target.label)}  ${style.path(p.path)}  ${action}`);
     }
   }
   planLines.push(`\n${style.dim(`${toWrite.length} target(s) will be updated.`)}`);
@@ -108,16 +136,37 @@ export async function runUninstallCore(args: string[], ctx: CliContext, homeDir:
   const confirmed = await confirm('Proceed?');
   if (!confirmed) return ok(style.warn('Aborted.'));
 
+  const guideResults = new Map<Target, AgentGuideResult>();
   for (const p of toWrite) {
-    await writeBack(p.path, p.target.serialize(p.newDoc));
+    if (p.hasEntry) {
+      await writeBack(p.path, p.target.serialize(p.newDoc));
+    }
+    if (p.guide !== undefined) {
+      guideResults.set(p.target, await uninstallAgentGuide(p.guide));
+    }
   }
 
   const resultLines = plans
     .filter((p) => !p.skip)
-    .map((p) =>
-      !p.hasEntry
-        ? style.dim(`${p.target.label}  ${style.path(p.path)}  not configured`)
-        : style.success(`${p.target.label}  ${style.path(p.path)}  removed`),
-    );
+    .map((p) => uninstallLine(p, guideResults.get(p.target)));
   return ok(resultLines.join('\n'));
+}
+
+function uninstallLine(plan: Plan, guideResult: AgentGuideResult | undefined): string {
+  const guide = formatGuideResult(guideResult);
+  if (!plan.hasEntry && guide === undefined) {
+    return style.dim(`${plan.target.label}  ${style.path(plan.path)}  not configured`);
+  }
+
+  const main = plan.hasEntry
+    ? `${plan.target.label}  ${style.path(plan.path)}  removed`
+    : `${plan.target.label}  ${style.path(plan.path)}  not configured`;
+  return guide === undefined ? style.success(main) : style.success(`${main}  ${guide}`);
+}
+
+function formatGuideResult(result: AgentGuideResult | undefined): string | undefined {
+  if (result === undefined) return undefined;
+  if (result.action === 'removed') return `agent guide removed: ${style.path(result.path)}`;
+  if (result.action === 'skipped') return `agent guide skipped: ${result.reason ?? result.path}`;
+  return undefined;
 }

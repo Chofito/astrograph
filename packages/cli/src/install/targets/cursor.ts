@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import type { Location, McpEntry, Target } from '../target';
+import type { AgentGuideLink, Location, McpEntry, Target } from '../target';
 import { readJson, serializeJson, type JsonDoc } from '../writers/json';
 
 export const cursorTarget: Target = {
@@ -10,6 +10,15 @@ export const cursorTarget: Target = {
     return location === 'global'
       ? join(homeDir, '.cursor', 'mcp.json')
       : join(cwd, '.cursor', 'mcp.json');
+  },
+
+  agentGuide(location: Location, cwd: string, homeDir: string): AgentGuideLink {
+    return {
+      path: location === 'global'
+        ? join(homeDir, '.cursor', 'rules', 'astrograph.mdc')
+        : join(cwd, '.cursor', 'rules', 'astrograph.mdc'),
+      source: 'file',
+    };
   },
 
   supportsLocation(_location: Location): boolean {

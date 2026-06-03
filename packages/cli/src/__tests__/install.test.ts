@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { parse as parseToml } from 'smol-toml';
 import { parse as parseJsonc } from 'jsonc-parser';
 import { runCli } from '../cli';
@@ -24,6 +24,13 @@ async function makeTmpHome(): Promise<{ root: string; cwd: string; homeDir: stri
 const DEFAULT_ARGS = ['--yes'];
 const ctx = (cwd: string) => ({ cwd });
 
+async function expectGuideInstalled(path: string, source: 'directory' | 'file'): Promise<void> {
+  const guidePath = source === 'directory' ? join(path, 'SKILL.md') : path;
+  expect(existsSync(guidePath)).toBe(true);
+  const text = await readFile(guidePath, 'utf8');
+  expect(text).toContain('name: astrograph');
+}
+
 // ---------------------------------------------------------------------------
 // Claude target (JSON, global ~/.claude.json / local ./.mcp.json)
 // ---------------------------------------------------------------------------
@@ -43,6 +50,17 @@ describe('claude target', () => {
         command: 'astrograph',
         args: ['serve', '--mcp'],
       });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('install writes the Claude Code skill', async () => {
+    const { root, cwd, homeDir } = await makeTmpHome();
+    try {
+      const result = await runInstallCore(['--target', 'claude', '--yes'], ctx(cwd), homeDir);
+      expect(result.exitCode).toBe(0);
+      await expectGuideInstalled(join(homeDir, '.claude', 'skills', 'astrograph'), 'directory');
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -128,6 +146,21 @@ describe('claude target', () => {
     }
   });
 
+  test('uninstall removes the Claude Code skill', async () => {
+    const { root, cwd, homeDir } = await makeTmpHome();
+    try {
+      await runInstallCore(['--target', 'claude', '--yes'], ctx(cwd), homeDir);
+      const skillPath = join(homeDir, '.claude', 'skills', 'astrograph');
+      await expectGuideInstalled(skillPath, 'directory');
+
+      const result = await runUninstallCore(['--target', 'claude', '--yes'], ctx(cwd), homeDir);
+      expect(result.exitCode).toBe(0);
+      expect(existsSync(skillPath)).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test('uninstall when not configured is a clean no-op', async () => {
     const { root, cwd, homeDir } = await makeTmpHome();
     try {
@@ -186,6 +219,17 @@ describe('cursor target', () => {
         command: 'astrograph',
         args: ['serve', '--mcp'],
       });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('local install writes the Cursor rule', async () => {
+    const { root, cwd, homeDir } = await makeTmpHome();
+    try {
+      const result = await runInstallCore(['--target', 'cursor', '--location', 'local', '--yes'], ctx(cwd), homeDir);
+      expect(result.exitCode).toBe(0);
+      await expectGuideInstalled(join(cwd, '.cursor', 'rules', 'astrograph.mdc'), 'file');
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -273,6 +317,17 @@ describe('codex target', () => {
       });
       // Also verify the TOML string shape contains a table header
       expect(text).toContain('[mcp_servers.astrograph]');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('install writes the Codex skill', async () => {
+    const { root, cwd, homeDir } = await makeTmpHome();
+    try {
+      const result = await runInstallCore(['--target', 'codex', '--yes'], ctx(cwd), homeDir);
+      expect(result.exitCode).toBe(0);
+      await expectGuideInstalled(join(homeDir, '.codex', 'skills', 'astrograph'), 'directory');
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -390,6 +445,19 @@ describe('opencode target', () => {
         command: ['astrograph', 'serve', '--mcp'],
         enabled: true,
       });
+    }));
+
+  test('install does not overwrite an existing opencode AGENTS.md', () =>
+    withXdgTmp(async ({ cwd, homeDir }) => {
+      const agentsPath = join(homeDir, '.config', 'opencode', 'AGENTS.md');
+      await mkdir(dirname(agentsPath), { recursive: true });
+      await writeFile(agentsPath, 'keep me\n', 'utf8');
+
+      const result = await runInstallCore(['--target', 'opencode', '--yes'], ctx(cwd), homeDir);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('agent guide skipped');
+      expect(await readFile(agentsPath, 'utf8')).toBe('keep me\n');
     }));
 
   test('install into local path writes to ./opencode.jsonc', () =>

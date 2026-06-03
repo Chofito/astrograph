@@ -1,116 +1,886 @@
-# CLI design
+# Astrograph CLI Guide
 
-> 🌐 Languages: **English** (this file) · _ES mirror pending (see backlog)_
+This guide explains how to use Astrograph from the terminal: indexing a project,
+keeping the graph fresh, installing the MCP server into coding agents, and asking
+questions with the read commands.
 
-> Design document. Astrograph's command-line surface — derived from inspecting codegraph's CLI (reference only, no code copied) and rebuilt on our **transport-agnostic tool contract** ([docs/tools.md](tools.md)). Expands [ROADMAP §1.6](../ROADMAP.md#16--cli-hybrid).
+Astrograph is local first. It writes an index into the target project's
+`.astrograph/` directory and does not send code over the network.
 
----
+## Quick Start
 
-## 1. Principles
+Install dependencies in the Astrograph repo:
 
-1. **Hybrid (ROADMAP §1.6).** One-shot commands emit **scriptable plain text** (pipe-able, stable, `--json` for machines). **opentui** is used *only* for interactive/live views and stays in an isolated layer — command logic never depends on the UI.
-2. **The CLI is a thin formatter over the contract.** Every query command calls the same `packages/core` query as the MCP tool and renders the same structured result. CLI = terminal formatter; MCP = agent formatter; Web = 3D formatter. No logic duplicated.
-3. **Honesty by default.** Every query command prints a coverage/partiality footer from the result `meta` envelope ([docs/tools.md §3](tools.md#3-shared-result-envelope)); `--json` includes the full envelope. We never present partial/stale/low-confidence data as complete.
-4. **TTY-aware.** Rich/live rendering (spinners, opentui) only when stdout is a TTY; piped/CI output is automatically plain. `--quiet` and `--json` force plain.
-5. **More than codegraph where it's free.** We expose `trace`, `node`, and `explore` as CLI commands (codegraph keeps them MCP-only) — the contract makes it a one-liner.
+```bash
+bun install
+```
 
----
+Build the CLI:
 
-## 2. Global conventions
+```bash
+bun run build
+```
 
-- **Project targeting.** Lifecycle commands take a positional `[path]`; query commands take `-p, --path <path>` (defaults to nearest `.astrograph/` upward from cwd, like codegraph).
-- **`--json`** on every read command → emits `{ data, meta }` (the envelope), nothing else, for scripting.
-- **`-q, --quiet`** → only essential output (paths/values), no decoration. **`-v, --verbose`** → worker/memory/timing diagnostics.
-- **Exit codes.** `0` ok · `1` error · `2` no index (`.astrograph/` missing — suggests `astrograph init`) · `3` reserved for `--fail-on-partial` (CI: non-zero when the answer is coverage-partial).
-- **Binary name.** `astrograph`, with a short alias `ag` (opt-in during install).
+Optionally place the compiled binary in `~/.local/bin`. The compiled binary
+carries the Astrograph agent guide, so `astrograph install` can configure host
+skills/rules without needing a checkout of this repo.
 
----
+```bash
+bun run install:local
+```
 
-## 3. Command catalog
+Index a JS or TS project:
 
-### 3.1 Lifecycle / index management
+```bash
+astrograph init /path/to/project
+```
 
-| Command | Purpose | Key options |
+Ask questions:
+
+```bash
+astrograph search "use account" -p /path/to/project
+astrograph callers useAccount -p /path/to/project
+astrograph callees AccountScreen -p /path/to/project
+astrograph context "how does checkout submit an order?" -p /path/to/project
+astrograph trace LoginScreen refreshToken -p /path/to/project
+```
+
+When you are already inside an indexed project, `-p` is usually unnecessary.
+Astrograph walks upward from the current directory until it finds `.astrograph/`.
+
+## Mental Model
+
+Astrograph has three layers:
+
+| Layer | What it does | Common commands |
 |---|---|---|
-| `init [path]` | Create `.astrograph/` and build the initial index | `--no-index` (create dir only), `-y/--yes`, `-v/--verbose` |
-| `uninit [path]` | Remove `.astrograph/` for a project | `-f/--force` (skip confirm) |
-| `index [path]` | Full / delta index of all files | `-f/--force` (full re-index), `-q/--quiet`, `-v/--verbose` |
-| `sync [path]` | Index changes since last run (deltas) | `-q/--quiet` (for git hooks) |
-| `status [path]` | Index health, stats, **coverage**, pending sync | `-j/--json` |
-| `unlock [path]` | Remove a stale lock file blocking indexing | — |
-| `serve` | Run as MCP server (Stage 2) | `--mcp` (stdio), `-p/--path`, `--no-watch` |
-| `install` | Configure the MCP server into agent(s) (Stage 2) | `-t/--target`, `-l/--location`, `-y/--yes`, `--print-config <id>` |
-| `uninstall` | Remove Astrograph from agent(s) (Stage 2) | `-t/--target`, `-l/--location`, `-y/--yes` |
+| Index | Builds or refreshes `.astrograph/graph.db` | `init`, `index`, `sync`, `daemon` |
+| Read tools | Query the graph and print human friendly output | `search`, `context`, `callers`, `callees`, `trace` |
+| Agent setup | Installs or removes the MCP server config | `install`, `uninstall`, `serve --mcp` |
 
-Notes:
-- `init` indexes by default (codegraph deprecated its `-i` flag for the same reason); `--no-index` opts out.
-- `index`/`sync` render a **live opentui progress view** on a TTY (files/sec, coverage filling), plain lines when piped.
-- `install/uninstall` start minimal in V1 (Claude Code + Cursor); broader agent matrix is a later stage. They never touch the user's `CLAUDE.md` (instructions ship in the MCP `initialize`).
+Use `init` once per project, `sync` when files changed, and `daemon` when you want
+Astrograph to keep the index fresh while you work.
 
-### 3.2 Query commands (one per tool)
+## Project Files
 
-All accept `-p/--path` and `-j/--json`, and print the coverage footer.
+Astrograph creates this directory inside every indexed project:
 
-| Command | Tool | Args | Key options |
+```text
+.astrograph/
+  graph.db
+  config.json
+  daemon.json
+  daemon.log
+```
+
+`graph.db` is the SQLite graph. `config.json` is optional project config.
+`daemon.json` and `daemon.log` exist only when the background daemon is running or
+has run before.
+
+## Lifecycle Commands
+
+### `astrograph init [path]`
+
+Create `.astrograph/` and index the project.
+
+```bash
+astrograph init
+astrograph init /path/to/project
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `--no-index` | Create `.astrograph/` without indexing yet |
+| `-d, --detached` | Start the background daemon after creating the project index |
+| `-v, --verbose` | Show fuller output where supported |
+
+Use `--no-index` when you want to create config first:
+
+```bash
+astrograph init --no-index
+```
+
+Then edit `.astrograph/config.json`, and run:
+
+```bash
+astrograph index
+```
+
+Use `--detached` when you want Astrograph to index in the background and keep
+watching for changes:
+
+```bash
+astrograph init /path/to/project --detached
+```
+
+### `astrograph index [path]`
+
+Rebuild or refresh the graph for the whole project.
+
+```bash
+astrograph index
+astrograph index /path/to/project
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `-f, --force` | Re-extract files even if their content hash did not change |
+| `-q, --quiet` | Suppress normal output |
+| `-v, --verbose` | Show fuller output where supported |
+
+If the daemon is running, `index` exits with an error. Stop the daemon first so
+there is only one writer:
+
+```bash
+astrograph stop
+astrograph index -f
+```
+
+### `astrograph sync [path]`
+
+Apply file changes since the last index. This is the command to run after normal
+editing when you are not using the daemon.
+
+```bash
+astrograph sync
+astrograph sync /path/to/project
+```
+
+It reports added, modified, and removed files:
+
+```text
+Synced  +1  ~3  -0
+```
+
+Use `-q, --quiet` for scripts or git hooks:
+
+```bash
+astrograph sync -q
+```
+
+Like `index`, `sync` refuses to run while the daemon is active.
+
+### `astrograph status [path]`
+
+Show graph health, coverage, backend details, pending sync data, and daemon state.
+
+```bash
+astrograph status
+astrograph status /path/to/project
+astrograph status --json
+```
+
+Typical output:
+
+```text
+Astrograph Status
+* files      248
+* nodes      5321
+* edges      11042
+* coverage   248/248 resolved (0 parsed, 0 pending)
+* backend    sqlite
+* journal    wal
+* daemon     running (pid 12345, since 12m)
+
+coverage 248/248 resolved
+partial: no
+```
+
+### `astrograph uninit [path]`
+
+Remove `.astrograph/` from a project.
+
+```bash
+astrograph uninit
+astrograph uninit /path/to/project
+```
+
+Use `-f, --force` to skip the confirmation prompt:
+
+```bash
+astrograph uninit -f
+```
+
+This deletes the local graph. It does not modify source files.
+
+### `astrograph unlock [path]`
+
+Remove stale lock files if a previous writer crashed.
+
+```bash
+astrograph unlock
+```
+
+Use this only when Astrograph says a lock is stale. It removes:
+
+```text
+.astrograph/lock
+.astrograph/index.lock
+```
+
+### `astrograph stop [path]`
+
+Stop the background daemon for a project.
+
+```bash
+astrograph stop
+astrograph stop /path/to/project
+```
+
+## The Daemon
+
+The daemon keeps the index fresh while you work. It starts a watcher and sends
+file change batches through the same single writer path as `sync`.
+
+Start it from `init`:
+
+```bash
+astrograph init /path/to/project --detached
+```
+
+Or run the internal daemon command directly during development:
+
+```bash
+astrograph daemon --path /path/to/project
+```
+
+Most users should prefer `init --detached`.
+
+### What Happens on Start
+
+On startup, the daemon checks whether the project is already indexed:
+
+| State | Behavior |
+|---|---|
+| Empty or missing graph | Runs `indexAll()` once |
+| Existing graph | Runs `sync()` to reconcile deltas |
+
+After that, it starts the watcher. This avoids full reindexing every time the
+daemon starts.
+
+### What Happens on File Change
+
+The watcher records create, modify, and delete events for source files, then
+debounces them before syncing:
+
+```text
+Syncing 2 changed file(s): src/a.ts, src/b.ts
+Synced +0 ~2 -0 from 2 event(s)
+```
+
+Ignored directories include:
+
+```text
+node_modules/
+.git/
+.astrograph/
+dist/
+```
+
+Project `exclude` config is also honored.
+
+### Logs
+
+Detached daemon output goes to:
+
+```text
+.astrograph/daemon.log
+```
+
+Watch it while debugging:
+
+```bash
+tail -f /path/to/project/.astrograph/daemon.log
+```
+
+You should see:
+
+```text
+Daemon starting
+Existing index found: ...
+Reconciled existing index: ...
+Starting watcher
+Watcher ready
+```
+
+If the watcher cannot start on the filesystem, the log says so. In that case, run
+`astrograph sync` manually after edits or restart the daemon from a supported local
+filesystem.
+
+### Single Writer Rule
+
+Only one process should write to the same SQLite graph at a time.
+
+While the daemon is running:
+
+| Command | Behavior |
+|---|---|
+| `index` | Refuses to run |
+| `sync` | Refuses to run |
+| `init` with indexing | Refuses to run |
+| MCP server | Opens read-only from a freshness perspective and does not start its own watcher |
+
+This keeps SQLite WAL usage predictable and avoids competing writers.
+
+## Read Commands
+
+All read commands accept:
+
+| Flag | Meaning |
+|---|---|
+| `-p, --path <path>` | Project path. Defaults to nearest parent with `.astrograph/` |
+| `-j, --json` | Print the full `{ data, meta }` envelope |
+| `--fail-on-partial` | Exit with code `3` when the answer is partial |
+
+The footer tells you whether the answer is complete:
+
+```text
+coverage 248/248 resolved
+partial: no
+```
+
+If files are pending or coverage is incomplete, the footer says so. Treat partial
+answers as useful but not authoritative.
+
+### `astrograph search <query>`
+
+Find symbols by name, qualified name, signature, or indexed text.
+
+```bash
+astrograph search useAccount
+astrograph search "how does add to cart work"
+astrograph search "session token" --limit 20
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `-l, --limit <n>` | Max results. Default `10` |
+| `-k, --kind <kind>` | Restrict by node kind, for example `function`, `class`, `component` |
+| `--lang <lang>` | Restrict by `typescript`, `tsx`, `javascript`, or `jsx` |
+| `--no-generated` | Hide generated symbols |
+
+Aliases:
+
+```bash
+astrograph query useAccount
+astrograph q useAccount
+```
+
+### `astrograph context <task>`
+
+Build ranked task context. This combines search, graph neighborhood expansion,
+ranking, and optional code blocks.
+
+```bash
+astrograph context "how does session refresh work?"
+astrograph context "why does checkout fail?" --budget 3000
+astrograph context "auth flow" --max-symbols 12 --no-code
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `-n, --max-symbols <n>` | Max symbols in the context. Default `20` |
+| `--budget <tokens>` | Approximate token budget for included code |
+| `--no-code` | Return symbols and graph without source blocks |
+| `-f, --format markdown|json` | Output format. `json` is equivalent to `--json` |
+
+Use `context` when you are about to work on a feature or bug and want the graph to
+surface the likely relevant symbols without dumping the whole repo.
+
+### `astrograph callers <symbol>`
+
+Show who calls or references a symbol.
+
+```bash
+astrograph callers useAccount
+astrograph callers submitOrder --limit 50
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `-l, --limit <n>` | Max results. Default `20` |
+| `--include-external` | Include external symbols from `node_modules` and `.d.ts` files |
+
+By default, external symbols are hidden so project results do not get drowned out.
+
+### `astrograph callees <symbol>`
+
+Show what a symbol calls.
+
+```bash
+astrograph callees AccountScreen
+astrograph callees checkout --include-external
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `-l, --limit <n>` | Max results. Default `20` |
+| `--include-external` | Include external library calls |
+
+Use this to understand dependencies from a function, hook, method, or component.
+
+### `astrograph impact <symbol>`
+
+Show reverse impact from a symbol. This is useful before refactors.
+
+```bash
+astrograph impact updateSession
+astrograph impact ProductService --depth 4
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `-d, --depth <n>` | Traversal depth. Default `2` |
+| `--include-external` | Include external symbols |
+
+### `astrograph trace <from> <to>`
+
+Find a path from one symbol to another.
+
+```bash
+astrograph trace LoginScreen refreshToken
+astrograph trace CheckoutScreen submitOrder --max-depth 6
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `-d, --max-depth <n>` | Max traversal depth |
+
+If no path is found, Astrograph still returns the endpoints and useful nearby code
+when available.
+
+### `astrograph node <symbol>`
+
+Inspect one symbol.
+
+```bash
+astrograph node useAccount
+astrograph node useAccount --code
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `-c, --code` | Include the source block |
+
+### `astrograph explore <terms...>`
+
+Group related code blocks by file.
+
+```bash
+astrograph explore session refresh token
+astrograph explore checkout cart --max-files 8
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `--max-files <n>` | Max files to include. Default `12` |
+
+Use this when you have a few rough terms and want a compact file-oriented view.
+
+### `astrograph files`
+
+List indexed files and their coverage state.
+
+```bash
+astrograph files
+astrograph files --filter src/features
+astrograph files --pattern "*.tsx"
+astrograph files --format flat --no-metadata
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `--filter <dir>` | Restrict to a directory or path prefix |
+| `--pattern <glob>` | Restrict by glob |
+| `--format tree|flat|grouped` | Output shape. Default `tree` |
+| `--max-depth <n>` | Limit tree depth |
+| `--no-metadata` | Hide per-file metadata |
+
+## MCP Server
+
+Astrograph can run as a stdio MCP server:
+
+```bash
+astrograph serve --mcp --path /path/to/project
+```
+
+The MCP server exposes the same graph tools to agent hosts. It performs a
+connect-time reconcile, and by default watches files while the session is open.
+
+Disable the watcher:
+
+```bash
+astrograph serve --mcp --path /path/to/project --no-watch
+```
+
+If the daemon is already running for the project, the MCP server does not start a
+second watcher and does not mutate the index. It trusts the daemon as the freshness
+owner.
+
+## Agent Guidance
+
+Astrograph keeps a small agent guide at:
+
+```text
+agents/astrograph/SKILL.md
+```
+
+It tells agents when to use Astrograph instead of broad grep/read loops, how to
+pick the right graph tool, and how to interpret coverage/staleness banners.
+
+`astrograph install` installs this guide into the selected harnesses along with
+the MCP config. You normally do not need to run anything else.
+
+By default, the guide content is embedded in the Astrograph binary. For custom
+dev setups that want live symlinks to a working tree, set
+`ASTROGRAPH_AGENT_GUIDE=/absolute/path/to/agents/astrograph` before running
+`astrograph install`.
+
+For local dogfooding inside this repo, you can also refresh the repo-local
+symlinks directly:
+
+```bash
+scripts/link-agent-guide.sh
+```
+
+That script links one source of truth into local host-specific locations:
+
+```text
+.claude/skills/astrograph
+.codex/skills/astrograph
+.cursor/rules/astrograph.mdc
+.opencode/AGENTS.md
+```
+
+This guide is separate from MCP config. MCP config tells the host how to start
+Astrograph; the guide nudges the agent to use Astrograph before reaching for
+generic text search when the task is structural.
+
+## Installing MCP Config
+
+Use `install` to add Astrograph to supported agent hosts. It writes the MCP server
+config and installs the Astrograph agent guide for that host when supported.
+
+```bash
+astrograph install
+```
+
+By default, this targets all supported hosts globally:
+
+```text
+claude, cursor, codex, opencode
+```
+
+Useful flags:
+
+| Flag | Meaning |
+|---|---|
+| `-t, --target <ids>` | Comma-separated targets |
+| `-l, --location <scope>` | `global` or `local`. Default `global` |
+| `--command <bin>` | Override the binary path. Default `astrograph` |
+| `-y, --yes` | Skip confirmation |
+| `--print-config <id>` | Print the merged config for one target without writing |
+
+Examples:
+
+```bash
+astrograph install --target claude --yes
+astrograph install --target cursor,opencode --location local
+astrograph install --target codex --command /Users/me/.local/bin/astrograph --yes
+astrograph install --print-config claude
+```
+
+Supported targets:
+
+| Target | Global config | Local config | Agent guide |
 |---|---|---|---|
-| `search <query>` (alias `query`, `q`) | `astrograph_search` | symbol/partial name | `-l/--limit 10`, `-k/--kind`, `--lang`, `--no-generated` |
-| `context <task>` | `astrograph_context` | task description | `-n/--max-symbols 20`, `--no-code`, `--budget <tokens>`, `-f/--format markdown\|json` |
-| `trace <from> <to>` | `astrograph_trace` | two symbols | `-d/--max-depth` |
-| `callers <symbol>` | `astrograph_callers` | symbol | `-l/--limit 20` |
-| `callees <symbol>` | `astrograph_callees` | symbol | `-l/--limit 20` |
-| `impact <symbol>` | `astrograph_impact` | symbol | `-d/--depth 2`, `--include-external` |
-| `node <symbol>` | `astrograph_node` | name or id | `-c/--code` (include body) |
-| `explore <terms...>` | `astrograph_explore` | bag of names/terms | `--max-files 12` |
-| `files` | `astrograph_files` | — | `--filter <dir>`, `--pattern <glob>`, `--format tree\|flat\|grouped`, `--max-depth <n>`, `--no-metadata` |
-| `status [path]` | `astrograph_status` | — | `-j/--json` (also a lifecycle cmd) |
+| `claude` | `~/.claude.json` | `./.mcp.json` | `.claude/skills/astrograph` |
+| `cursor` | `~/.cursor/mcp.json` | `./.cursor/mcp.json` | `.cursor/rules/astrograph.mdc` |
+| `codex` | `~/.codex/config.toml` | Not supported | `.codex/skills/astrograph` |
+| `opencode` | `$XDG_CONFIG_HOME/opencode/opencode.jsonc` or `~/.config/opencode/opencode.jsonc` | `./opencode.jsonc` | `AGENTS.md` |
 
-Honesty flags shared by query commands: `--include-external` (show `node_modules`/`.d.ts` targets), `--min-confidence high|medium|low`, `--show-unresolved`, `--fail-on-partial` (CI).
+For Claude global config, Astrograph creates a `.bak` backup before writing when
+the file already exists.
 
-### 3.3 CLI-only conveniences (built on the graph, offline)
+Installing MCP config does not index every project automatically. Each project
+still needs:
 
-| Command | Purpose | Key options |
-|---|---|---|
-| `affected [files...]` | Test/impact selection for CI — which tests are affected by changed source files (built on `impact`) | `--stdin`, `-d/--depth 5`, `--filter <glob>`, `-q/--quiet`, `-j/--json` |
-| `explore -i` / `tui` | Interactive opentui graph browser (navigate symbols/edges, peek source) | TTY only |
-| `why <from> <to>` | Friendly alias of `trace` (ROADMAP §13) | _later_ |
+```bash
+astrograph init /path/to/project
+```
 
-`affected` is kept from codegraph because it's genuinely useful for CI/git-hooks and is fully offline (graph traversal + test-file detection). It is CLI-only (not one of the 10 agent tools).
+or:
 
----
+```bash
+astrograph init /path/to/project --detached
+```
 
-## 4. codegraph → astrograph mapping (what we keep, change, add)
+## Uninstalling MCP Config
 
-| codegraph command | astrograph counterpart | Difference |
-|---|---|---|
-| `init [path]` `-i` | `init [path]` `--no-index` | Index-by-default; opt-out flag instead of opt-in |
-| `uninit [path]` `-f` | `uninit [path]` `-f` | Same |
-| `index [path]` `-f -q -v` | `index [path]` `-f -q -v` | + live opentui progress on TTY |
-| `sync [path]` `-q` | `sync [path]` `-q` | Same role (git hooks) |
-| `status [path]` `-j` | `status [path]` `-j` | + **coverage** section (progressive model) |
-| `unlock [path]` | `unlock [path]` | Same |
-| `query <search>` | `search <query>` (alias `query`/`q`) | Renamed canonical to match tool; alias kept |
-| `files` | `files` | Same options; + per-file `coverageState` |
-| `context <task>` | `context <task>` | + `--budget` (token budget), inclusion reasons |
-| `callers/callees/impact` | same | + coverage/partiality footer |
-| `affected [files...]` | `affected [files...]` | Same (CI) |
-| `serve --mcp --no-watch` | `serve --mcp --no-watch` | Built on official MCP SDK |
-| `install/uninstall` | `install/uninstall` | Minimal agent set in V1; grows later |
-| _(MCP-only)_ `trace` | **`trace <from> <to>` CLI** | **New CLI command** — contract makes it free |
-| _(MCP-only)_ `node` | **`node <symbol>` CLI** | **New CLI command** |
-| _(MCP-only)_ `explore` | **`explore <terms...>` CLI** | **New CLI command** (+ interactive `-i`) |
+Remove Astrograph from agent host configs:
 
-**What we deliberately do not copy:** codegraph's 8-agent installer breadth (V1 scopes to Claude Code + Cursor), and its plain-text-only rendering (we add opentui for live/interactive views). Everything else is a fresh implementation against our own core, not ported code.
+```bash
+astrograph uninstall
+```
 
----
+Useful flags:
 
-## 5. Argument parser
+| Flag | Meaning |
+|---|---|
+| `-t, --target <ids>` | Comma-separated targets |
+| `-l, --location <scope>` | `global` or `local`. Default `global` |
+| `-y, --yes` | Skip confirmation |
 
-Classic args via Bun/Node `util.parseArgs` or `commander` (ROADMAP §1.6). Decision deferred to implementation; the command/flag surface above is parser-agnostic. opentui is a **separate optional dependency** loaded lazily only for interactive/live commands, so a headless/CI install never pays for it.
+Examples:
 
----
+```bash
+astrograph uninstall --target claude --yes
+astrograph uninstall --target cursor,opencode --location local
+```
 
-## 6. References
-- Tool contract each query command renders: [docs/tools.md](tools.md).
-- Coverage footer semantics: [docs/progressive-indexing.md](progressive-indexing.md).
-- Data behind the commands: [docs/graph-model.md](graph-model.md).
-- codegraph CLI for reference (not copied): [`src/bin/codegraph.ts`](../../codegraph/src/bin/codegraph.ts).
+Uninstall removes the `astrograph` MCP entry and Astrograph-owned guide files.
+It preserves other MCP servers and unrelated config. If a guide destination is a
+real file with custom content, uninstall leaves it alone.
+
+## JSON and Scripting
+
+Every read command supports `--json`:
+
+```bash
+astrograph search useAccount --json
+astrograph context "auth flow" --json
+astrograph status --json
+```
+
+The JSON shape is always:
+
+```ts
+{
+  data: unknown;
+  meta: {
+    coverage: {
+      total: number;
+      resolved: number;
+      parsed: number;
+      pending: number;
+    };
+    partial: boolean;
+    pendingFiles?: string[];
+    notes?: string[];
+  };
+}
+```
+
+Use `--fail-on-partial` in CI or automation:
+
+```bash
+astrograph context "checkout flow" --fail-on-partial
+```
+
+Exit codes:
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Command error |
+| `2` | No `.astrograph/` index found |
+| `3` | Partial result when `--fail-on-partial` was requested |
+
+## Project Config
+
+Optional project config lives at:
+
+```text
+.astrograph/config.json
+```
+
+Supported keys:
+
+```json
+{
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "dist"],
+  "maxFileSizeBytes": 2000000,
+  "kinds": ["function", "class", "component"],
+  "watchDebounceMs": 300,
+  "tsconfigPath": "tsconfig.json"
+}
+```
+
+Common use cases:
+
+| Need | Config |
+|---|---|
+| Avoid generated folders | Add them to `exclude` |
+| Watch slower filesystems | Increase `watchDebounceMs` |
+| Use a nonstandard TS config | Set `tsconfigPath` |
+| Skip huge generated files | Lower or tune `maxFileSizeBytes` |
+
+After changing config, run:
+
+```bash
+astrograph sync
+```
+
+or restart the daemon.
+
+## Recommended Workflows
+
+### One-time local use
+
+```bash
+astrograph init
+astrograph context "how does auth work?"
+```
+
+### Daily project work
+
+```bash
+astrograph init --detached
+astrograph status
+astrograph callers useAccount
+tail -f .astrograph/daemon.log
+```
+
+### Manual freshness
+
+```bash
+astrograph init
+# edit files
+astrograph sync
+astrograph impact ChangedThing
+```
+
+### Agent setup
+
+```bash
+bun run build
+bun run install:local
+astrograph install --target claude,codex --yes
+astrograph init /path/to/project --detached
+```
+
+## Troubleshooting
+
+### No index found
+
+Run:
+
+```bash
+astrograph init /path/to/project
+```
+
+or pass the project path:
+
+```bash
+astrograph search useAccount -p /path/to/project
+```
+
+### The daemon does not seem to react
+
+Check the log:
+
+```bash
+tail -f .astrograph/daemon.log
+```
+
+Look for `Watcher ready`, `Syncing`, and `Synced` lines.
+
+If you see `Watcher unavailable`, use manual `sync` or restart the daemon from a
+local filesystem.
+
+### `index` or `sync` refuses to run
+
+The daemon is probably active. Stop it first:
+
+```bash
+astrograph stop
+astrograph sync
+```
+
+### Results are too noisy
+
+Project symbols are the default for `callers`, `callees`, `context`, and
+`explore`. If external symbols still appear noisy, prefer narrower symbol names,
+`search --kind`, or `context --max-symbols`.
+
+Use external results only when you need them:
+
+```bash
+astrograph callees useThing --include-external
+```
+
+### The MCP host cannot find `astrograph`
+
+Use an absolute command path:
+
+```bash
+astrograph install --target claude --command /Users/me/.local/bin/astrograph --yes
+```
+
+Preview first:
+
+```bash
+astrograph install --print-config claude --command /Users/me/.local/bin/astrograph
+```
+
+### I want to remove everything
+
+Remove MCP entries:
+
+```bash
+astrograph uninstall --yes
+```
+
+Remove the project index:
+
+```bash
+astrograph uninit -f
+```
+
+## Command Reference
+
+| Command | Purpose |
+|---|---|
+| `init [path]` | Create `.astrograph/` and index by default |
+| `index [path]` | Reindex project files |
+| `sync [path]` | Index changed files |
+| `status [path]` | Show graph health |
+| `uninit [path]` | Remove `.astrograph/` |
+| `unlock [path]` | Remove stale lock files |
+| `stop [path]` | Stop background daemon |
+| `daemon --path <dir>` | Internal background writer |
+| `search <query>` | Find symbols |
+| `context <task>` | Build ranked task context |
+| `callers <symbol>` | Show callers |
+| `callees <symbol>` | Show callees |
+| `impact <symbol>` | Show reverse impact |
+| `trace <from> <to>` | Find a graph path |
+| `node <symbol>` | Inspect one symbol |
+| `explore <terms...>` | Group related code by file |
+| `files` | List indexed files |
+| `serve --mcp` | Run the stdio MCP server |
+| `install` | Add MCP config and agent guide to hosts |
+| `uninstall` | Remove MCP config and agent guide from hosts |

@@ -32,8 +32,8 @@ export function globalHelp(): string {
     '  serve --mcp [--no-watch] Start the stdio MCP server',
     '',
     'MCP install:',
-    '  install                  Install MCP server config in host(s)',
-    '  uninstall                Remove MCP server config from host(s)',
+    '  install                  Install MCP config and agent guide in host(s)',
+    '  uninstall                Remove MCP config and agent guide from host(s)',
     '',
     'Global:',
     '  -h, --help               Show help',
@@ -85,6 +85,8 @@ export function commandHelp(command: string): string {
       '  cursor    ~/.cursor/mcp.json (global) or ./.cursor/mcp.json (local)',
       '  codex     ~/.codex/config.toml (global only)',
       '  opencode  ~/.config/opencode/opencode.jsonc (global) or ./opencode.jsonc (local)',
+      '',
+      'Also installs the Astrograph agent guide into each target when supported.',
     ].join('\n'),
     uninstall: [
       'Usage: astrograph uninstall [options]',
@@ -93,6 +95,8 @@ export function commandHelp(command: string): string {
       '  -t, --target <ids>   Comma-separated targets: claude,cursor,codex,opencode (default: all)',
       '  -l, --location <scope>  global or local (default: global)',
       '  -y, --yes            Skip confirmation prompt',
+      '',
+      'Also removes Astrograph-owned agent guide files.',
     ].join('\n'),
   };
   return usage[command] ?? globalHelp();

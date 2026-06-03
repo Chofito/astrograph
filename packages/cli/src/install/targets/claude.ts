@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import type { Location, McpEntry, Target } from '../target';
+import type { AgentGuideLink, Location, McpEntry, Target } from '../target';
 import { readJson, serializeJson, type JsonDoc } from '../writers/json';
 
 export const claudeTarget: Target = {
@@ -8,6 +8,15 @@ export const claudeTarget: Target = {
 
   configPath(location: Location, cwd: string, homeDir: string): string {
     return location === 'global' ? join(homeDir, '.claude.json') : join(cwd, '.mcp.json');
+  },
+
+  agentGuide(location: Location, cwd: string, homeDir: string): AgentGuideLink {
+    return {
+      path: location === 'global'
+        ? join(homeDir, '.claude', 'skills', 'astrograph')
+        : join(cwd, '.claude', 'skills', 'astrograph'),
+      source: 'directory',
+    };
   },
 
   supportsLocation(_location: Location): boolean {

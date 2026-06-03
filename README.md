@@ -17,7 +17,7 @@ source files
   TypeScript Compiler API
   symbols and edges
   SQLite plus FTS5
-  CLI, future MCP, future Web UI
+  CLI, MCP, future Web UI
 ```
 
 It knows about:
@@ -60,7 +60,7 @@ Edge resolution           done
 Read tools                done
 CLI                       active
 Tier 1 eval harness       active
-MCP server                next stage
+MCP server                active
 3D web constellation      later stage
 ```
 
@@ -80,7 +80,9 @@ Build the local CLI binary:
 bun run build
 ```
 
-Optionally install it into `~/.local/bin`:
+Optionally install it into `~/.local/bin`. The compiled binary carries the
+Astrograph agent guide, so `astrograph install` can set up Claude Code, Codex,
+Cursor, and opencode without needing a checkout of this repo.
 
 ```bash
 bun run install:local
@@ -113,13 +115,17 @@ astrograph context "how does checkout work?" --json
 
 ## CLI Commands
 
+For the complete human friendly command guide, see [docs/cli.md](docs/cli.md).
+
 ### Lifecycle
 
 ```text
 astrograph init [path]       create .astrograph and index by default
+astrograph init [path] -d    create the index and keep it fresh in the daemon
 astrograph index [path]      rebuild or refresh the graph
 astrograph sync [path]       index changed files
 astrograph status [path]     show graph health and coverage
+astrograph stop [path]       stop the background daemon
 astrograph uninit [path]     remove .astrograph
 astrograph unlock [path]     clear a stale lock
 ```
@@ -136,6 +142,9 @@ astrograph impact <symbol>         show reverse impact
 astrograph trace <from> <to>       trace a call or reference path
 astrograph explore <terms...>      group related code by file
 astrograph files                   show indexed files
+astrograph serve --mcp             run the MCP server over stdio
+astrograph install                 install MCP config and agent guide into hosts
+astrograph uninstall               remove MCP config and agent guide from hosts
 ```
 
 By default, `callers`, `callees`, `context`, and `explore` focus on project symbols. Use `--include-external` on callers or callees when you want `node_modules` and `.d.ts` symbols in the result.
@@ -261,6 +270,8 @@ bun run --filter @astrograph/cli typecheck
 
 * [ROADMAP.md](ROADMAP.md): product scope and staged plan
 * [docs/contracts.md](docs/contracts.md): canonical public types
+* [docs/cli.md](docs/cli.md): command usage, daemon, MCP install and troubleshooting
+* [agents/astrograph/SKILL.md](agents/astrograph/SKILL.md): agent guidance for using Astrograph before broad text search
 * [docs/graph-model.md](docs/graph-model.md): schema, IDs, indexes, resolution states
 * [docs/extraction.md](docs/extraction.md): TS Compiler API extraction rules
 * [docs/tools.md](docs/tools.md): tool behavior and result shapes
@@ -313,6 +324,8 @@ Per indexed project:
 .astrograph/
   graph.db
   config.json
+  daemon.json
+  daemon.log
 ```
 
 ## License

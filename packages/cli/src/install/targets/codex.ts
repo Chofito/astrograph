@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import type { Location, McpEntry, Target } from '../target';
+import type { AgentGuideLink, Location, McpEntry, Target } from '../target';
 import { readToml, serializeToml, type TomlDoc } from '../writers/toml';
 
 export const codexTarget: Target = {
@@ -8,6 +8,11 @@ export const codexTarget: Target = {
 
   configPath(_location: Location, _cwd: string, homeDir: string): string {
     return join(homeDir, '.codex', 'config.toml');
+  },
+
+  agentGuide(location: Location, _cwd: string, homeDir: string): AgentGuideLink | undefined {
+    if (location !== 'global') return undefined;
+    return { path: join(homeDir, '.codex', 'skills', 'astrograph'), source: 'directory' };
   },
 
   supportsLocation(location: Location): boolean {

@@ -20,3 +20,9 @@ dist/
 # Personal repo files
 STATS.md
 TODO.md
+
+# Local agent-harness links/config generated for dogfooding
+.claude/
+.codex/
+.cursor/
+.opencode/

@@ -20,7 +20,7 @@
 | Response format | **MCP-specific agent-tuned text formatters** (not the CLI's terminal formatters; share the structured `ToolResult`, differ in presentation) |
 | Honesty | external off by default (project-only); every response carries a **coverage + staleness banner**; `unresolved`/`ambiguous`/low-confidence surfaced in notes |
 | Freshness | **watcher (background, debounced) + connect-time reconcile catch-up + on-demand sync guarded by a cheap staleness signal** (see §4) |
-| Installer | **`install`/`uninstall` for Claude Code + Cursor + Codex + opencode** (write/remove the MCP config; see §6) |
+| Installer | **`install`/`uninstall` for Claude Code + Cursor + Codex + opencode** (write/remove the MCP config + Astrograph guide; see §6) |
 | Lifecycle | **one project per server process**, lazy-open on first tool call; single-writer for all index mutations |
 
 Out of scope (later): full progressive serve-while-indexing (Stage 5), agents beyond Claude Code/Cursor, multi-project daemon.
@@ -90,14 +90,17 @@ agent to:
   flagged pending, `Read` it directly.
 - If `.astrograph/` is missing, offer to run `astrograph init`.
 
-(No instructions file is written to the user's `CLAUDE.md`/`AGENTS.md` — it ships in
-the MCP `initialize` response.)
+The MCP `initialize` response stays the runtime source of truth for active tool
+instructions. The installer also installs the shared Astrograph guide into hosts
+that support skills/rules, so agents are nudged toward Astrograph before falling
+back to broad grep/read loops.
 
 ## 6. Commands & install targets
 
 - `astrograph serve --mcp [--path <dir>] [--no-watch]` — start the stdio MCP server.
 - `astrograph install [--target claude,cursor,codex,opencode] [--location global|local] [--yes] [--print-config <id>]`
-  — write the MCP server config into the chosen host(s); `uninstall` reverses it.
+  — write the MCP server config and install the shared Astrograph agent guide into
+  the chosen host(s); `uninstall` reverses Astrograph-owned entries and guide files.
   Project indexes untouched.
 
 **MCP does NOT standardize host configuration** — only the wire protocol. Each host
@@ -113,9 +116,11 @@ has its own file/location/format, so the installer needs a per-target adapter
 
 Notes: 3 distinct formats → the installer needs a **TOML writer** and a
 **comment-preserving JSONC writer** (Claude/Cursor share the JSON `mcpServers`
-shape). We write **only the MCP server entry** — no instructions/AGENTS.md/.mdc
-files (our steering ships in the MCP `initialize`, §5). Each target is idempotent
-and supports global vs local scope.
+shape). The MCP server entry is edited surgically. The agent guide content is
+embedded in the Astrograph binary and materialized into each host's skill/rule
+location during install. Existing real instruction files are not overwritten.
+For development, `ASTROGRAPH_AGENT_GUIDE` can opt into symlinking a working-tree
+guide instead. Each target is idempotent and supports global vs local scope.
 
 ## 7. Build order (3 prompts)
 
@@ -127,7 +132,7 @@ and supports global vs local scope.
 3. **MCP-3 — installer.** `install`/`uninstall` for Claude Code + Cursor + Codex +
    opencode (4 targets, 3 config formats: JSON `mcpServers`, TOML `[mcp_servers.x]`,
    JSONC `mcp.<name>`). Per-target adapters + a TOML writer + a comment-preserving
-   JSONC writer. Server-config only (no instructions files).
+   JSONC writer + guide install.
 
 ## 8. References
 - Tool contract & behavior: [docs/tools.md](tools.md) · facade: [docs/contracts.md §7](contracts.md).

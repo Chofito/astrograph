@@ -5,9 +5,15 @@ import { dirname } from 'node:path';
 import type { CliContext, CliRunResult } from '../cli';
 import { CliError, ok } from '../cli';
 import { style, symbols } from '../format/style';
+import {
+  installAgentGuide,
+  isAgentGuideInstalled,
+  resolveAgentGuideSource,
+  type AgentGuideResult,
+} from '../install/agent-guide';
 import { confirm } from '../install/prompt';
 import { resolveCommand } from '../install/resolve-command';
-import type { Location, McpEntry, Target } from '../install/target';
+import type { AgentGuideLink, Location, McpEntry, Target } from '../install/target';
 import { ALL_TARGET_IDS, ALL_TARGETS, getTarget } from '../install/targets/all';
 import { booleanValue, parseCommandArgs, stringValue } from './parse';
 
@@ -17,6 +23,8 @@ interface Plan {
   doc: unknown;
   newDoc: unknown;
   alreadyInstalled: boolean;
+  guide: AgentGuideLink | undefined;
+  guideInstalled: boolean;
   skip: boolean;
   skipReason?: string;
 }
@@ -65,6 +73,7 @@ export async function runInstallCore(args: string[], ctx: CliContext, homeDir: s
 
   const resolved = resolveCommand(stringValue(parsed.values, 'command'));
   const mcpEntry: McpEntry = { command: resolved.command, args: resolved.args };
+  const guideSource = resolveAgentGuideSource({ cwd: ctx.cwd });
 
   // --print-config <target>: dry-run, prints the full merged file, writes nothing
   const printConfigId = stringValue(parsed.values, 'print-config');
@@ -83,17 +92,37 @@ export async function runInstallCore(args: string[], ctx: CliContext, homeDir: s
   const plans: Plan[] = [];
   for (const t of targets) {
     if (!t.supportsLocation(location)) {
-      plans.push({ target: t, path: '', doc: null, newDoc: null, alreadyInstalled: false, skip: true, skipReason: `--location ${location} not supported (global only)` });
+      plans.push({
+        target: t,
+        path: '',
+        doc: null,
+        newDoc: null,
+        alreadyInstalled: false,
+        guide: undefined,
+        guideInstalled: false,
+        skip: true,
+        skipReason: `--location ${location} not supported (global only)`,
+      });
       continue;
     }
     const path = t.configPath(location, ctx.cwd, homeDir);
     const doc = await t.read(path);
     const alreadyInstalled = t.hasEntry(doc);
     const newDoc = alreadyInstalled ? doc : t.upsert(doc, mcpEntry);
-    plans.push({ target: t, path, doc, newDoc, alreadyInstalled, skip: false });
+    const guide = t.agentGuide?.(location, ctx.cwd, homeDir);
+    plans.push({
+      target: t,
+      path,
+      doc,
+      newDoc,
+      alreadyInstalled,
+      guide,
+      guideInstalled: guide === undefined ? true : isAgentGuideInstalled(guide, guideSource),
+      skip: false,
+    });
   }
 
-  const toWrite = plans.filter((p) => !p.skip && !p.alreadyInstalled);
+  const toWrite = plans.filter((p) => !p.skip && (!p.alreadyInstalled || !p.guideInstalled));
 
   // All already configured
   if (toWrite.length === 0) {
@@ -105,13 +134,18 @@ export async function runInstallCore(args: string[], ctx: CliContext, homeDir: s
   }
 
   if (booleanValue(parsed.values, 'yes')) {
+    const guideResults = new Map<Target, AgentGuideResult>();
     for (const p of toWrite) {
-      await writeConfig(p.path, p.target.serialize(p.newDoc), shouldBackup(p.target, location));
+      if (!p.alreadyInstalled) {
+        await writeConfig(p.path, p.target.serialize(p.newDoc), shouldBackup(p.target, location));
+      }
+      if (p.guide !== undefined) {
+        guideResults.set(p.target, await installAgentGuide(p.guide, guideSource));
+      }
     }
     const lines = plans.map((p) => {
       if (p.skip) return style.warn(`${p.target.label}  ${p.skipReason ?? 'skipped'}`);
-      if (p.alreadyInstalled) return style.info(`${p.target.label}  ${style.path(p.path)}  already configured`);
-      return style.success(`${p.target.label}  ${style.path(p.path)}`);
+      return installLine(p, guideResults.get(p.target));
     });
     return ok(lines.join('\n'));
   }
@@ -122,9 +156,11 @@ export async function runInstallCore(args: string[], ctx: CliContext, homeDir: s
     if (p.skip) {
       planLines.push(`  ${style.warn(p.target.label)}  ${style.dim(p.skipReason ?? 'skipped')}`);
     } else if (p.alreadyInstalled) {
-      planLines.push(`  ${style.success(p.target.label)}  ${style.path(p.path)}  ${style.dim('already configured')}`);
+      const guideText = p.guideInstalled ? 'already configured' : 'install agent guide';
+      planLines.push(`  ${style.success(p.target.label)}  ${style.path(p.path)}  ${style.dim(guideText)}`);
     } else {
-      planLines.push(`  ${style.info(p.target.label)}  ${style.path(p.path)}  ${symbols.arrow} add astrograph`);
+      const action = p.guideInstalled ? 'add astrograph' : 'add astrograph + agent guide';
+      planLines.push(`  ${style.info(p.target.label)}  ${style.path(p.path)}  ${symbols.arrow} ${action}`);
     }
   }
   planLines.push(`\n${style.dim(`${toWrite.length} target(s) will be configured.`)}`);
@@ -133,16 +169,39 @@ export async function runInstallCore(args: string[], ctx: CliContext, homeDir: s
   const confirmed = await confirm('Proceed?');
   if (!confirmed) return ok(style.warn('Aborted.'));
 
+  const guideResults = new Map<Target, AgentGuideResult>();
   for (const p of toWrite) {
-    await writeConfig(p.path, p.target.serialize(p.newDoc), shouldBackup(p.target, location));
+    if (!p.alreadyInstalled) {
+      await writeConfig(p.path, p.target.serialize(p.newDoc), shouldBackup(p.target, location));
+    }
+    if (p.guide !== undefined) {
+      guideResults.set(p.target, await installAgentGuide(p.guide, guideSource));
+    }
   }
 
   const resultLines = plans
     .filter((p) => !p.skip)
-    .map((p) =>
-      p.alreadyInstalled
-        ? style.info(`${p.target.label}  ${style.path(p.path)}  already configured`)
-        : style.success(`${p.target.label}  ${style.path(p.path)}`),
-    );
+    .map((p) => installLine(p, guideResults.get(p.target)));
   return ok(resultLines.join('\n'));
+}
+
+function installLine(plan: Plan, guideResult: AgentGuideResult | undefined): string {
+  const main = plan.alreadyInstalled
+    ? `${plan.target.label}  ${style.path(plan.path)}  already configured`
+    : `${plan.target.label}  ${style.path(plan.path)}`;
+
+  const guide = formatGuideResult(guideResult, plan.guideInstalled);
+  if (plan.alreadyInstalled && guide === undefined) return style.info(main);
+  if (guide === undefined) return style.success(main);
+  return style.success(`${main}  ${symbols.bullet} ${guide}`);
+}
+
+function formatGuideResult(result: AgentGuideResult | undefined, wasInstalled: boolean): string | undefined {
+  if (result === undefined) return wasInstalled ? 'agent guide already installed' : undefined;
+  if (result.action === 'installed') return `agent guide installed: ${style.path(result.path)}`;
+  if (result.action === 'updated') return `agent guide updated: ${style.path(result.path)}`;
+  if (result.action === 'linked') return `agent guide linked: ${style.path(result.path)}`;
+  if (result.action === 'unchanged') return 'agent guide already installed';
+  if (result.action === 'skipped') return `agent guide skipped: ${result.reason ?? result.path}`;
+  return undefined;
 }
