@@ -248,10 +248,10 @@ export interface TraceOutput {
   endpoints?: { node: NodeRef; body: CodeBlock }[]; // only when !found: from/to endpoints + TO-file siblings
 }
 
-export interface CallersInput extends Scoped { symbol: string; limit?: number; }
+export interface CallersInput extends Scoped { symbol: string; limit?: number; includeExternal?: boolean; }
 export type   CallersOutput = { caller: NodeRef; callSite: EdgeRef }[];
 
-export interface CalleesInput extends Scoped { symbol: string; limit?: number; }
+export interface CalleesInput extends Scoped { symbol: string; limit?: number; includeExternal?: boolean; }
 export type   CalleesOutput = { callee: NodeRef; callSite: EdgeRef }[];
 
 export interface ImpactInput extends Scoped { symbol: string; depth?: number; includeExternal?: boolean; }

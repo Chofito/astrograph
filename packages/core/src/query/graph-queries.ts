@@ -66,11 +66,15 @@ export class GraphQueries {
       limit: Math.max(maxSymbols, 10),
       includeGenerated: true,
     });
-    const entryNodes = entryResults
-      .map((result) => this.queries.getNode(result.node.id))
-      .filter((node): node is Node => node !== undefined);
+    const projectEntries = entryResults
+      .map((result) => {
+        const node = this.queries.getNode(result.node.id);
+        return node === undefined || node.isExternal ? undefined : { result, node };
+      })
+      .filter((entry): entry is { result: SearchOutput[number]; node: Node } => entry !== undefined);
+    const entryNodes = projectEntries.map((entry) => entry.node);
     const entryIds = new Set(entryNodes.map((node) => node.id));
-    const ftsScores = normalizedFtsScores(entryResults);
+    const ftsScores = normalizedFtsScores(projectEntries.map((entry) => entry.result));
 
     const candidates = new Map<string, ContextCandidate>();
     for (const node of entryNodes) {
@@ -88,6 +92,7 @@ export class GraphQueries {
           limit: traversalLimit,
         });
         for (const visit of visits) {
+          if (visit.node.isExternal) continue;
           const reason = entryIds.has(visit.node.id) ? 'fts-match' : this.contextReason(visit, direction);
           const current = candidates.get(visit.node.id);
           if (
@@ -184,10 +189,14 @@ export class GraphQueries {
     const lookup = this.resolveOrThrow(input.symbol);
     const limit = input.limit ?? 20;
     const edges = this.queries.getEdgesByTarget(lookup.best.id, 'calls');
+    const includedEdges: Edge[] = [];
     const data = sortCallerOutputs(edges
       .map((edge) => {
         const caller = this.queries.getNode(edge.source);
-        return caller === undefined ? undefined : { caller: toNodeRef(caller), callSite: toEdgeRef(edge) };
+        if (caller?.isExternal === true && input.includeExternal !== true) return undefined;
+        if (caller === undefined) return undefined;
+        includedEdges.push(edge);
+        return { caller: toNodeRef(caller), callSite: toEdgeRef(edge) };
       })
       .filter((result): result is CallersOutput[number] => result !== undefined))
       .slice(0, limit);
@@ -196,7 +205,7 @@ export class GraphQueries {
       data,
       meta: this.meta({
         forcePartial: !this.isFullyResolved(),
-        notes: [...this.ambiguityLookupNotes(lookup), ...edgeNotes(edges)],
+        notes: [...this.ambiguityLookupNotes(lookup), ...edgeNotes(includedEdges)],
       }),
     };
   }
@@ -208,11 +217,15 @@ export class GraphQueries {
       ...this.queries.getEdgesBySource(lookup.best.id, 'calls'),
       ...this.queries.getEdgesBySource(lookup.best.id, 'instantiates'),
     ];
+    const includedEdges: Edge[] = [];
     const data = sortCalleeOutputs(edges
       .map((edge) => {
         if (edge.target === null) return undefined;
         const callee = this.queries.getNode(edge.target);
-        return callee === undefined ? undefined : { callee: toNodeRef(callee), callSite: toEdgeRef(edge) };
+        if (callee?.isExternal === true && input.includeExternal !== true) return undefined;
+        if (callee === undefined) return undefined;
+        includedEdges.push(edge);
+        return { callee: toNodeRef(callee), callSite: toEdgeRef(edge) };
       })
       .filter((result): result is CalleesOutput[number] => result !== undefined))
       .slice(0, limit);
@@ -221,7 +234,7 @@ export class GraphQueries {
       data,
       meta: this.meta({
         scopeFiles: [lookup.best.filePath],
-        notes: [...this.ambiguityLookupNotes(lookup), ...edgeNotes(edges)],
+        notes: [...this.ambiguityLookupNotes(lookup), ...edgeNotes(includedEdges)],
       }),
     };
   }
@@ -319,7 +332,8 @@ export class GraphQueries {
   async explore(input: ExploreInput): Promise<ToolResult<ExploreOutput>> {
     const maxFiles = input.maxFiles ?? 12;
     const terms = input.query.split(/\s+/).map((term) => term.trim()).filter((term) => term !== '');
-    const nodes = uniqueNodes(terms.flatMap((term) => resolveSymbol(this.queries, term).candidates));
+    const nodes = uniqueNodes(terms.flatMap((term) => resolveSymbol(this.queries, term).candidates))
+      .filter((node) => !node.isExternal);
     const nodesByFile = groupNodesByFile(nodes, maxFiles);
     const files = await Promise.all([...nodesByFile.entries()].map(async ([filePath, fileNodes]) => ({
       filePath,

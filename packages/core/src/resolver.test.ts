@@ -565,6 +565,74 @@ describe('Pass B: edge resolution', () => {
     }
   });
 
+  test('calls from arrow consts, functions, and methods are calls sourced to the enclosing declaration', async () => {
+    const root = await makeTempProject();
+    await writeProjectFile(root, 'src/account.ts', `
+      export const useAccount = () => {
+        return { id: 'acct' };
+      };
+      export function helper() {
+        return 'help';
+      }
+    `);
+    await writeProjectFile(root, 'src/screen.tsx', `
+      import { useAccount, helper } from './account';
+
+      export const Screen = () => {
+        const account = useAccount();
+        return helper() + account.id;
+      };
+
+      export function run() {
+        return helper();
+      }
+
+      export class Controller {
+        method() {
+          return helper();
+        }
+      }
+    `);
+
+    const indexer = await openProject(root, { dbPath: ':memory:', now: () => 100 });
+    try {
+      await indexer.indexAll();
+
+      const accountNodes = indexer.queries.getNodesByFile('src/account.ts');
+      const screenNodes = indexer.queries.getNodesByFile('src/screen.tsx');
+      const fileNode = screenNodes.find((node) => node.kind === 'file');
+      const screenNode = screenNodes.find((node) => node.name === 'Screen');
+      const runNode = screenNodes.find((node) => node.name === 'run');
+      const methodNode = screenNodes.find((node) => node.name === 'method');
+      const useAccountNode = accountNodes.find((node) => node.name === 'useAccount');
+      const helperNode = accountNodes.find((node) => node.name === 'helper');
+
+      expect(fileNode).toBeDefined();
+      expect(screenNode).toBeDefined();
+      expect(runNode).toBeDefined();
+      expect(methodNode).toBeDefined();
+      expect(useAccountNode).toBeDefined();
+      expect(helperNode).toBeDefined();
+
+      const calls = indexer.queries.getAllEdges().filter((edge) => edge.kind === 'calls');
+      expect(calls.some((edge) => edge.source === screenNode!.id && edge.target === useAccountNode!.id)).toBe(true);
+      expect(calls.some((edge) => edge.source === screenNode!.id && edge.target === helperNode!.id)).toBe(true);
+      expect(calls.some((edge) => edge.source === runNode!.id && edge.target === helperNode!.id)).toBe(true);
+      expect(calls.some((edge) => edge.source === methodNode!.id && edge.target === helperNode!.id)).toBe(true);
+      expect(calls.some((edge) => edge.source === fileNode!.id && edge.target === useAccountNode!.id)).toBe(false);
+
+      const callers = await indexer.callers({ symbol: 'useAccount' });
+      expect(callers.data.map((item) => item.caller.name)).toEqual(['Screen']);
+
+      const callees = await indexer.callees({ symbol: 'Screen' });
+      expect(callees.data.map((item) => item.callee.name)).toContain('useAccount');
+
+      expectGraphIntegrity(indexer);
+    } finally {
+      indexer.close();
+    }
+  });
+
   test('zero resolved edges with missing target (dangling check)', async () => {
     const root = await makeTempProject();
     await writeProjectFile(root, 'src/a.ts', `

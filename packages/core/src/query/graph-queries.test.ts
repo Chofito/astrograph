@@ -30,7 +30,7 @@ describe('GraphQueries', () => {
           kind: 'calls',
           resolutionState: 'resolved',
           confidence: 'high',
-          line: 5,
+          line: 6,
           col: 11,
         },
       }]);
@@ -44,10 +44,46 @@ describe('GraphQueries', () => {
           kind: 'calls',
           resolutionState: 'resolved',
           confidence: 'high',
-          line: 5,
+          line: 6,
           col: 11,
         },
       }]);
+    } finally {
+      graph.close();
+    }
+  });
+
+  test('callers and callees hide external nodes by default and include them on opt-in', async () => {
+    const graph = await indexFixtureProject();
+    try {
+      const run = mustNode(graph, 'run');
+      const helper = mustNode(graph, 'helper');
+      const externalFn = graph.queries.getAllNodes().find((node) => node.name === 'externalFn' && node.isExternal);
+      expect(externalFn).toBeDefined();
+
+      const defaultCallees = await graph.callees({ symbol: 'run' });
+      expect(defaultCallees.data.map((item) => item.callee.name)).toEqual(['helper']);
+
+      const withExternalCallees = await graph.callees({ symbol: 'run', includeExternal: true });
+      expect(withExternalCallees.data.map((item) => item.callee.name)).toEqual(['externalFn', 'helper']);
+
+      graph.queries.upsertEdge({
+        source: externalFn!.id,
+        target: helper.id,
+        targetName: helper.name,
+        kind: 'calls',
+        resolutionState: 'resolved',
+        confidence: 'high',
+        provenance: 'synthesized:test',
+        line: 1,
+        col: 0,
+      });
+
+      const defaultCallers = await graph.callers({ symbol: 'helper' });
+      expect(defaultCallers.data.map((item) => item.caller.name)).toEqual([run.name]);
+
+      const withExternalCallers = await graph.callers({ symbol: 'helper', includeExternal: true });
+      expect(withExternalCallers.data.map((item) => item.caller.name)).toEqual(['externalFn', run.name]);
     } finally {
       graph.close();
     }
@@ -116,6 +152,8 @@ describe('GraphQueries', () => {
       expect(result.data.relatedFiles).toContain('src/a.ts');
       expect(result.data.relatedFiles).toContain('src/b.ts');
       expect(result.data.codeBlocks.length).toBeGreaterThan(0);
+      expect(result.data.entryPoints.every((node) => !node.filePath.includes('node_modules'))).toBe(true);
+      expect(result.data.subgraph.nodes.every((node) => !node.filePath.includes('node_modules'))).toBe(true);
       expect(result.data.stats).toEqual({
         nodeCount: result.data.subgraph.nodes.length,
         edgeCount: result.data.subgraph.edges.length,
@@ -165,7 +203,7 @@ describe('GraphQueries', () => {
       expect(result.data.node.name).toBe('run');
       expect(result.data.code?.content).toBe([
         '  run() {',
-        "    return helper('Ada');",
+        "    return helper('Ada') + externalFn();",
         '  }',
       ].join('\n'));
       expect(result.meta.partial).toBe(false);
@@ -180,6 +218,7 @@ describe('GraphQueries', () => {
       const result = await graph.explore({ query: 'run helper', maxFiles: 4 });
 
       expect(result.data.files.map((file) => file.filePath)).toEqual(['src/a.ts', 'src/b.ts']);
+      expect(result.data.files.some((file) => file.filePath.includes('node_modules'))).toBe(false);
       expect(result.data.files.map((file) => file.blocks.map((block) => block.filePath))).toEqual([
         ['src/a.ts'],
         ['src/b.ts'],
@@ -253,6 +292,27 @@ describe('GraphQueries', () => {
 
 async function indexFixtureProject(): Promise<Astrograph> {
   const root = await makeTempProject();
+  await writeProjectFile(root, 'node_modules/fake-lib/index.d.ts', [
+    'export declare function externalFn(): string;',
+    '',
+  ].join('\n'));
+  await writeProjectFile(root, 'node_modules/fake-lib/package.json', [
+    '{ "name": "fake-lib", "main": "index.js", "types": "index.d.ts" }',
+    '',
+  ].join('\n'));
+  await writeProjectFile(root, 'tsconfig.json', [
+    '{',
+    '  "compilerOptions": {',
+    '    "target": "ESNext",',
+    '    "module": "ESNext",',
+    '    "moduleResolution": "bundler",',
+    '    "skipLibCheck": true,',
+    '    "strict": true',
+    '  },',
+    '  "include": ["src/**/*.ts"]',
+    '}',
+    '',
+  ].join('\n'));
   await writeProjectFile(root, 'src/b.ts', [
     'export class Base {',
     '  greet(name: string) {',
@@ -267,10 +327,11 @@ async function indexFixtureProject(): Promise<Astrograph> {
   ].join('\n'));
   await writeProjectFile(root, 'src/a.ts', [
     "import { helper, Base } from './b';",
+    "import { externalFn } from 'fake-lib';",
     '',
     'export class Child extends Base {',
     '  run() {',
-    "    return helper('Ada');",
+    "    return helper('Ada') + externalFn();",
     '  }',
     '}',
     '',

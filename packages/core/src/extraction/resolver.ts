@@ -203,6 +203,10 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
   function getEnclosingDeclaration(node: ts.Node): ts.Node | undefined {
     let current: ts.Node | undefined = node.parent;
     while (current) {
+      if ((ts.isArrowFunction(current) || ts.isFunctionExpression(current)) &&
+          ts.isVariableDeclaration(current.parent)) {
+        return current.parent;
+      }
       if (ts.isFunctionDeclaration(current) || ts.isMethodDeclaration(current) ||
           ts.isConstructorDeclaration(current) || ts.isClassDeclaration(current) ||
           ts.isInterfaceDeclaration(current) || ts.isEnumDeclaration(current) ||
@@ -212,7 +216,12 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
           ts.isSourceFile(current)) {
         return current;
       }
-      if (ts.isVariableStatement(current)) return current;
+      if (ts.isVariableDeclaration(current) && isProjectSourceVariableDeclaration(current)) {
+        return current;
+      }
+      if (ts.isVariableStatement(current) && hasProjectSourceVariableDeclaration(current)) {
+        return current;
+      }
       current = current.parent;
     }
     return undefined;
@@ -230,11 +239,15 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
       }, hasher);
     }
 
+    if (ts.isVariableDeclaration(enclosing)) {
+      return findNodeIdByPosition(enclosing);
+    }
+
     if (ts.isVariableStatement(enclosing)) {
-      const decl = enclosing.declarationList.declarations[0];
-      if (decl && ts.isIdentifier(decl.name)) {
-        return findNodeIdByPosition(decl);
-      }
+      const decl = enclosing.declarationList.declarations.find((candidate) =>
+        ts.isIdentifier(candidate.name) && isProjectSourceVariableDeclaration(candidate)
+      );
+      return decl === undefined ? undefined : findNodeIdByPosition(decl);
     }
 
     return findNodeIdByPosition(enclosing);
@@ -280,6 +293,15 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
     return astNode;
   }
 
+  function isProjectSourceVariableDeclaration(decl: ts.VariableDeclaration): boolean {
+    const init = decl.initializer;
+    return init !== undefined && (ts.isArrowFunction(init) || ts.isFunctionExpression(init) || ts.isClassExpression(init));
+  }
+
+  function hasProjectSourceVariableDeclaration(stmt: ts.VariableStatement): boolean {
+    return stmt.declarationList.declarations.some(isProjectSourceVariableDeclaration);
+  }
+
   function isCompatibleKind(expected: Node['kind'], actual: Node['kind']): boolean {
     return actual === expected || (expected === 'function' && actual === 'component');
   }
@@ -290,7 +312,15 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
   }
 
   function getSourceIdForNode(astNode: ts.Node): string | undefined {
-    return findNodeIdByPosition(astNode);
+    return findNodeIdByPosition(sourceLookupNode(astNode));
+  }
+
+  function sourceLookupNode(astNode: ts.Node): ts.Node {
+    if ((ts.isArrowFunction(astNode) || ts.isFunctionExpression(astNode) || ts.isClassExpression(astNode)) &&
+        ts.isVariableDeclaration(astNode.parent)) {
+      return astNode.parent;
+    }
+    return astNode;
   }
 
   function resolveSymbolAtLocation(location: ts.Node): ResolvedTarget | undefined {
@@ -654,7 +684,7 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
         if (sourceId) {
           const expr = node.expression;
           const symbolLocation = symbolLocationForExpression(expr);
-          markCoveredReference(symbolLocation);
+          markCoveredCallExpression(expr, symbolLocation);
           const sym = checker.getSymbolAtLocation(symbolLocation);
           if (sym) {
             const resolved = resolveSymbol(sym, symbolLocation);
@@ -694,7 +724,7 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
         if (sourceId) {
           const expr = node.expression;
           const symbolLocation = symbolLocationForExpression(expr);
-          markCoveredReference(symbolLocation);
+          markCoveredCallExpression(expr, symbolLocation);
           const sym = checker.getSymbolAtLocation(symbolLocation);
           if (sym) {
             const resolved = resolveSymbol(sym, symbolLocation);
@@ -949,6 +979,12 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
     }
 
     visit(sourceFile);
+  }
+
+  function markCoveredCallExpression(expr: ts.Expression, symbolLocation: ts.Node): void {
+    markCoveredReference(symbolLocation);
+    if (ts.isPropertyAccessExpression(expr)) markCoveredReference(expr.expression);
+    if (ts.isElementAccessExpression(expr)) markCoveredReference(expr.expression);
   }
 
   function emitReferenceForLocation(location: ts.Node | undefined): void {

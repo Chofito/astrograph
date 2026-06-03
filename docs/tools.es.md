@@ -93,7 +93,7 @@ Tipos de campos compartidos referenciados abajo: `NodeRef` = `{ id, name, kind, 
 - **Propósito.** Listar funciones que llaman a `<symbol>`.
 - **Utilidad.** "¿Quién usa esto?" antes de leer/editar.
 - **Offline.** Query de edge inverso `(target, kind='calls')`. ✅
-- **Inputs.** `symbol: string`, `limit?: number = 20`.
+- **Inputs.** `symbol: string`, `limit?: number = 20`, `includeExternal?: boolean = false`.
 - **Resultado.** `{ caller: NodeRef, callSite: EdgeRef }[]`.
 - **Progresivo.** ❌ inverso global — un caller puede vivir en un archivo `pending`. Reportar cobertura + marcar parcial hasta cobertura completa.
 - **Método core.** `callers()`.
@@ -102,7 +102,7 @@ Tipos de campos compartidos referenciados abajo: `NodeRef` = `{ id, name, kind, 
 - **Propósito.** Listar funciones que `<symbol>` llama.
 - **Utilidad.** "¿De qué depende esto?" sin leer el cuerpo.
 - **Offline.** Query de edge directo `(source, kind='calls')`. ✅
-- **Inputs.** `symbol: string`, `limit?: number = 20`.
+- **Inputs.** `symbol: string`, `limit?: number = 20`, `includeExternal?: boolean = false`.
 - **Resultado.** `{ callee: NodeRef, callSite: EdgeRef }[]`.
 - **Progresivo.** ✅ mayormente local (salientes desde el archivo del símbolo una vez parseado).
 - **Método core.** `callees()`.

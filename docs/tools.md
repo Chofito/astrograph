@@ -93,7 +93,7 @@ Shared field types referenced below: `NodeRef` = `{ id, name, kind, qualifiedNam
 - **Purpose.** List functions that call `<symbol>`.
 - **Utility.** "Who uses this?" before reading/editing.
 - **Offline.** Reverse edge query `(target, kind='calls')`. ✅
-- **Inputs.** `symbol: string`, `limit?: number = 20`.
+- **Inputs.** `symbol: string`, `limit?: number = 20`, `includeExternal?: boolean = false`.
 - **Result.** `{ caller: NodeRef, callSite: EdgeRef }[]`.
 - **Progressive.** ❌ global reverse — a caller may live in a `pending` file. Report coverage + mark partial until full coverage.
 - **Core method.** `callers()`.
@@ -102,7 +102,7 @@ Shared field types referenced below: `NodeRef` = `{ id, name, kind, qualifiedNam
 - **Purpose.** List functions that `<symbol>` calls.
 - **Utility.** "What does this depend on?" without reading the body.
 - **Offline.** Forward edge query `(source, kind='calls')`. ✅
-- **Inputs.** `symbol: string`, `limit?: number = 20`.
+- **Inputs.** `symbol: string`, `limit?: number = 20`, `includeExternal?: boolean = false`.
 - **Result.** `{ callee: NodeRef, callSite: EdgeRef }[]`.
 - **Progressive.** ✅ mostly local (outgoing from the symbol's file once parsed).
 - **Core method.** `callees()`.
