@@ -7,6 +7,7 @@ import { runFiles } from './commands/files';
 import { runImpact } from './commands/impact';
 import { runIndex } from './commands/index';
 import { runInit } from './commands/init';
+import { runInstall } from './commands/install';
 import { runNode } from './commands/node';
 import { runSearch } from './commands/search';
 import { runServe } from './commands/serve';
@@ -15,6 +16,7 @@ import { runStop } from './commands/stop';
 import { runSync } from './commands/sync';
 import { runTrace } from './commands/trace';
 import { runUninit } from './commands/uninit';
+import { runUninstall } from './commands/uninstall';
 import { runUnlock } from './commands/unlock';
 import { commandHelp, globalHelp, versionText } from './help';
 
@@ -61,6 +63,8 @@ const COMMANDS: Record<string, CommandHandler> = {
   explore: runExplore,
   files: runFiles,
   serve: runServe,
+  install: runInstall,
+  uninstall: runUninstall,
 };
 
 export async function runCli(argv: string[], ctx: CliContext = { cwd: process.cwd() }): Promise<CliRunResult> {
