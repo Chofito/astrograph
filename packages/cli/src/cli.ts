@@ -12,6 +12,7 @@ import { runNode } from './commands/node';
 import { runSearch } from './commands/search';
 import { runServe } from './commands/serve';
 import { runStatus } from './commands/status';
+import { runWeb } from './commands/web';
 import { runStop } from './commands/stop';
 import { runSync } from './commands/sync';
 import { runTrace } from './commands/trace';
@@ -63,6 +64,7 @@ const COMMANDS: Record<string, CommandHandler> = {
   explore: runExplore,
   files: runFiles,
   serve: runServe,
+  web: runWeb,
   install: runInstall,
   uninstall: runUninstall,
 };

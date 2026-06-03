@@ -161,12 +161,13 @@ MCP server (`packages/mcp`) on top of the **official `@modelcontextprotocol/sdk`
 
 ## 6. Stage 3 — Web UI ("constellation")
 
-`apps/web` with `Bun.serve()` + HTML imports + React + **Tailwind + shadcn/ui** for the chrome (per `CLAUDE.md`; no Vite).
+`apps/web` with `Bun.serve()` + HTML imports + React + **Tailwind + shadcn/ui** for the chrome (per `CLAUDE.md`; no Vite). **Full UI design — API surface, rendering, single-binary embedding, build order:** [docs/web.md](docs/web.md).
 
+- **Single binary, no separate deploy:** the viewer is a **subcommand of the same `astrograph` binary** (`astrograph web`). Bun's full-stack `--compile` embeds the frontend bundle (HTML/JS/CSS, three.js) into the executable; the per-project **`graph.db` is NOT embedded** — it's read at runtime from the target repo's `.astrograph/`, like every other command. The binary ships the *viewer*, not the *data*.
 - **Usable graph visualization MVP:** rendered with **three.js** via `react-force-graph-3d` (force-directed) + `@react-three/postprocessing` for bloom/glow — or react-three-fiber directly if we need full shader/effect control. Stage 3 must be useful for internal product presentation, not only a pretty demo.
 - **Performance:** acceptable on large graphs (LOD/culling, instancing); degrade to 2D if the graph is huge.
 - **Interaction:** 3D navigation, search, node selection with a detail panel (code, context, callers/callees, edges), filters by node kind and edge kind.
-- **Data:** endpoint(s) serving the graph from the local `.astrograph/`, reusing `packages/core`.
+- **Data:** a small local JSON API (bulk graph snapshot + node detail + search + status) over `packages/core`, plus an optional WebSocket pushing `FreshnessManager` deltas (the "living constellation"). Reads the local `.astrograph/` read-only.
 
 ### Acceptance criteria (Stage 3)
 - Renders a real repo's constellation with smooth interaction.
@@ -192,6 +193,7 @@ astrograph/
 │   ├── testing.md                                   # fixtures + golden + eval harness
 │   ├── cli.md                                       # CLI command catalog & design
 │   ├── mcp.md                                        # MCP server design (Stage 2)
+│   ├── web.md                                         # 3D web UI design (Stage 3)
 │   ├── graph-model.md                               # full graph/DB data model
 │   ├── tools.md / tools.es.md                       # agent-facing tool contract
 │   ├── progressive-indexing.md      # streaming indexing design (S2) — EN

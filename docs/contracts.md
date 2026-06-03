@@ -282,6 +282,17 @@ export interface StatusOutput {
   dbSizeBytes: number; lastUpdated: number;
   backend: string; journalMode: string;
 }
+
+export interface GraphInput extends Scoped {
+  includeExternal?: boolean;  // default false (project-only)
+  limit?: number;             // cap node count; dangling edges removed
+  kinds?: NodeKind[];          // optional allow-list filter
+}
+
+export interface GraphOutput {
+  nodes: Node[];  // canonical full Node shape (not NodeRef)
+  edges: Edge[];   // canonical full Edge shape (not EdgeRef)
+}
 ```
 
 ## 7. Core facade
@@ -298,6 +309,7 @@ export interface AstrographCore {
   explore(i: ExploreInput): Promise<ToolResult<ExploreOutput>>;
   getFiles(i: FilesInput): Promise<ToolResult<FilesOutput>>;
   getStats(i: StatusInput): Promise<ToolResult<StatusOutput>>;
+  getGraph(i: GraphInput): Promise<ToolResult<GraphOutput>>;
   // lifecycle
   indexAll(opts?: { force?: boolean }): Promise<void>;
   sync(): Promise<{ added: string[]; modified: string[]; removed: string[] }>;

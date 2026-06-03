@@ -184,6 +184,7 @@ function fakeGraph(): AstrographCore {
     explore: async () => ({ data: { files: [{ filePath: 'src/account.ts', blocks: [block('src/account.ts', 'export const useAccount = () => account;')] }], relationshipMap: [call] }, meta: meta() }),
     getFiles: async () => ({ data: { format: 'flat', entries: [{ filePath: 'src/account.ts', language: 'typescript', nodeCount: 1, coverageState: 'resolved' }] }, meta: meta() }),
     getStats: async () => ({ data: { nodeCount: 2, edgeCount: 1, fileCount: 1, nodesByKind: { function: 1, component: 1 }, edgesByKind: { calls: 1 }, filesByLanguage: { typescript: 1 }, coverage: meta().coverage, dbSizeBytes: 4096, lastUpdated: 0, backend: 'sqlite', journalMode: 'wal' }, meta: meta() }),
+    getGraph: async () => ({ data: { nodes: [], edges: [] }, meta: meta() }),
     indexAll: async () => {},
     sync: async () => ({ added: [], modified: [], removed: [] }),
     syncFiles: async () => ({ added: [], modified: [], removed: [] }),

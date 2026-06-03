@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-astro-dark: #0b0d17;
+  --color-astro-panel: #11131f;
+  --color-astro-border: #1f2236;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background-color: #0b0d17;
+  color: #e2e8f0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.scene-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.scene-container canvas {
+  display: block;
+}

@@ -167,6 +167,54 @@ describe('GraphQueries', () => {
     }
   });
 
+  test('getGraph excludes external nodes by default and includes them on opt-in', async () => {
+    const graph = await indexFixtureProject();
+    try {
+      const defaultResult = await graph.getGraph({});
+      const defaultIds = defaultResult.data.nodes.map((node) => node.id);
+      expect(defaultResult.data.nodes.some((node) => node.isExternal)).toBe(false);
+
+      const withExternal = await graph.getGraph({ includeExternal: true });
+      const externalIds = withExternal.data.nodes.map((node) => node.id);
+      expect(withExternal.data.nodes.some((node) => node.isExternal)).toBe(true);
+      expect(externalIds.length).toBeGreaterThan(defaultIds.length);
+    } finally {
+      graph.close();
+    }
+  });
+
+  test('getGraph limit truncates nodes and removes dangling edges', async () => {
+    const graph = await indexFixtureProject();
+    try {
+      const full = await graph.getGraph({});
+      const limit = Math.max(1, full.data.nodes.length - 3);
+      const limited = await graph.getGraph({ limit });
+
+      expect(limited.data.nodes.length).toBeLessThanOrEqual(limit);
+      const nodeIds = new Set(limited.data.nodes.map((node) => node.id));
+      for (const edge of limited.data.edges) {
+        expect(nodeIds.has(edge.source)).toBe(true);
+        if (edge.target !== null) {
+          expect(nodeIds.has(edge.target)).toBe(true);
+        }
+      }
+    } finally {
+      graph.close();
+    }
+  });
+
+  test('getGraph kinds filter returns only matching nodes', async () => {
+    const graph = await indexFixtureProject();
+    try {
+      const functionsOnly = await graph.getGraph({ kinds: ['function'] });
+      expect(functionsOnly.data.nodes.every((node) => node.kind === 'function')).toBe(true);
+      const classesOnly = await graph.getGraph({ kinds: ['class'] });
+      expect(classesOnly.data.nodes.every((node) => node.kind === 'class')).toBe(true);
+    } finally {
+      graph.close();
+    }
+  });
+
   test('context respects token budgets for code blocks', async () => {
     const graph = await indexFixtureProject();
     try {

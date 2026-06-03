@@ -10,6 +10,8 @@ import type {
   ExploreOutput,
   FilesInput,
   FilesOutput,
+  GraphInput,
+  GraphOutput,
   ImpactInput,
   ImpactOutput,
   IndexProgress,
@@ -83,6 +85,10 @@ export class Astrograph implements AstrographCore {
 
   getStats(input: StatusInput): Promise<ToolResult<StatusOutput>> {
     return this.graphQueries.getStats(input);
+  }
+
+  getGraph(input: GraphInput): Promise<ToolResult<GraphOutput>> {
+    return this.graphQueries.getGraph(input);
   }
 
   indexAll(opts?: { force?: boolean; onProgress?: (e: IndexProgress) => void }): Promise<void> {

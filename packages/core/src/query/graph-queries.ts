@@ -15,6 +15,8 @@ import type {
   FileSystem,
   FilesInput,
   FilesOutput,
+  GraphInput,
+  GraphOutput,
   ImpactInput,
   ImpactOutput,
   Node,
@@ -375,6 +377,41 @@ export class GraphQueries {
   async getStats(_input: StatusInput): Promise<ToolResult<StatusOutput>> {
     const data = this.queries.getStats();
     return { data, meta: this.meta() };
+  }
+
+  async getGraph(input: GraphInput): Promise<ToolResult<GraphOutput>> {
+    let nodes = this.queries.getAllNodes();
+    if (input.includeExternal !== true) {
+      nodes = nodes.filter((node) => !node.isExternal);
+    }
+    if (input.kinds !== undefined && input.kinds.length > 0) {
+      const kindSet = new Set(input.kinds);
+      nodes = nodes.filter((node) => kindSet.has(node.kind));
+    }
+    if (input.limit !== undefined && input.limit > 0 && nodes.length > input.limit) {
+      nodes = nodes.slice(0, input.limit);
+    }
+
+    const nodeIds = new Set(nodes.map((node) => node.id));
+    let edges = this.queries.getAllEdges();
+    edges = edges.filter((edge) => {
+      if (!nodeIds.has(edge.source)) return false;
+      if (edge.target !== null && !nodeIds.has(edge.target)) return false;
+      return true;
+    });
+
+    const notes: string[] = [];
+    if (input.includeExternal !== true) {
+      notes.push('External nodes excluded (use includeExternal to show)');
+    }
+    if (input.limit !== undefined && input.limit > 0) {
+      notes.push(`Node limit applied: ${nodes.length} nodes returned`);
+    }
+
+    return {
+      data: { nodes, edges },
+      meta: this.meta({ notes }),
+    };
   }
 
   private resolveOrThrow(symbol: string): SymbolLookupResult & { best: Node } {

@@ -233,6 +233,17 @@ export interface StatusOutput {
   backend: string; journalMode: string;
 }
 
+export interface GraphInput extends Scoped {
+  includeExternal?: boolean;
+  limit?: number;
+  kinds?: NodeKind[];
+}
+
+export interface GraphOutput {
+  nodes: Node[];
+  edges: Edge[];
+}
+
 export interface AstrographCore {
   search(i: SearchInput): Promise<ToolResult<SearchOutput>>;
   context(i: ContextInput): Promise<ToolResult<ContextOutput>>;
@@ -244,6 +255,7 @@ export interface AstrographCore {
   explore(i: ExploreInput): Promise<ToolResult<ExploreOutput>>;
   getFiles(i: FilesInput): Promise<ToolResult<FilesOutput>>;
   getStats(i: StatusInput): Promise<ToolResult<StatusOutput>>;
+  getGraph(i: GraphInput): Promise<ToolResult<GraphOutput>>;
   indexAll(opts?: { force?: boolean; onProgress?: (e: IndexProgress) => void }): Promise<void>;
   sync(): Promise<{ added: string[]; modified: string[]; removed: string[] }>;
   syncFiles(events: WatchEvent[]): Promise<{ added: string[]; modified: string[]; removed: string[] }>;

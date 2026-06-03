@@ -145,6 +145,7 @@ function fakeGraph(overrides: Partial<AstrographCore> = {}): AstrographCore {
     explore: async () => ({ data: { files: [], relationshipMap: [] }, meta: meta() }),
     getFiles: async () => ({ data: { format: 'flat', entries: [] }, meta: meta() }),
     getStats: async () => ({ data: { nodeCount: 0, edgeCount: 0, fileCount: 0, nodesByKind: {}, edgesByKind: {}, filesByLanguage: {}, coverage: { total: 0, resolved: 0, parsed: 0, pending: 0 }, dbSizeBytes: 0, lastUpdated: 0, backend: 'sqlite', journalMode: 'wal' }, meta: meta() }),
+    getGraph: async () => ({ data: { nodes: [], edges: [] }, meta: meta() }),
     indexAll: async () => {},
     sync: async () => ({ added: [], modified: [], removed: [] }),
     syncFiles: async () => ({ added: [], modified: [], removed: [] }),
