@@ -59,8 +59,8 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
   const errors: ExtractionError[] = [];
 
   function toRelative(absPath: string): string {
-    const normalized = absPath.replaceAll('\\', '/');
-    const root = rootPath.replaceAll('\\', '/');
+    const normalized = normalizeFsPath(absPath);
+    const root = normalizeFsPath(rootPath);
     if (normalized.startsWith(root + '/')) return normalized.slice(root.length + 1);
     return normalized;
   }
@@ -1109,6 +1109,11 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
 
   edges.sort(compareEdges);
   return { edges, externalNodes, errors };
+}
+
+function normalizeFsPath(path: string): string {
+  const normalized = path.replaceAll('\\', '/');
+  return normalized.startsWith('/private/var/') ? normalized.slice('/private'.length) : normalized;
 }
 
 function pickDeclaration(decls: ts.Declaration[]): ts.Declaration | undefined {

@@ -180,8 +180,8 @@ export class TsExtractor implements Extractor {
   }
 
   private toRelative(absPath: string): string {
-    const normalized = absPath.replaceAll('\\', '/');
-    const root = this.rootPath!.replaceAll('\\', '/');
+    const normalized = normalizeFsPath(absPath);
+    const root = normalizeFsPath(this.rootPath!);
     if (normalized.startsWith(root + '/')) return normalized.slice(root.length + 1);
     return normalized;
   }
@@ -734,6 +734,11 @@ export class TsExtractor implements Extractor {
       updatedAt: this.now(),
     };
   }
+}
+
+function normalizeFsPath(path: string): string {
+  const normalized = path.replaceAll('\\', '/');
+  return normalized.startsWith('/private/var/') ? normalized.slice('/private'.length) : normalized;
 }
 
 function findConfigFile(rootPath: string): string | undefined {

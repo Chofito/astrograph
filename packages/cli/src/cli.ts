@@ -8,6 +8,7 @@ import { runIndex } from './commands/index';
 import { runInit } from './commands/init';
 import { runNode } from './commands/node';
 import { runSearch } from './commands/search';
+import { runServe } from './commands/serve';
 import { runStatus } from './commands/status';
 import { runSync } from './commands/sync';
 import { runTrace } from './commands/trace';
@@ -55,6 +56,7 @@ const COMMANDS: Record<string, CommandHandler> = {
   node: runNode,
   explore: runExplore,
   files: runFiles,
+  serve: runServe,
 };
 
 export async function runCli(argv: string[], ctx: CliContext = { cwd: process.cwd() }): Promise<CliRunResult> {

@@ -26,6 +26,7 @@ export function globalHelp(): string {
     '  node <symbol>            Show one symbol',
     '  explore <terms...>       Group related code by file',
     '  files                    Show indexed files',
+    '  serve --mcp              Start the stdio MCP server',
     '',
     'Global:',
     '  -h, --help               Show help',
@@ -52,6 +53,7 @@ export function commandHelp(command: string): string {
     node: 'Usage: astrograph node <symbol> [-c] [-j]',
     explore: 'Usage: astrograph explore <terms...> [--max-files 12] [-j]',
     files: 'Usage: astrograph files [--filter dir] [--pattern glob] [--format tree|flat|grouped] [-j]',
+    serve: 'Usage: astrograph serve --mcp [--path dir]',
   };
   return usage[command] ?? globalHelp();
 }

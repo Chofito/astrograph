@@ -142,7 +142,7 @@ Unit tests for extraction and resolution over the fixtures; graph/query tests; a
 
 ## 5. Stage 2 — MCP support
 
-MCP server (`packages/mcp`) on top of the **official `@modelcontextprotocol/sdk`** (stdio transport).
+MCP server (`packages/mcp`) on top of the **official `@modelcontextprotocol/sdk`** (stdio transport). **Full server design — decisions, freshness model, install targets, build order:** [docs/mcp.md](docs/mcp.md).
 
 - **Tools** equivalent to codegraph: `astrograph_search/context/callers/callees/impact/trace/node/explore/files/status`. Reference [`codegraph/src/mcp/tools.ts`](../codegraph/src/mcp/tools.ts) and [`server-instructions.ts`](../codegraph/src/mcp/server-instructions.ts) for shape/descriptions — but the protocol plumbing comes from the SDK. **Full transport-agnostic tool contract (inputs, structured results, offline-viability, per-surface formatting):** [docs/tools.md](docs/tools.md).
 - **Usage instructions** delivered in the MCP `initialize` (without touching the user's `CLAUDE.md`).
@@ -191,6 +191,7 @@ astrograph/
 │   ├── extraction.md                                # TS Compiler API → graph mapping
 │   ├── testing.md                                   # fixtures + golden + eval harness
 │   ├── cli.md                                       # CLI command catalog & design
+│   ├── mcp.md                                        # MCP server design (Stage 2)
 │   ├── graph-model.md                               # full graph/DB data model
 │   ├── tools.md / tools.es.md                       # agent-facing tool contract
 │   ├── progressive-indexing.md      # streaming indexing design (S2) — EN
