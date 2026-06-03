@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "astrograph-monorepo",
+      "dependencies": {
+        "@astrograph/core": "workspace:*",
+      },
       "devDependencies": {
         "@types/bun": "latest",
         "typescript": "^5.7.0",
