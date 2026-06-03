@@ -1,8 +1,10 @@
 {
   "name": "@astrograph/cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "author": "Rodolfo Robles",
+  "license": "Apache-2.0",
   "description": "astrograph command-line interface — classic args + isolated opentui (see docs/cli.md)",
   "bin": {
     "astrograph": "./src/bin/astrograph.ts"

@@ -1,8 +1,10 @@
 {
   "name": "astrograph-monorepo",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "author": "Rodolfo Robles",
+  "license": "Apache-2.0",
   "description": "Local-first code graph for JS/TS — monorepo root (see ROADMAP.md)",
   "workspaces": [
     "packages/*",

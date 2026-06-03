@@ -1,8 +1,10 @@
 {
   "name": "@astrograph/core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "author": "Rodolfo Robles",
+  "license": "Apache-2.0",
   "description": "Graph, storage adapters, TS extraction, resolution, queries & traversal (see docs/graph-model.md, docs/extraction.md)",
   "exports": {
     ".": "./src/index.ts",

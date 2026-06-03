@@ -1,8 +1,10 @@
 {
   "name": "@astrograph/mcp",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "author": "Rodolfo Robles",
+  "license": "Apache-2.0",
   "description": "MCP server over the official @modelcontextprotocol/sdk — Stage 2 (see docs/tools.md). SDK + transport deps added when implemented.",
   "scripts": {
     "typecheck": "tsc --noEmit"
