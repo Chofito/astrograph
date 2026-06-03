@@ -1,4 +1,10 @@
-import type { AstrographCore, AstrographConfig, ToolResult, WatchEvent, Watcher } from '@astrograph/core';
+import type { AstrographConfig, AstrographCore, ToolResult, WatchEvent, Watcher } from './types';
+
+export interface FreshnessSyncResult {
+  added: string[];
+  modified: string[];
+  removed: string[];
+}
 
 export interface FreshnessManagerOptions {
   root: string;
@@ -6,6 +12,9 @@ export interface FreshnessManagerOptions {
   graph: AstrographCore;
   watcher?: Watcher;
   debounceMs?: number;
+  onSyncStart?: (events: WatchEvent[]) => void;
+  onSyncComplete?: (events: WatchEvent[], result: FreshnessSyncResult) => void;
+  onSyncError?: (events: WatchEvent[], error: unknown) => void;
 }
 
 export class FreshnessManager {
@@ -14,6 +23,9 @@ export class FreshnessManager {
   private readonly watcher: Watcher | undefined;
   private readonly debounceMs: number;
   private readonly excludedPrefixes: string[];
+  private readonly onSyncStart: ((events: WatchEvent[]) => void) | undefined;
+  private readonly onSyncComplete: ((events: WatchEvent[], result: FreshnessSyncResult) => void) | undefined;
+  private readonly onSyncError: ((events: WatchEvent[], error: unknown) => void) | undefined;
 
   private readonly pendingEvents = new Map<string, WatchEvent>();
   private watchHandle: { close(): void } | undefined;
@@ -27,6 +39,9 @@ export class FreshnessManager {
     this.graph = options.graph;
     this.watcher = options.watcher;
     this.debounceMs = options.debounceMs ?? options.config?.watchDebounceMs ?? 300;
+    this.onSyncStart = options.onSyncStart;
+    this.onSyncComplete = options.onSyncComplete;
+    this.onSyncError = options.onSyncError;
     this.excludedPrefixes = [
       'node_modules/',
       '.git/',
@@ -36,12 +51,14 @@ export class FreshnessManager {
     ].map(normalizeExclude);
   }
 
-  start(): void {
-    if (this.closed || this.watcher === undefined) return;
+  start(): boolean {
+    if (this.closed || this.watcher === undefined) return false;
     try {
       this.watchHandle = this.watcher.watch([this.root], (event) => this.recordEvent(event));
+      return true;
     } catch {
       this.unavailable = true;
+      return false;
     }
   }
 
@@ -115,10 +132,13 @@ export class FreshnessManager {
     if (events.length === 0) return;
 
     await this.enqueueSync(async () => {
+      this.onSyncStart?.(events);
       try {
-        await this.graph.syncFiles(events);
+        const result = await this.graph.syncFiles(events);
+        this.onSyncComplete?.(events, result);
       } catch (error) {
         for (const event of events) this.pendingEvents.set(event.path, event);
+        this.onSyncError?.(events, error);
         throw error;
       }
     });

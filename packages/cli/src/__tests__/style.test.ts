@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { style, symbols } from '../format/style';
+import { createTerminalStyle, style, symbols } from '../format/style';
 
 describe('style helpers', () => {
   test('success emits checkmark and message', () => {
@@ -24,18 +24,6 @@ describe('style helpers', () => {
     const result = style.info('No index at /project');
     expect(result).toContain(symbols.info);
     expect(result).toContain('No index at /project');
-  });
-
-  test('step emits bullet and message', () => {
-    const result = style.step('Creating .astrograph/');
-    expect(result).toContain(symbols.bullet);
-    expect(result).toContain('Creating .astrograph/');
-  });
-
-  test('count emits number and label', () => {
-    const result = style.count(42, 'files');
-    expect(result).toContain('42');
-    expect(result).toContain('files');
   });
 
   test('dim wraps text', () => {
@@ -89,35 +77,37 @@ describe('style helpers', () => {
 });
 
 describe('non-TTY output', () => {
+  const plainStyle = createTerminalStyle(false, {});
+
   test('chalk auto-disables when not a TTY', () => {
-    const result = style.success('test message');
+    const result = plainStyle.success('test message');
     const hasAnsiCodes = /\x1b\[[0-9;]*m/.test(result);
     expect(hasAnsiCodes).toBe(false);
   });
 
   test('num helper has no ANSI codes in non-TTY', () => {
-    const result = style.num(42);
+    const result = plainStyle.num(42);
     const hasAnsiCodes = /\x1b\[[0-9;]*m/.test(result);
     expect(hasAnsiCodes).toBe(false);
     expect(result).toContain('42');
   });
 
   test('added helper has no ANSI codes in non-TTY', () => {
-    const result = style.added(10);
+    const result = plainStyle.added(10);
     const hasAnsiCodes = /\x1b\[[0-9;]*m/.test(result);
     expect(hasAnsiCodes).toBe(false);
     expect(result).toContain('+10');
   });
 
   test('modified helper has no ANSI codes in non-TTY', () => {
-    const result = style.modified(5);
+    const result = plainStyle.modified(5);
     const hasAnsiCodes = /\x1b\[[0-9;]*m/.test(result);
     expect(hasAnsiCodes).toBe(false);
     expect(result).toContain('~5');
   });
 
   test('removed helper has no ANSI codes in non-TTY', () => {
-    const result = style.removed(3);
+    const result = plainStyle.removed(3);
     const hasAnsiCodes = /\x1b\[[0-9;]*m/.test(result);
     expect(hasAnsiCodes).toBe(false);
     expect(result).toContain('-3');

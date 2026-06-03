@@ -3,8 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Astrograph, AstrographConfig, AstrographCore, ToolResult, Watcher } from '@astrograph/core';
+import { FreshnessManager } from '@astrograph/core';
 import { BunWatcher, openProject } from '@astrograph/core/bun';
-import { FreshnessManager } from './freshness';
+import { readActiveDaemon } from './daemon';
 
 export interface RootHint {
   uri: string;
@@ -55,11 +56,14 @@ export class ProjectSession {
     if (root === undefined) throw new MissingIndexError(startPath);
 
     const config = await loadConfig(root);
+    const activeDaemon = readActiveDaemon(root);
     const graph = await this.openProjectImpl(root, { config });
-    await graph.sync();
+    if (activeDaemon === undefined) {
+      await graph.sync();
+    }
     this.graph = graph;
     this.root = root;
-    if (this.watch) {
+    if (this.watch && activeDaemon === undefined) {
       this.freshness = new FreshnessManager({ root, config, graph, watcher: this.watcher });
       this.freshness.start();
     }

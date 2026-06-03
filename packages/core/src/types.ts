@@ -244,10 +244,17 @@ export interface AstrographCore {
   explore(i: ExploreInput): Promise<ToolResult<ExploreOutput>>;
   getFiles(i: FilesInput): Promise<ToolResult<FilesOutput>>;
   getStats(i: StatusInput): Promise<ToolResult<StatusOutput>>;
-  indexAll(opts?: { force?: boolean }): Promise<void>;
+  indexAll(opts?: { force?: boolean; onProgress?: (e: IndexProgress) => void }): Promise<void>;
   sync(): Promise<{ added: string[]; modified: string[]; removed: string[] }>;
   syncFiles(events: WatchEvent[]): Promise<{ added: string[]; modified: string[]; removed: string[] }>;
   close(): void;
+}
+
+export interface IndexProgress {
+  phase: 'scan' | 'parse' | 'resolve' | 'done';
+  current: number;
+  total: number;
+  file?: string;
 }
 
 export interface AstrographConfig {

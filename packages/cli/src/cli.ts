@@ -1,6 +1,7 @@
 import { runCallers } from './commands/callers';
 import { runCallees } from './commands/callees';
 import { runContext } from './commands/context';
+import { runDaemon } from './commands/daemon';
 import { runExplore } from './commands/explore';
 import { runFiles } from './commands/files';
 import { runImpact } from './commands/impact';
@@ -10,6 +11,7 @@ import { runNode } from './commands/node';
 import { runSearch } from './commands/search';
 import { runServe } from './commands/serve';
 import { runStatus } from './commands/status';
+import { runStop } from './commands/stop';
 import { runSync } from './commands/sync';
 import { runTrace } from './commands/trace';
 import { runUninit } from './commands/uninit';
@@ -45,6 +47,8 @@ const COMMANDS: Record<string, CommandHandler> = {
   sync: runSync,
   status: runStatus,
   unlock: runUnlock,
+  stop: runStop,
+  daemon: runDaemon,
   search: runSearch,
   query: runSearch,
   q: runSearch,

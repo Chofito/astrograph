@@ -1,9 +1,10 @@
 import type { CliContext, CliRunResult } from '../cli';
-import { ok } from '../cli';
+import { CliError, ok } from '../cli';
 import { requireProjectRoot, resolveProjectPath } from '../root';
 import { booleanValue, parseCommandArgs } from './parse';
 import { withGraph } from './shared';
 import { style, symbols } from '../format/style';
+import { isDaemonRunning, readDaemonMetadata } from './daemon-utils';
 
 export async function runIndex(args: string[], ctx: CliContext): Promise<CliRunResult> {
   const parsed = parseCommandArgs(args, {
@@ -13,19 +14,27 @@ export async function runIndex(args: string[], ctx: CliContext): Promise<CliRunR
     help: { type: 'boolean', short: 'h' },
   });
   const root = requireProjectRoot(resolveProjectPath(ctx.cwd, parsed.positionals[0]));
-  
+
+  if (isDaemonRunning(root)) {
+    const metadata = readDaemonMetadata(root);
+    throw new CliError(
+      `Cannot index: daemon is running (pid ${metadata?.pid ?? 'unknown'}). Stop it first with \`astrograph stop\`.`,
+      1,
+    );
+  }
+
   const result = await withGraph(root, async (graph) => {
     await graph.indexAll({ force: booleanValue(parsed.values, 'force') });
     return graph.getStats({});
   });
-  
+
   if (booleanValue(parsed.values, 'quiet')) return ok();
-  
+
   const { fileCount, nodeCount, edgeCount, coverage } = result.data;
-  const headerMsg = booleanValue(parsed.values, 'verbose') 
-    ? `Indexed ${style.path(root)}` 
+  const headerMsg = booleanValue(parsed.values, 'verbose')
+    ? `Indexed ${style.path(root)}`
     : 'Indexed';
-  
+
   const lines = [
     style.success(headerMsg),
     `  ${style.num(fileCount)} files ${symbols.bullet} ${style.num(nodeCount)} nodes ${symbols.bullet} ${style.num(edgeCount)} edges`,

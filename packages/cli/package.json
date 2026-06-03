@@ -5,7 +5,7 @@
   "type": "module",
   "author": "Rodolfo Robles",
   "license": "Apache-2.0",
-  "description": "astrograph command-line interface — classic args + isolated opentui (see docs/cli.md)",
+  "description": "astrograph command-line interface — polished terminal output and query commands (see docs/cli.md)",
   "bin": {
     "astrograph": "./src/bin/astrograph.ts"
   },

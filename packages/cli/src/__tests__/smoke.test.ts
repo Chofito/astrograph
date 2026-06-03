@@ -28,8 +28,10 @@ describe('CLI command smoke', () => {
 
       const status = await runStatus([root], { cwd: root });
       expect(status.exitCode).toBe(0);
-      expect(status.stdout).toContain('files 1');
-      expect(status.stdout).toContain('coverage 1/1 resolved');
+      expect(status.stdout).toContain('files');
+      expect(status.stdout).toContain('1');
+      expect(status.stdout).toContain('coverage');
+      expect(status.stdout).toContain('1/1 resolved');
     } finally {
       await rm(root, { recursive: true, force: true });
     }

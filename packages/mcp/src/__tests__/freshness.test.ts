@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { AstrographCore, ToolResult, WatchEvent } from '@astrograph/core';
-import { FreshnessManager } from '../freshness';
+import { FreshnessManager, type AstrographCore, type ToolResult, type WatchEvent } from '@astrograph/core';
 
 describe('MCP freshness manager', () => {
   test('on-demand guard syncs pending files before the next tool result', async () => {
@@ -91,6 +90,34 @@ describe('MCP freshness manager', () => {
 
       expect(syncCount).toBe(1);
       expect(manager.pendingFiles()).toEqual([]);
+    } finally {
+      manager.close();
+    }
+  });
+
+  test('reports sync lifecycle callbacks for a debounced batch', async () => {
+    const started: WatchEvent[][] = [];
+    const completed: string[][] = [];
+    const manager = new FreshnessManager({
+      root: '/repo',
+      graph: fakeGraph({
+        syncFiles: async (events) => ({ added: [], modified: events.map((event) => event.path), removed: [] }),
+      }),
+      debounceMs: 10_000,
+      onSyncStart: (events) => started.push(events),
+      onSyncComplete: (_events, result) => completed.push(result.modified),
+    });
+
+    try {
+      manager.recordEvent({ type: 'change', path: '/repo/src/a.ts' });
+      manager.recordEvent({ type: 'change', path: '/repo/src/b.ts' });
+      await manager.beforeQuery();
+
+      expect(started).toEqual([[
+        { type: 'change', path: 'src/a.ts' },
+        { type: 'change', path: 'src/b.ts' },
+      ]]);
+      expect(completed).toEqual([['src/a.ts', 'src/b.ts']]);
     } finally {
       manager.close();
     }

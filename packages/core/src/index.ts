@@ -10,3 +10,4 @@ export * from './query/graph-queries';
 export * from './query/meta';
 export * from './indexer';
 export * from './astrograph';
+export * from './freshness';

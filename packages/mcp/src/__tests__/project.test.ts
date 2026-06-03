@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import type { Astrograph, AstrographCore, Watcher } from '@astrograph/core';
 import { MissingIndexError, ProjectSession, findProjectRoot } from '../project';
@@ -86,6 +86,46 @@ describe('MCP project session', () => {
       await session.getGraph();
 
       expect(syncCount).toBe(1);
+      expect(watchCount).toBe(0);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('active daemon makes MCP read-only: no reconcile and no watcher', async () => {
+    const root = await mkdtemp(`${tmpdir()}/astrograph-mcp-daemon-`);
+    let syncCount = 0;
+    let watchCount = 0;
+    try {
+      await mkdir(`${root}/.astrograph`, { recursive: true });
+      await writeFile(`${root}/.astrograph/daemon.json`, JSON.stringify({
+        pid: process.pid,
+        startedAt: 1,
+        root,
+        mode: 'watch',
+      }), 'utf8');
+      const watcher: Watcher = {
+        watch: () => {
+          watchCount += 1;
+          return { close() {} };
+        },
+      };
+      const graph = fakeGraph({
+        sync: async () => {
+          syncCount += 1;
+          return { added: [], modified: [], removed: [] };
+        },
+      });
+      const session = new ProjectSession({
+        cwd: root,
+        watch: true,
+        watcher,
+        open: async () => graph as Astrograph,
+      });
+
+      await session.getGraph();
+
+      expect(syncCount).toBe(0);
       expect(watchCount).toBe(0);
     } finally {
       await rm(root, { recursive: true, force: true });

@@ -6,6 +6,7 @@ import type {
   FileSystem,
   GlobScanner,
   Hasher,
+  IndexProgress,
   ProjectExtractor,
   StorageAdapter,
   WatchEvent,
@@ -27,6 +28,7 @@ export interface IndexerOptions {
 
 export interface IndexAllOptions {
   force?: boolean;
+  onProgress?: (e: IndexProgress) => void;
 }
 
 export class Indexer {
@@ -57,6 +59,8 @@ export class Indexer {
     const configHash = await this.computeConfigHash();
     const files = await this.scanFiles();
 
+    options.onProgress?.({ phase: 'scan', current: files.length, total: files.length });
+
     this.extractor.loadProject({
       rootPath: this.root,
       tsconfigPath: this.config.tsconfigPath,
@@ -64,15 +68,20 @@ export class Indexer {
       loadNodesForFile: (filePath) => this.queries.getNodesByFile(filePath),
     });
 
-    for (const relPath of files) {
+    for (let i = 0; i < files.length; i++) {
+      const relPath = files[i]!;
+      options.onProgress?.({ phase: 'parse', current: i + 1, total: files.length, file: relPath });
       await this.indexFilePassA(relPath, { force: options.force ?? false });
     }
 
-    for (const relPath of files) {
+    for (let i = 0; i < files.length; i++) {
+      const relPath = files[i]!;
+      options.onProgress?.({ phase: 'resolve', current: i + 1, total: files.length, file: relPath });
       this.indexFilePassB(relPath);
     }
 
     this.persistProjectMetadata(configHash);
+    options.onProgress?.({ phase: 'done', current: files.length, total: files.length });
   }
 
   async sync(): Promise<{ added: string[]; modified: string[]; removed: string[] }> {

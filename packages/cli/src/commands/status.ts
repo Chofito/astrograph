@@ -5,6 +5,7 @@ import { formatStatus } from '../format/status';
 import { requireProjectRoot, resolveProjectPath } from '../root';
 import { booleanValue, parseCommandArgs } from './parse';
 import { withGraph } from './shared';
+import { peekDaemonRunning, readDaemonMetadata } from './daemon-utils';
 
 export async function runStatus(args: string[], ctx: CliContext): Promise<CliRunResult> {
   const parsed = parseCommandArgs(args, {
@@ -13,5 +14,18 @@ export async function runStatus(args: string[], ctx: CliContext): Promise<CliRun
   });
   const root = requireProjectRoot(resolveProjectPath(ctx.cwd, parsed.positionals[0]));
   const result = await withGraph(root, (graph) => graph.getStats({}));
-  return ok(booleanValue(parsed.values, 'json') ? jsonEnvelope(result) : formatStatus(result));
+
+  if (booleanValue(parsed.values, 'json')) {
+    return ok(jsonEnvelope(result));
+  }
+
+  const metadata = readDaemonMetadata(root);
+  const running = peekDaemonRunning(root);
+  const daemon = {
+    running,
+    pid: metadata?.pid,
+    startedAt: metadata?.startedAt,
+  };
+
+  return ok(formatStatus(result, daemon));
 }
