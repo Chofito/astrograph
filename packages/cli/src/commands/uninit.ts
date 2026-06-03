@@ -6,6 +6,7 @@ import type { CliContext, CliRunResult } from '../cli';
 import { ok } from '../cli';
 import { booleanValue, parseCommandArgs } from './parse';
 import { resolveProjectPath } from '../root';
+import { style } from '../format/style';
 
 export async function runUninit(args: string[], ctx: CliContext): Promise<CliRunResult> {
   const parsed = parseCommandArgs(args, {
@@ -14,12 +15,12 @@ export async function runUninit(args: string[], ctx: CliContext): Promise<CliRun
   });
   const root = resolveProjectPath(ctx.cwd, parsed.positionals[0]);
   const dir = `${root}/.astrograph`;
-  if (!existsSync(dir)) return ok(`no index at ${root}`);
+  if (!existsSync(dir)) return ok(style.info(`No index at ${style.path(root)}`));
   if (!booleanValue(parsed.values, 'force') && !await confirmRemove(root)) {
-    return ok('aborted');
+    return ok(style.warn('Aborted'));
   }
   await rm(dir, { recursive: true, force: true });
-  return ok(`removed ${dir}`);
+  return ok(style.success(`Removed ${style.path(dir)}`));
 }
 
 async function confirmRemove(root: string): Promise<boolean> {

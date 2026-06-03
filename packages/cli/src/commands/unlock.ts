@@ -4,6 +4,7 @@ import type { CliContext, CliRunResult } from '../cli';
 import { ok } from '../cli';
 import { requireProjectRoot, resolveProjectPath } from '../root';
 import { parseCommandArgs } from './parse';
+import { style } from '../format/style';
 
 export async function runUnlock(args: string[], ctx: CliContext): Promise<CliRunResult> {
   const parsed = parseCommandArgs(args, { help: { type: 'boolean', short: 'h' } });
@@ -16,5 +17,8 @@ export async function runUnlock(args: string[], ctx: CliContext): Promise<CliRun
       removed += 1;
     }
   }
-  return ok(`removed ${removed} lock file(s)`);
+  if (removed === 0) {
+    return ok(style.info('No lock held'));
+  }
+  return ok(style.success(`Lock released (${style.num(removed)} file${removed === 1 ? '' : 's'})`));
 }

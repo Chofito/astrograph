@@ -3,8 +3,9 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema, type CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import pkg from '../package.json';
 import { SERVER_INSTRUCTIONS } from './instructions';
-import { MissingIndexError, ProjectSession, type ProjectSessionOptions } from './project';
+import { MissingIndexError, ProjectSession, findProjectRoot, type ProjectSessionOptions } from './project';
 import { createTools, type McpToolDefinition } from './tools';
+import * as style from './style';
 
 export interface ServeMcpOptions {
   cwd?: string;
@@ -51,9 +52,43 @@ export function createAstrographMcpServer(options: ServeMcpOptions = {}): Astrog
 
 export async function serveMcp(options: ServeMcpOptions = {}): Promise<void> {
   const { server, session } = createAstrographMcpServer(options);
+  
+  const watchEnabled = options.watch ?? true;
+  const startPath = options.path ?? options.cwd ?? process.cwd();
+  const projectRoot = findProjectRoot(startPath);
+  
+  if (projectRoot === undefined) {
+    process.stderr.write(style.error(`No index at ${startPath} — run \`astrograph init\``) + '\n');
+    process.exit(1);
+  }
+  
+  try {
+    const graph = await session.getGraph();
+    const stats = await graph.getStats({});
+    const { fileCount, coverage } = stats.data;
+    
+    const lines = [
+      style.bold(`Astrograph MCP v${pkg.version}`),
+      `Project   ${style.dim(projectRoot)}`,
+      `Index     ${style.num(fileCount)} files ${style.symbols.bullet} coverage ${style.num(coverage.resolved)}/${style.num(coverage.total)}`,
+      `Watch     ${watchEnabled ? 'enabled' : 'disabled'}`,
+      style.arrow('Listening on stdio'),
+    ];
+    process.stderr.write(lines.join('\n') + '\n');
+  } catch (error) {
+    const lines = [
+      style.bold(`Astrograph MCP v${pkg.version}`),
+      `Project   ${style.dim(projectRoot)}`,
+      `Watch     ${watchEnabled ? 'enabled' : 'disabled'}`,
+      style.arrow('Listening on stdio'),
+    ];
+    process.stderr.write(lines.join('\n') + '\n');
+  }
+  
   const close = async (): Promise<void> => {
     session.close();
     await server.close();
+    process.stderr.write(style.success('Stopped') + '\n');
   };
   process.once('SIGINT', () => {
     void close().then(() => {

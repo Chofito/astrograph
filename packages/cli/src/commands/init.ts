@@ -5,6 +5,7 @@ import type { CliContext, CliRunResult } from '../cli';
 import { ok } from '../cli';
 import { booleanValue, parseCommandArgs } from './parse';
 import { loadConfig } from './shared';
+import { style, symbols } from '../format/style';
 
 export async function runInit(args: string[], ctx: CliContext): Promise<CliRunResult> {
   const parsed = parseCommandArgs(args, {
@@ -16,14 +17,22 @@ export async function runInit(args: string[], ctx: CliContext): Promise<CliRunRe
   const root = resolve(ctx.cwd, parsed.positionals[0] ?? '.');
   await mkdir(`${root}/.astrograph`, { recursive: true });
   if (booleanValue(parsed.values, 'no-index')) {
-    return ok(`initialized ${root}`);
+    return ok(style.success(`Initialized ${style.path(root)}`));
   }
 
   const graph = await openProject(root, { config: await loadConfig(root) });
   try {
     await graph.indexAll();
+    const stats = await graph.getStats({});
+    const { fileCount, nodeCount, edgeCount, coverage } = stats.data;
+    
+    const lines = [
+      style.success(`Indexed ${style.path(root)}`),
+      `  ${style.num(fileCount)} files ${symbols.bullet} ${style.num(nodeCount)} nodes ${symbols.bullet} ${style.num(edgeCount)} edges`,
+      `  coverage ${style.num(coverage.resolved)}/${style.num(coverage.total)} resolved`,
+    ];
+    return ok(lines.join('\n'));
   } finally {
     graph.close();
   }
-  return ok(booleanValue(parsed.values, 'verbose') ? `initialized and indexed ${root}` : `indexed ${root}`);
 }

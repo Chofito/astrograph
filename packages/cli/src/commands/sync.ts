@@ -3,6 +3,7 @@ import { ok } from '../cli';
 import { requireProjectRoot, resolveProjectPath } from '../root';
 import { booleanValue, parseCommandArgs } from './parse';
 import { withGraph } from './shared';
+import { style, symbols } from '../format/style';
 
 export async function runSync(args: string[], ctx: CliContext): Promise<CliRunResult> {
   const parsed = parseCommandArgs(args, {
@@ -12,5 +13,16 @@ export async function runSync(args: string[], ctx: CliContext): Promise<CliRunRe
   const root = requireProjectRoot(resolveProjectPath(ctx.cwd, parsed.positionals[0]));
   const result = await withGraph(root, (graph) => graph.sync());
   if (booleanValue(parsed.values, 'quiet')) return ok();
-  return ok(`sync added:${result.added.length} modified:${result.modified.length} removed:${result.removed.length}`);
+  
+  const { added, modified, removed } = result;
+  if (added.length === 0 && modified.length === 0 && removed.length === 0) {
+    return ok(style.info('Nothing to update'));
+  }
+  
+  const parts = [
+    style.added(added.length),
+    style.modified(modified.length),
+    style.removed(removed.length),
+  ];
+  return ok(`${style.success('Synced')}  ${parts.join(` ${symbols.bullet} `)}`);
 }
