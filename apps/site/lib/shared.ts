@@ -6,8 +6,8 @@ export const appName = 'Astrograph';
 export const basePath = '/astrograph';
 
 export const docsRoute = '/docs';
-export const docsImageRoute = '/og/docs';
-export const docsContentRoute = '/llms.mdx/docs';
+export const docsImageRoute = '/astrograph/og/docs';
+export const docsContentRoute = '/astrograph/llms.mdx/docs';
 
 export const gitConfig = {
   user: 'Chofito',
