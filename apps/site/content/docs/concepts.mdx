@@ -1,0 +1,63 @@
+---
+title: Concepts
+description: The Astrograph graph model — nodes, edges, and honest coverage.
+---
+
+Astrograph stores a typed graph in SQLite. Understanding the model helps you read query output and trust
+the coverage banners.
+
+## Nodes
+
+A node is any meaningful symbol. Kinds include:
+
+`file` · `module` · `class` · `interface` · `function` · `method` · `property` · `field` · `variable` ·
+`constant` · `enum` · `enum_member` · `type_alias` · `namespace` · `parameter` · `import` · `export` ·
+`component`
+
+Each node carries a stable id (hash of `filePath::qualifiedName`), position (line/column range), language,
+a signature, and flags such as `isExported`, `isAsync`, and `isExternal`.
+
+> Stable ids mean nodes survive re-indexing and file moves — sync stays correct and tooling doesn't churn.
+
+## Edges
+
+An edge is a typed relationship between nodes:
+
+`contains` · `calls` · `imports` · `exports` · `extends` · `implements` · `references` · `type_of` ·
+`returns` · `instantiates` · `decorates`
+
+Edges record a **resolution state** and **confidence**, because real JS/TS has gray areas (dynamic
+`import()`, CommonJS, `any`, broken aliases, generated code).
+
+## Resolution states
+
+| State | Meaning |
+| --- | --- |
+| `resolved` | The TypeScript checker pinned the target exactly. |
+| `external` | Resolves to a dependency / `.d.ts` outside the project (not indexed as a node). |
+| `unresolved` | A real reference the checker could not pin down. |
+| `ambiguous` | More than one plausible target. |
+
+Only **project files** become nodes; the type-checker still loads `node_modules`/`.d.ts` to resolve
+references toward them, marked `external`.
+
+## Coverage & honesty
+
+Every result ends with a banner:
+
+```text
+coverage 128/128 resolved · partial: no
+```
+
+- **coverage** — resolved files over total in scope.
+- **partial** — whether some files are still indexing or pending a sync.
+- **pending files** — listed by name, so a tool (or agent) can read them directly.
+
+This is the core contract: Astrograph never presents partial, stale, unresolved, or low-confidence results
+as complete facts.
+
+## Incrementality
+
+Indexing is ~linear in repo size; sync is proportional to the change. Astrograph re-extracts only changed
+files (by content hash) plus their incoming referrers, so edges never dangle and inbound references stay
+correct.

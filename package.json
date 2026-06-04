@@ -18,6 +18,7 @@
     "test": "bun test",
     "eval": "bun eval/runner.ts",
     "build": "bun build packages/cli/src/bin/astrograph.ts --compile --outfile dist/astrograph",
+    "web:docs": "cd apps/site && bun run dev",
     "dev:link": "cd packages/cli && bun link",
     "dev:unlink": "cd packages/cli && bun unlink",
     "install:local": "bun run build && mkdir -p ~/.local/bin && cp dist/astrograph ~/.local/bin/astrograph",

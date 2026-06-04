@@ -1,0 +1,66 @@
+---
+title: Quick Start
+description: Install Astrograph, index a repository, and run your first graph queries.
+---
+
+Get from zero to a queryable code graph in a couple of minutes.
+
+## Install
+
+Astrograph ships as a single self-contained binary (Bun runtime embedded).
+
+```bash
+# from source (Bun)
+bun run build            # produces dist/astrograph
+bun run install:local    # copies the binary to ~/.local/bin
+```
+
+Make sure `~/.local/bin` is on your `PATH`.
+
+## Index a project
+
+From the root of any JS/TS repository:
+
+```bash
+astrograph init
+```
+
+This creates a local `.astrograph/` directory (the SQLite graph, config, and watcher metadata) and runs
+the first full index. Re-running stays incremental — only changed files are re-extracted.
+
+## Run your first queries
+
+```bash
+# find symbols
+astrograph search useAccount
+
+# build task context (entry points + relevant code + coverage)
+astrograph context "how does session refresh work?"
+
+# call flow
+astrograph callers useAccount
+astrograph callees AuthProvider
+
+# blast radius before a change
+astrograph impact AuthProvider
+
+# how does one symbol reach another
+astrograph trace login refreshToken
+
+# index health
+astrograph status
+```
+
+## Keep it fresh
+
+Astrograph watches the project and re-syncs changed files automatically. You can also reconcile on demand:
+
+```bash
+astrograph sync
+```
+
+## Next steps
+
+- Wire it into your agents → **[MCP & skills](/docs/mcp)**.
+- Browse the full command set → **[Commands](/docs/commands)**.
+- Understand the data model → **[Concepts](/docs/concepts)**.

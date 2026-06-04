@@ -1,0 +1,61 @@
+---
+title: What is Astrograph
+description: A local-first code graph for JavaScript and TypeScript, built for humans and AI agents.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+Astrograph indexes a JavaScript or TypeScript repository into a **local graph of symbols and
+relationships** — functions, classes, interfaces, imports, exports, calls, inheritance, references, and
+type usage — stored in SQLite. It then exposes that graph through a fast **CLI** and an **MCP server**, so
+both humans and coding agents can ask sharp structural questions instead of grepping blindly.
+
+## Why it exists
+
+Most coding workflows start with text search. It works, but it is noisy and shallow:
+
+```bash
+rg "useAccount"
+rg "AccountService"
+rg "login"
+```
+
+Astrograph builds the semantic map **once**, locally, then answers precise questions:
+
+```bash
+astrograph callers useAccount
+astrograph trace login refreshToken
+astrograph context "how does session refresh work?"
+```
+
+## What makes it different
+
+Astrograph trades breadth for depth. Instead of covering 20+ languages with heuristic resolution, it
+focuses on **JS/TS only** and resolves relationships with the **real TypeScript Compiler API** — exact
+module resolution, path aliases, overloads, inheritance, and re-exports.
+
+When a relationship is `external`, `unresolved`, `ambiguous`, `stale`, or `partial`, Astrograph **says so**
+instead of hiding it. Humans and agents always know what the graph can actually prove.
+
+## Explore the docs
+
+<Cards>
+  <Card title="Quick Start" href="/docs/quick-start">
+    Install, index a repo, and run your first queries.
+  </Card>
+  <Card title="Commands" href="/docs/commands">
+    The full CLI reference.
+  </Card>
+  <Card title="MCP &amp; skills" href="/docs/mcp">
+    Connect agents — Claude Code, Cursor, Codex, opencode.
+  </Card>
+  <Card title="Concepts" href="/docs/concepts">
+    The graph model: nodes, edges, and honest coverage.
+  </Card>
+</Cards>
+
+## Principles
+
+- **100% local.** No API keys, no external services — everything lives in `.astrograph/`.
+- **Incremental.** A file watcher keeps the graph fresh by re-indexing only what changed.
+- **Honest.** Coverage and resolution states are first-class, never silently dropped.

@@ -1,0 +1,91 @@
+---
+title: Commands
+description: The Astrograph CLI command reference.
+---
+
+Every command is one-shot, scriptable, and pipeable. Run `astrograph <command> --help` for full flags.
+
+## Index lifecycle
+
+| Command | What it does |
+| --- | --- |
+| `astrograph init` | Create `.astrograph/` and run the first full index. |
+| `astrograph sync` | Reconcile the graph with on-disk changes (content-hash diff). |
+| `astrograph status` | Index health: counts, coverage, backend, freshness. |
+| `astrograph stop` | Stop a running background watcher/daemon. |
+
+## Querying the graph
+
+### `search`
+
+Find symbols by name across the project.
+
+```bash
+astrograph search AuthProvider --kind class --limit 10
+```
+
+### `context`
+
+Build ranked task context — entry points, related symbols, and verbatim code slices — with a coverage
+banner. The go-to for "how does X work?".
+
+```bash
+astrograph context "how does session refresh work?"
+```
+
+### `callers` / `callees`
+
+Walk the call graph in either direction.
+
+```bash
+astrograph callers useAccount
+astrograph callees AuthProvider
+```
+
+### `impact`
+
+Reverse-reachability — what could a change to this symbol affect.
+
+```bash
+astrograph impact AuthProvider --depth 2
+```
+
+### `trace`
+
+Find how one symbol reaches another.
+
+```bash
+astrograph trace login refreshToken
+```
+
+### `node` / `explore`
+
+Inspect a single symbol's source, or explore source around a query.
+
+```bash
+astrograph node refreshSession
+astrograph explore "session"
+```
+
+### `files`
+
+List indexed files as a tree, flat, or grouped.
+
+```bash
+astrograph files --format tree
+```
+
+## Agent integration
+
+| Command | What it does |
+| --- | --- |
+| `astrograph serve --mcp` | Start the stdio MCP server for agents. |
+| `astrograph install` | Install the MCP config + agent guide into supported hosts. |
+| `astrograph uninstall` | Remove Astrograph-owned config and guide files. |
+
+See **[MCP & skills](/docs/mcp)** for host-by-host setup.
+
+## Honest results
+
+Every query reports a coverage banner — `coverage R/T resolved · partial: yes/no` — and flags `external`,
+`unresolved`, and `ambiguous` references. Partial or stale results are never presented as complete facts.

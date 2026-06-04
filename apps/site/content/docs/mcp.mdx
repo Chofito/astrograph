@@ -1,0 +1,59 @@
+---
+title: MCP & skills
+description: Connect AI agents to the Astrograph graph over MCP.
+---
+
+Astrograph ships an **MCP server** so coding agents query the graph directly instead of running broad
+grep/read loops. The server is headless (no logs, no colors) and speaks stdio.
+
+## The tools
+
+The server exposes the graph 1:1 as `astrograph_*` tools:
+
+`search` · `context` · `trace` · `callers` · `callees` · `impact` · `node` · `explore` · `files` · `status`
+
+Agents are steered (via the MCP `initialize` instructions) to prefer `context` for "how does X work",
+`trace` for "how does X reach Y", `impact` before edits, and to treat returned code as already read —
+checking the coverage banner before trusting a result.
+
+## Install into a host
+
+`astrograph install` writes the MCP server config and an agent guide into the hosts you choose. It is
+idempotent and non-destructive (existing config is merged, not overwritten).
+
+```bash
+# all supported hosts
+astrograph install
+
+# a specific host
+astrograph install --target claude
+astrograph install --target cursor,codex,opencode
+
+# preview without writing
+astrograph install --print-config claude
+```
+
+Supported hosts and where they store config:
+
+| Host | Config | Format |
+| --- | --- | --- |
+| Claude Code | `~/.claude.json` · `./.mcp.json` | JSON `mcpServers` |
+| Cursor | `~/.cursor/mcp.json` | JSON `mcpServers` |
+| Codex | `~/.codex/config.toml` | TOML `[mcp_servers.astrograph]` |
+| opencode | `~/.config/opencode/opencode.jsonc` | JSONC `mcp.<name>` |
+
+## Freshness
+
+The server keeps the graph current with a background watcher (debounced sync), a connect-time catch-up for
+edits made while it was offline, and an on-demand staleness guard. Every response carries a coverage and
+staleness banner, so an agent is told to read a still-pending file directly rather than getting a silent
+wrong answer.
+
+## Uninstall
+
+```bash
+astrograph uninstall              # all hosts
+astrograph uninstall --target codex
+```
+
+Project indexes (`.astrograph/`) are left untouched.

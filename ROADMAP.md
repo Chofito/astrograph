@@ -1,6 +1,6 @@
 # Astrograph — Roadmap & Scope
 
-> Local-first code graph for JS/TS that supercharges AI agents (Claude Code, Cursor, etc.) with semantic code intelligence — and also lets you **see your code's "constellation"** in 3D.
+> Local-first code graph for JS/TS that supercharges AI agents (Claude Code, Cursor, etc.) with semantic code intelligence — through a fast **CLI** and an **MCP server + agent skills**, so agents answer architecture/flow questions without grep/Read loops.
 >
 > Inspired by [`codegraph`](../codegraph) (which lives next to this repo), but with our own technical decisions and a **deliberately narrow focus on JS/TS** to win on depth and accuracy.
 
@@ -12,13 +12,14 @@ This document is the project's **source of truth**. It's built in stages ("vibec
 
 ## 1. Vision and goals
 
-**Astrograph** indexes a JS/TS repository into a graph of symbols (functions, classes, types…) and relationships (contains, calls, imports, extends…), stored locally, and exposes it through three surfaces:
+**Astrograph** indexes a JS/TS repository into a graph of symbols (functions, classes, types…) and relationships (contains, calls, imports, extends…), stored locally, and exposes it through two product surfaces:
 
-1. **CLI** — for humans and scripts (Stage 1).
-2. **MCP** — for AI agents, which query the graph instead of running grep/Read (Stage 2).
-3. **3D Web UI** — the navigable code "constellation" (Stage 3).
+1. **CLI** — for humans and scripts (Stage 1, on top of the Core).
+2. **MCP server + agent skills** — for AI agents, which query the graph instead of running grep/Read (Stage 2).
 
-Stages 1–3 are the first complete product version: **V1**. Later stages harden and expand that foundation (Stage 4 / v1.5, Stage 5 / v2).
+Core + CLI + MCP/Skills are the first complete product version: **V1**. A **promotion & documentation website** (Stage 3) presents and documents the system. Later stages harden and expand the foundation (Stage 4 / v1.5, Stage 5 / v2).
+
+> **Parked:** the integrated **3D "constellation" graph explorer** (an in-app web view that renders the graph in 3D) was the riskiest, lowest-validation surface, so it's been **moved to a feature branch** and deferred out of the V1 line. Its design is preserved in [docs/web.md](docs/web.md); see §13 for where it may land later. Stage 3's "web" is the **promo/docs site**, not this explorer.
 
 **For whom?**
 - **AI agents**: answer architecture/flow questions with fewer tokens and fewer tool calls (the graph already did the exploration work).
@@ -159,19 +160,18 @@ MCP server (`packages/mcp`) on top of the **official `@modelcontextprotocol/sdk`
 
 ---
 
-## 6. Stage 3 — Web UI ("constellation")
+## 6. Stage 3 — Promotion & documentation website
 
-`apps/web` with `Bun.serve()` + HTML imports + React + **Tailwind + shadcn/ui** for the chrome (per `CLAUDE.md`; no Vite).
+A public-facing **website to present and document** Astrograph — **not** the in-app graph explorer (that's parked; see §1 note and §13). It explains what Astrograph is, why the **TS-Compiler-API depth/accuracy** is the differentiator, and how to install and use it (CLI + MCP server + agent skills). **Full site design — stack, routes, static deploy, build order:** [docs/site.md](docs/site.md).
 
-- **Usable graph visualization MVP:** rendered with **three.js** via `react-force-graph-3d` (force-directed) + `@react-three/postprocessing` for bloom/glow — or react-three-fiber directly if we need full shader/effect control. Stage 3 must be useful for internal product presentation, not only a pretty demo.
-- **Performance:** acceptable on large graphs (LOD/culling, instancing); degrade to 2D if the graph is huge.
-- **Interaction:** 3D navigation, search, node selection with a detail panel (code, context, callers/callees, edges), filters by node kind and edge kind.
-- **Data:** endpoint(s) serving the graph from the local `.astrograph/`, reusing `packages/core`.
+- **Two surfaces:** a flashy **landing page** (`/`) + **documentation** (`/docs/*`), one app, one deploy.
+- **Stack:** **Fumadocs** on Next.js, **fully static export** deployed to **GitHub Pages** (Orama search runs in the browser, no server). Bun as package manager/runner. Reuses the existing `docs/*.md` as source material. This standalone site is **decoupled from the `astrograph` binary** (the monorepo's Bun.serve/no-Next rule is scoped to the product core).
+
+> The integrated **3D "constellation" graph explorer** is **not** this stage. Its design is preserved in [docs/web.md](docs/web.md) (now a deferred/parked design on a feature branch).
 
 ### Acceptance criteria (Stage 3)
-- Renders a real repo's constellation with smooth interaction.
-- Clicking a node shows its code, context, callers/callees, and relationships; search focuses the graph.
-- Filters by node/edge kind make the graph useful for architecture exploration.
+- A visitor understands what Astrograph is, how it differs (depth/accuracy on JS/TS), and how to install + use the CLI, MCP server, and agent skills — all from the site.
+- Install/usage instructions are accurate against the shipped CLI and installer.
 
 ---
 
@@ -185,13 +185,16 @@ astrograph/
 │   ├── cli/             # commands (classic args + isolated opentui)
 │   └── mcp/             # MCP server (official SDK)   [Stage 2]
 ├── apps/
-│   └── web/             # 3D UI (Bun.serve + React + three.js)  [Stage 3]
+│   ├── site/            # promo + docs website (Fumadocs/Next.js, static → GH Pages)  [Stage 3]
+│   └── web/             # 3D explorer (PARKED on a feature branch)
 ├── docs/
 │   ├── contracts.md                                 # canonical TS types (source of truth)
 │   ├── extraction.md                                # TS Compiler API → graph mapping
 │   ├── testing.md                                   # fixtures + golden + eval harness
 │   ├── cli.md                                       # CLI command catalog & design
 │   ├── mcp.md                                        # MCP server design (Stage 2)
+│   ├── site.md                                        # promo + docs website design (Stage 3)
+│   ├── web.md                                         # 3D explorer design (PARKED — branch)
 │   ├── graph-model.md                               # full graph/DB data model
 │   ├── tools.md / tools.es.md                       # agent-facing tool contract
 │   ├── progressive-indexing.md      # streaming indexing design (S2) — EN
@@ -243,7 +246,7 @@ Other languages · embeddings / vector semantic search · frameworks-aware route
 | MCP | custom transport/daemon | **official SDK** |
 | Frameworks-aware routes | yes (14 frameworks) | **out of V1** (re-addable on top of exact resolution) |
 | iOS/RN/Expo bridging | yes | **N/A** (doesn't apply to pure JS/TS) |
-| Web UI | docs site (Astro) | **3D "constellation" app** |
+| Web UI | docs site (Astro) | **promo/docs site** (3D "constellation" explorer parked) |
 | Future multi-language | already done | requires a per-language extraction layer |
 
 **Explicit tradeoff:** we trade *breadth* (languages, frameworks, bridging) for *depth and accuracy* on JS/TS. If we ever want multi-language, we'd go back to a tree-sitter-like model for those languages — which is why extraction sits behind an `Extractor` interface, with the TS impl. as the first one.
@@ -294,20 +297,26 @@ Other languages · embeddings / vector semantic search · frameworks-aware route
 **Stage 5 / v2 — advanced intelligence and scale:**
 - **Mature progressive indexing:** robust demand boosting, project/config queues, and advanced partiality for freshness, project, and edge kind.
 - **Worker/LRU/eviction tuning:** lower peak memory on large repos and monorepos without giving up incremental speed.
-- **Live constellation:** WebSocket (`Bun.serve`) pushing watcher deltas to the web UI in real time as you edit.
-- **Community/cluster detection** (modules) to draw real constellations (group stars by cohesion); color by cluster/language/kind.
 - **Exporters:** graph to JSON, **Mermaid**, **DOT/Graphviz**.
 - **Optional semantic layer (embeddings)** for "similar code" / meaning-based search — explicitly out of V1.
 - **Frameworks-aware routes for JS/TS** (Express/Nest/Next/Remix) rebuilt *on top of* exact resolution — easier than in codegraph.
 - **`astrograph why <A> <B>`:** narrated explanation of the path (a friendly alias of `trace`).
 
+**Further out — platform bets:**
+- **Pluggable language extractors.** Decouple the TS Compiler API behind the existing `Extractor` interface (§10) so other languages plug in (e.g. tree-sitter-based backends) **without sacrificing JS/TS depth**. This is the path to multi-language.
+- **Non-code knowledge sources.** Index documents/knowledge — **PDFs, Confluence, wikis, etc.** — into a compatible graph, exposed through the same MCP/skill surface, so agents query docs the way they query code.
+
+**Parked — integrated 3D "constellation" explorer** (moved to a feature branch; design in [docs/web.md](docs/web.md)). If/when revived, it brings:
+- **Single-binary 3D viewer:** `astrograph web` subcommand, frontend bundle embedded via Bun's full-stack `--compile`; reads the local `.astrograph/` read-only.
+- **Live constellation:** WebSocket (`Bun.serve`) pushing watcher/`FreshnessManager` deltas to the view in real time as you edit.
+- **Community/cluster detection** (modules) to draw real constellations (group stars by cohesion); color by cluster/language/kind.
+
 ---
 
 ## 14. V1 scoping recommendation
 
-Keep the chosen **Stages 1–3 = V1** scope, but **sequence Stage 1 vertical-slice-first** to validate quality before breadth:
+**V1 = Core/CLI (Stage 1) + MCP/Skills (Stage 2).** Both are functionally complete; the current focus is **refining and hardening Stages 1–2** (eval-harness calibration on real repos, FTS recall, single-writer hardening, Tier-2 agent A/B eval — see [TODO.md](TODO.md)). Stage 3 (promo/docs site) presents the finished product; the 3D explorer is parked (§13).
 
+Stage 1 was sequenced **vertical-slice-first** to validate quality before breadth:
 - **1.0 (vertical slice):** `index → search → context` end-to-end on **a real repo**, with the eval harness measuring quality. The "does this actually help?".
-- Then go broad (1.1–1.7) toward the full set of queries/edges.
-
-So V1 still includes Core/CLI (Stage 1), MCP (Stage 2), and Web UI (Stage 3), but the first milestone proves graph quality in days, not at the end.
+- Then broad (1.1–1.7) toward the full set of queries/edges.
