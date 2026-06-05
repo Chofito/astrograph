@@ -35,6 +35,25 @@ describe('BunGlobScanner', () => {
 
     expect(files).toEqual(['src/a.ts', 'src/b.jsx', 'src/c.mts']);
   });
+
+  test('always excludes build dirs and yarn/pnpm committed artifacts', async () => {
+    const root = await makeTempProject();
+    await writeProjectFile(root, 'src/a.ts', 'export const a = 1;');
+    await writeProjectFile(root, 'build/b.ts', 'export const b = 1;');
+    await writeProjectFile(root, 'out/o.ts', 'export const o = 1;');
+    await writeProjectFile(root, 'output/p.ts', 'export const p = 1;');
+    await writeProjectFile(root, '.next/n.js', 'export const n = 1;');
+    await writeProjectFile(root, '.pnp.cjs', 'module.exports = {};');
+    await writeProjectFile(root, '.yarn/releases/yarn-4.0.0.cjs', 'module.exports = {};');
+
+    const scanner = new BunGlobScanner();
+    const files: string[] = [];
+    for await (const relPath of scanner.scan(root, {})) {
+      files.push(relPath);
+    }
+
+    expect(files).toEqual(['src/a.ts']);
+  });
 });
 
 async function makeTempProject(): Promise<string> {

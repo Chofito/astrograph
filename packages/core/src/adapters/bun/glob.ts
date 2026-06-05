@@ -3,10 +3,27 @@ import type { GlobScanner } from '../../types';
 
 const DEFAULT_INCLUDE = ['**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}'];
 const ALWAYS_EXCLUDE = [
+  // VCS / tooling internals
   'node_modules/',
   '.git/',
   '.astrograph/',
+  // Build / output directories
   'dist/',
+  'build/',
+  'out/',
+  'output/',
+  '.next/',
+  '.nuxt/',
+  '.svelte-kit/',
+  '.turbo/',
+  '.cache/',
+  'coverage/',
+  // Yarn / pnpm committed artifacts — these are versioned (so .gitignore
+  // does not catch them) yet match the *.cjs/*.mjs include glob.
+  '.yarn/',
+  '.pnp.cjs',
+  '.pnp.loader.mjs',
+  '.pnpm/',
 ];
 
 export class BunGlobScanner implements GlobScanner {
