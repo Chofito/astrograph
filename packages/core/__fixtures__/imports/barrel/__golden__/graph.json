@@ -1,0 +1,237 @@
+{
+  "nodes": [
+    {
+      "id": "16392265623011376301",
+      "project": "fixture",
+      "kind": "file",
+      "name": "consumer.ts",
+      "qualifiedName": "imports/barrel/consumer.ts",
+      "filePath": "imports/barrel/consumer.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 6,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "18349591910010556148",
+      "project": "fixture",
+      "kind": "import",
+      "name": "./index",
+      "qualifiedName": "imports/barrel/consumer.ts::import(./index)",
+      "filePath": "imports/barrel/consumer.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 0,
+        "endColumn": 35
+      },
+      "signature": "import { originFn } from \"./index\";",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "17403254963487046799",
+      "project": "fixture",
+      "kind": "function",
+      "name": "runConsumer",
+      "qualifiedName": "imports/barrel/consumer.ts::runConsumer",
+      "filePath": "imports/barrel/consumer.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 3,
+        "endLine": 5,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function runConsumer(): number",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "6841902987925375213",
+      "project": "fixture",
+      "kind": "export",
+      "name": "re-export(./origin)",
+      "qualifiedName": "imports/barrel/index.ts::export(re-export(./origin))",
+      "filePath": "imports/barrel/index.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 0,
+        "endColumn": 36
+      },
+      "signature": "export { originFn } from \"./origin\";",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "16019932237821396070",
+      "project": "fixture",
+      "kind": "file",
+      "name": "index.ts",
+      "qualifiedName": "imports/barrel/index.ts",
+      "filePath": "imports/barrel/index.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 2,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "18030626616728253262",
+      "project": "fixture",
+      "kind": "file",
+      "name": "origin.ts",
+      "qualifiedName": "imports/barrel/origin.ts",
+      "filePath": "imports/barrel/origin.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 4,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "12500860164931521284",
+      "project": "fixture",
+      "kind": "function",
+      "name": "originFn",
+      "qualifiedName": "imports/barrel/origin.ts::originFn",
+      "filePath": "imports/barrel/origin.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function originFn(): number",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "12500860164931521284",
+      "target": "12500860164931521284",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "16392265623011376301",
+      "target": "17403254963487046799",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "17403254963487046799",
+      "target": "12500860164931521284",
+      "targetName": "originFn",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 4,
+      "col": 8
+    },
+    {
+      "source": "17403254963487046799",
+      "target": "17403254963487046799",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "18030626616728253262",
+      "target": "12500860164931521284",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "18349591910010556148",
+      "target": "12500860164931521284",
+      "targetName": "originFn",
+      "kind": "imports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 9
+    },
+    {
+      "source": "6841902987925375213",
+      "target": "12500860164931521284",
+      "targetName": "originFn",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 9
+    }
+  ]
+}

@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { openProject } from "./adapters/bun/project";
+import {
+	assertGraphIntegrity,
+	assertNoDanglingResolved,
+} from "./testing/graph-assertions";
 
 const tempRoots: string[] = [];
 
@@ -405,7 +409,10 @@ describe("Pass B: edge resolution", () => {
 			expect(returnsUser).toHaveLength(1);
 			expect(returnsUser[0]!.resolutionState).toBe("resolved");
 
-			expectGraphIntegrity(indexer);
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
 		} finally {
 			indexer.close();
 		}
@@ -458,7 +465,10 @@ describe("Pass B: edge resolution", () => {
 			expect(overrides).toHaveLength(1);
 			expect(overrides[0]!.resolutionState).toBe("resolved");
 
-			expectGraphIntegrity(indexer);
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
 		} finally {
 			indexer.close();
 		}
@@ -527,7 +537,10 @@ describe("Pass B: edge resolution", () => {
 				"resolved",
 			]);
 
-			expectGraphIntegrity(indexer);
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
 		} finally {
 			indexer.close();
 		}
@@ -575,7 +588,10 @@ describe("Pass B: edge resolution", () => {
 			expect(references).toHaveLength(1);
 			expect(references[0]!.resolutionState).toBe("resolved");
 
-			expectGraphIntegrity(indexer);
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
 		} finally {
 			indexer.close();
 		}
@@ -868,7 +884,115 @@ describe("Pass B: edge resolution", () => {
 				"useAccount",
 			);
 
-			expectGraphIntegrity(indexer);
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
+		} finally {
+			indexer.close();
+		}
+	});
+
+	test("call sites do not also emit references edges to the callee", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"src/lib.ts",
+			`
+      export function target() {
+        return 1;
+      }
+    `,
+		);
+		await writeProjectFile(
+			root,
+			"src/use.ts",
+			`
+      import { target } from './lib';
+      export function run() {
+        return target();
+      }
+    `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await indexer.indexAll();
+
+			const libNodes = indexer.queries.getNodesByFile("src/lib.ts");
+			const useNodes = indexer.queries.getNodesByFile("src/use.ts");
+			const targetNode = libNodes.find((node) => node.name === "target");
+			const runNode = useNodes.find((node) => node.name === "run");
+			expect(targetNode).toBeDefined();
+			expect(runNode).toBeDefined();
+
+			const edges = indexer.queries.getAllEdges();
+			const calls = edges.filter(
+				(edge) =>
+					edge.kind === "calls" &&
+					edge.source === runNode!.id &&
+					edge.target === targetNode!.id,
+			);
+			expect(calls).toHaveLength(1);
+
+			const references = edges.filter(
+				(edge) =>
+					edge.kind === "references" &&
+					edge.source === runNode!.id &&
+					edge.target === targetNode!.id,
+			);
+			expect(references).toHaveLength(0);
+
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges,
+			});
+		} finally {
+			indexer.close();
+		}
+	});
+
+	test("sync after deleting a file removes its nodes and leaves no dangling resolved edges", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"src/lib.ts",
+			`
+      export function lib() {
+        return 1;
+      }
+    `,
+		);
+		await writeProjectFile(
+			root,
+			"src/app.ts",
+			`
+      import { lib } from './lib';
+      export function app() {
+        return lib();
+      }
+    `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await indexer.indexAll();
+			await unlink(`${root}/src/lib.ts`);
+
+			const syncResult = await indexer.sync();
+			expect(syncResult.removed).toContain("src/lib.ts");
+			expect(indexer.queries.getNodesByFile("src/lib.ts")).toEqual([]);
+
+			const nodes = indexer.queries.getAllNodes();
+			const edges = indexer.queries.getAllEdges();
+			assertNoDanglingResolved(edges, nodes);
+			expect(indexer.queries.getDanglingEdges()).toEqual([]);
 		} finally {
 			indexer.close();
 		}
@@ -942,18 +1066,6 @@ async function makeTempProject(): Promise<string> {
 	const root = await mkdtemp(`${tmpdir()}/astrograph-passb-`);
 	tempRoots.push(root);
 	return root;
-}
-
-function expectGraphIntegrity(indexer: OpenedIndexer): void {
-	expect(indexer.queries.getDanglingEdges()).toEqual([]);
-
-	const keys = indexer.queries
-		.getAllEdges()
-		.map(
-			(edge) =>
-				`${edge.source}\u0000${edge.kind}\u0000${edge.target ?? ""}\u0000${edge.line ?? -1}`,
-		);
-	expect(new Set(keys).size).toBe(keys.length);
 }
 
 async function writeProjectFile(

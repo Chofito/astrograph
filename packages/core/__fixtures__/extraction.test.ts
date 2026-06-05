@@ -1,140 +1,103 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync, writeFileSync, existsSync } from "fs";
-import { join } from "path";
 import { TsExtractor } from "../src/extraction/extractor";
-import { normalize } from "../src/testing/normalize";
-import type { Hasher } from "../src/types";
+import {
+	assertDeterministicNormalizedAsync,
+	assertGraphIntegrity,
+} from "../src/testing/graph-assertions";
+import type { NormalizedGraph } from "../src/testing/normalize";
+import {
+	extractFixture,
+	FIXTURE_HASHER,
+	FIXTURES_ROOT,
+	graphFromFixture,
+	normalizeFixtureGraph,
+	PINNED_NOW,
+} from "./harness";
 
-const FIXTURES_ROOT = join(import.meta.dir, "..", "__fixtures__");
-const UPDATE = process.env["UPDATE_GOLDENS"] === "1";
+const UPDATE = Bun.env.UPDATE_GOLDENS === "1";
 
-const hasher: Hasher = {
-	hash(content) {
-		return String(Bun.hash(content));
-	},
-};
+const GOLDEN_FIXTURES = [
+	"basic",
+	"functions",
+	"jsx",
+	"decorators",
+	"exports",
+	"overloads",
+	"imports/barrel",
+] as const;
 
-const PINNED_NOW = 1_700_000_000_000;
-
-function extractFixture(fixturePath: string) {
-	const sourcePath = join(FIXTURES_ROOT, fixturePath, "sample.ts");
-	const tsxPath = join(FIXTURES_ROOT, fixturePath, "sample.tsx");
-	const filePath = existsSync(tsxPath) ? tsxPath : sourcePath;
-	const relPath = `${fixturePath}/sample${filePath.endsWith(".tsx") ? ".tsx" : ".ts"}`;
-	const source = readFileSync(filePath, "utf-8");
-
-	const extractor = new TsExtractor({ hasher, now: () => PINNED_NOW });
-	return { result: extractor.extractNodes(relPath, source), relPath };
+function goldenGraphPath(fixturePath: string): string {
+	return `${FIXTURES_ROOT}/${fixturePath}/__golden__/graph.json`;
 }
 
-function loadGolden(fixturePath: string) {
-	const goldenPath = join(
-		FIXTURES_ROOT,
-		fixturePath,
-		"__golden__",
-		"nodes.json",
-	);
-	if (!existsSync(goldenPath)) return null;
-	const data = JSON.parse(readFileSync(goldenPath, "utf-8"));
-	if (Array.isArray(data) && data.length === 0) return null;
+async function loadGoldenGraph(
+	fixturePath: string,
+): Promise<NormalizedGraph | null> {
+	const goldenPath = goldenGraphPath(fixturePath);
+	if (!(await Bun.file(goldenPath).exists())) return null;
+	const data = (await Bun.file(goldenPath).json()) as NormalizedGraph;
+	if (
+		(!data.nodes || data.nodes.length === 0) &&
+		(!data.edges || data.edges.length === 0)
+	) {
+		return null;
+	}
 	return data;
 }
 
-function saveGolden(fixturePath: string, data: unknown) {
-	const goldenPath = join(
-		FIXTURES_ROOT,
-		fixturePath,
-		"__golden__",
-		"nodes.json",
-	);
-	writeFileSync(goldenPath, JSON.stringify(data, null, 2) + "\n");
+async function saveGoldenGraph(
+	fixturePath: string,
+	graph: NormalizedGraph,
+): Promise<void> {
+	const goldenPath = goldenGraphPath(fixturePath);
+	const goldenDir = goldenPath.slice(0, goldenPath.lastIndexOf("/"));
+	await Bun.$`mkdir -p ${goldenDir}`.quiet();
+	await Bun.write(goldenPath, `${JSON.stringify(graph, null, 2)}\n`);
 }
 
-function assertGolden(fixturePath: string) {
-	const { result } = extractFixture(fixturePath);
-	const normalized = normalize({ nodes: result.nodes, edges: [] });
+async function assertGoldenGraph(fixturePath: string): Promise<void> {
+	const result = await extractFixture(fixturePath);
+	const graph = graphFromFixture(result);
+	assertGraphIntegrity(graph);
+
+	const normalized = normalizeFixtureGraph(result);
 
 	if (UPDATE) {
-		saveGolden(fixturePath, normalized.nodes);
+		await saveGoldenGraph(fixturePath, normalized);
 		return;
 	}
 
-	const golden = loadGolden(fixturePath);
+	const golden = await loadGoldenGraph(fixturePath);
 	if (golden === null) {
-		saveGolden(fixturePath, normalized.nodes);
+		await saveGoldenGraph(fixturePath, normalized);
 		console.warn(
-			`Golden auto-generated for ${fixturePath}. Review the output.`,
+			`Golden auto-generated for ${fixturePath}. Review graph.json before committing.`,
 		);
 		return;
 	}
 
-	expect(normalized.nodes).toEqual(golden);
+	expect(normalized).toEqual(golden);
 }
 
-describe("extraction: basic", () => {
-	test("produces correct nodes for basic declarations", () => {
-		assertGolden("basic");
-	});
-});
-
-describe("extraction: functions", () => {
-	test("handles declaration, arrow, and function expression", () => {
-		assertGolden("functions");
-	});
-});
-
-describe("extraction: jsx", () => {
-	test("identifies PascalCase components", () => {
-		assertGolden("jsx");
-	});
-});
-
-describe("extraction: decorators", () => {
-	test("extracts decorator names", () => {
-		assertGolden("decorators");
-	});
-});
-
-describe("extraction: exports", () => {
-	test("handles default and named exports", () => {
-		assertGolden("exports");
-	});
-});
-
-describe("extraction: overloads", () => {
-	test("disambiguates function and method overloads", () => {
-		assertGolden("overloads");
-	});
+describe("extraction: golden graphs (Pass A + B)", () => {
+	for (const fixture of GOLDEN_FIXTURES) {
+		test(`${fixture} nodes and edges match graph.json`, async () => {
+			await assertGoldenGraph(fixture);
+		});
+	}
 });
 
 describe("extraction: determinism", () => {
-	test("extracting the same fixture twice yields identical ids and output", () => {
-		const { result: first } = extractFixture("basic");
-		const { result: second } = extractFixture("basic");
-
-		expect(first.nodes.length).toBe(second.nodes.length);
-
-		for (let i = 0; i < first.nodes.length; i++) {
-			expect(first.nodes[i]!.id).toBe(second.nodes[i]!.id);
-		}
-
-		const normFirst = normalize({ nodes: first.nodes, edges: [] });
-		const normSecond = normalize({ nodes: second.nodes, edges: [] });
-		expect(normFirst).toEqual(normSecond);
+	test("full extract twice yields identical normalized graph", async () => {
+		await assertDeterministicNormalizedAsync(async () =>
+			normalizeFixtureGraph(await extractFixture("basic")),
+		);
 	});
 
-	test("no id collisions within a fixture", () => {
-		const fixtures = [
-			"basic",
-			"functions",
-			"jsx",
-			"decorators",
-			"exports",
-			"overloads",
-		];
-		for (const fixture of fixtures) {
-			const { result } = extractFixture(fixture);
-			const ids = result.nodes.map((n) => n.id);
+	test("no id collisions within a fixture graph", async () => {
+		for (const fixture of GOLDEN_FIXTURES) {
+			const { nodes } = graphFromFixture(await extractFixture(fixture));
+			const ids = nodes.map((n) => n.id);
 			expect(new Set(ids).size).toBe(ids.length);
 		}
 	});
@@ -142,7 +105,10 @@ describe("extraction: determinism", () => {
 
 describe("extraction: error handling", () => {
 	test("returns error when source is not a string", () => {
-		const extractor = new TsExtractor({ hasher, now: () => PINNED_NOW });
+		const extractor = new TsExtractor({
+			hasher: FIXTURE_HASHER,
+			now: () => PINNED_NOW,
+		});
 		const result = extractor.extractNodes("bad.ts", null as unknown as string);
 		expect(result.nodes).toEqual([]);
 		expect(result.errors.length).toBe(1);
@@ -153,7 +119,10 @@ describe("extraction: error handling", () => {
 
 describe("extraction: resolveEdges without loaded project", () => {
 	test("returns empty edges, errors, and external nodes", () => {
-		const extractor = new TsExtractor({ hasher, now: () => PINNED_NOW });
+		const extractor = new TsExtractor({
+			hasher: FIXTURE_HASHER,
+			now: () => PINNED_NOW,
+		});
 		const result = extractor.resolveEdges("any.ts");
 		expect(result.edges).toEqual([]);
 		expect(result.errors).toEqual([]);

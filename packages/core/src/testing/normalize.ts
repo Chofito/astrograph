@@ -37,7 +37,10 @@ function dropVolatileNodeFields(
 	return omitUndefined({
 		...stable,
 		filePath: normalizePath(stable.filePath, options.rootPath),
-		qualifiedName: normalizePath(stable.qualifiedName, options.rootPath),
+		qualifiedName: normalizeQualifiedName(
+			stable.qualifiedName,
+			options.rootPath,
+		),
 	}) as NormalizedNode;
 }
 
@@ -69,7 +72,13 @@ function compareStrings(a: string, b: string): number {
 }
 
 function normalizePath(path: string, rootPath?: string): string {
-	const normalizedPath = path.replaceAll("\\", "/");
+	let normalizedPath = path.replaceAll("\\", "/");
+
+	const nodeModulesIdx = normalizedPath.indexOf("/node_modules/");
+	if (nodeModulesIdx >= 0) {
+		normalizedPath = normalizedPath.slice(nodeModulesIdx + 1);
+	}
+
 	if (rootPath === undefined) return normalizedPath;
 
 	const normalizedRoot = rootPath.replaceAll("\\", "/").replace(/\/$/, "");
@@ -78,6 +87,17 @@ function normalizePath(path: string, rootPath?: string): string {
 		return normalizedPath.slice(normalizedRoot.length + 1);
 	}
 	return normalizedPath;
+}
+
+function normalizeQualifiedName(
+	qualifiedName: string,
+	rootPath?: string,
+): string {
+	const sep = qualifiedName.indexOf("::");
+	if (sep === -1) return normalizePath(qualifiedName, rootPath);
+	const filePart = qualifiedName.slice(0, sep);
+	const namePart = qualifiedName.slice(sep + 2);
+	return `${normalizePath(filePart, rootPath)}::${namePart}`;
 }
 
 function omitUndefined(value: unknown): unknown {
