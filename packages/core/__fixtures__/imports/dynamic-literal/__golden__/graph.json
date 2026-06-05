@@ -1,0 +1,158 @@
+{
+  "nodes": [
+    {
+      "id": "17306600710415973911",
+      "project": "fixture",
+      "kind": "file",
+      "name": "consumer.ts",
+      "qualifiedName": "imports/dynamic-literal/consumer.ts",
+      "filePath": "imports/dynamic-literal/consumer.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 5,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "959017887056984604",
+      "project": "fixture",
+      "kind": "function",
+      "name": "loadValue",
+      "qualifiedName": "imports/dynamic-literal/consumer.ts::loadValue",
+      "filePath": "imports/dynamic-literal/consumer.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 4,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export async function loadValue(): Promise<number>",
+      "isExported": true,
+      "isAsync": true,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "17217492006193767255",
+      "project": "fixture",
+      "kind": "constant",
+      "name": "value",
+      "qualifiedName": "imports/dynamic-literal/module.ts::value",
+      "filePath": "imports/dynamic-literal/module.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 0,
+        "endColumn": 24
+      },
+      "signature": "export const value = 42;",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "752449061062043885",
+      "project": "fixture",
+      "kind": "file",
+      "name": "module.ts",
+      "qualifiedName": "imports/dynamic-literal/module.ts",
+      "filePath": "imports/dynamic-literal/module.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 2,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "17217492006193767255",
+      "target": "17217492006193767255",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 13
+    },
+    {
+      "source": "17306600710415973911",
+      "target": "959017887056984604",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "752449061062043885",
+      "target": "17217492006193767255",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "959017887056984604",
+      "target": null,
+      "targetName": "import",
+      "kind": "calls",
+      "resolutionState": "unresolved",
+      "confidence": "low",
+      "provenance": "heuristic",
+      "line": 2,
+      "col": 19
+    },
+    {
+      "source": "959017887056984604",
+      "target": "959017887056984604",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "959017887056984604",
+      "target": "17217492006193767255",
+      "targetName": "value",
+      "kind": "references",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 12
+    }
+  ]
+}

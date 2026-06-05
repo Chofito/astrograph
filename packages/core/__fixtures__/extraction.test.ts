@@ -24,6 +24,10 @@ const GOLDEN_FIXTURES = [
 	"exports",
 	"overloads",
 	"imports/barrel",
+	"imports/commonjs",
+	"imports/type-only",
+	"imports/dynamic-literal",
+	"resolution/ambiguous",
 ] as const;
 
 function goldenGraphPath(fixturePath: string): string {
@@ -69,11 +73,9 @@ async function assertGoldenGraph(fixturePath: string): Promise<void> {
 
 	const golden = await loadGoldenGraph(fixturePath);
 	if (golden === null) {
-		await saveGoldenGraph(fixturePath, normalized);
-		console.warn(
-			`Golden auto-generated for ${fixturePath}. Review graph.json before committing.`,
+		throw new Error(
+			`Missing golden for ${fixturePath}: run "bun packages/core/__fixtures__/update-goldens.ts ${fixturePath}" and review graph.json`,
 		);
-		return;
 	}
 
 	expect(normalized).toEqual(golden);
@@ -100,6 +102,34 @@ describe("extraction: determinism", () => {
 			const ids = nodes.map((n) => n.id);
 			expect(new Set(ids).size).toBe(ids.length);
 		}
+	});
+});
+
+describe("extraction: fixture invariants", () => {
+	test("resolution/ambiguous golden includes ambiguous edges with candidates", async () => {
+		const graph = graphFromFixture(await extractFixture("resolution/ambiguous"));
+		const ambiguous = graph.edges.filter(
+			(edge) => edge.resolutionState === "ambiguous",
+		);
+		expect(ambiguous.length).toBeGreaterThan(0);
+		expect(
+			ambiguous.some(
+				(edge) =>
+					Array.isArray(edge.metadata?.candidates) &&
+					(edge.metadata!.candidates as string[]).length > 1,
+			),
+		).toBe(true);
+	});
+
+	test("imports/commonjs records require as external calls (imports/exports not yet modeled)", async () => {
+		const graph = graphFromFixture(await extractFixture("imports/commonjs"));
+		const requireCalls = graph.edges.filter(
+			(edge) =>
+				edge.kind === "calls" &&
+				edge.targetName === "require" &&
+				edge.resolutionState === "external",
+		);
+		expect(requireCalls.length).toBeGreaterThan(0);
 	});
 });
 

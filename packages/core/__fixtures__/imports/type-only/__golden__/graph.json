@@ -1,0 +1,181 @@
+{
+  "nodes": [
+    {
+      "id": "6577975642442168304",
+      "project": "fixture",
+      "kind": "file",
+      "name": "consumer.ts",
+      "qualifiedName": "imports/type-only/consumer.ts",
+      "filePath": "imports/type-only/consumer.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 6,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "16642890897193158956",
+      "project": "fixture",
+      "kind": "import",
+      "name": "./types",
+      "qualifiedName": "imports/type-only/consumer.ts::import(./types)",
+      "filePath": "imports/type-only/consumer.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 0,
+        "endColumn": 38
+      },
+      "signature": "import type { Widget } from \"./types\";",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "8704343744387183944",
+      "project": "fixture",
+      "kind": "function",
+      "name": "describeWidget",
+      "qualifiedName": "imports/type-only/consumer.ts::describeWidget",
+      "filePath": "imports/type-only/consumer.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 3,
+        "endLine": 5,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function describeWidget(widget: Widget): string",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "2582607892191128155",
+      "project": "fixture",
+      "kind": "file",
+      "name": "types.ts",
+      "qualifiedName": "imports/type-only/types.ts",
+      "filePath": "imports/type-only/types.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 4,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "1546216385736727547",
+      "project": "fixture",
+      "kind": "type_alias",
+      "name": "Widget",
+      "qualifiedName": "imports/type-only/types.ts::Widget",
+      "filePath": "imports/type-only/types.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 2
+      },
+      "signature": "export type Widget = { id: string; };",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "1546216385736727547",
+      "target": "1546216385736727547",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "16642890897193158956",
+      "target": "1546216385736727547",
+      "targetName": "Widget",
+      "kind": "imports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 14
+    },
+    {
+      "source": "2582607892191128155",
+      "target": "1546216385736727547",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "6577975642442168304",
+      "target": "8704343744387183944",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "8704343744387183944",
+      "target": "8704343744387183944",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "8704343744387183944",
+      "target": "1546216385736727547",
+      "targetName": "Widget",
+      "kind": "type_of",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 39
+    }
+  ]
+}

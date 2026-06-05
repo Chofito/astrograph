@@ -2,14 +2,14 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtemp, mkdir, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { openProject } from "./adapters/bun/project";
+import { compareEdges } from "./extraction/resolver/utils";
 import {
 	assertGraphIntegrity,
 	assertNoDanglingResolved,
 } from "./testing/graph-assertions";
+import { normalize } from "./testing/normalize";
 
 const tempRoots: string[] = [];
-
-type OpenedIndexer = Awaited<ReturnType<typeof openProject>>;
 
 afterEach(async () => {
 	for (const root of tempRoots) {
@@ -1060,12 +1060,368 @@ describe("Pass B: edge resolution", () => {
 			indexer.close();
 		}
 	});
+
+	test("export star surfaces resolved exports edges for public module symbols", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"src/m.ts",
+			`
+      export function alpha() { return 'a'; }
+      export function beta() { return 'b'; }
+    `,
+		);
+		await writeProjectFile(
+			root,
+			"src/index.ts",
+			`export * from './m';`,
+		);
+		await writeProjectFile(
+			root,
+			"src/use.ts",
+			`
+      import { alpha } from './index';
+      export function run() { return alpha(); }
+    `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await indexer.indexAll();
+
+			const mNodes = indexer.queries.getNodesByFile("src/m.ts");
+			const alphaNode = mNodes.find((node) => node.name === "alpha");
+			expect(alphaNode).toBeDefined();
+
+			const exportEdges = indexer.queries
+				.getAllEdges()
+				.filter((edge) => edge.kind === "exports");
+			const exportsToAlpha = exportEdges.filter(
+				(edge) => edge.target === alphaNode!.id,
+			);
+			expect(exportsToAlpha.length).toBeGreaterThan(0);
+			expect(exportsToAlpha.every((edge) => edge.resolutionState === "resolved")).toBe(
+				true,
+			);
+
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
+		} finally {
+			indexer.close();
+		}
+	});
+
+	test("function and namespace merge resolves as ambiguous with candidate metadata", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"src/merged.ts",
+			`
+      function merged() { return 1; }
+      namespace merged { export const tag = 'ns'; }
+      export function readTag() { return merged.tag; }
+    `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await indexer.indexAll();
+
+			const ambiguous = indexer.queries
+				.getAllEdges()
+				.filter((edge) => edge.resolutionState === "ambiguous");
+			expect(ambiguous.length).toBeGreaterThan(0);
+			expect(
+				ambiguous.some(
+					(edge) =>
+						Array.isArray(edge.metadata?.candidates) &&
+						(edge.metadata!.candidates as string[]).length > 1,
+				),
+			).toBe(true);
+
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
+		} finally {
+			indexer.close();
+		}
+	});
+
+	test("literal dynamic import resolves member access on the loaded module", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"src/module.ts",
+			`export const value = 42;`,
+		);
+		await writeProjectFile(
+			root,
+			"src/load.ts",
+			`
+      export async function loadValue() {
+        const mod = await import('./module');
+        return mod.value;
+      }
+    `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await indexer.indexAll();
+
+			const moduleNodes = indexer.queries.getNodesByFile("src/module.ts");
+			const valueNode = moduleNodes.find((node) => node.name === "value");
+			expect(valueNode).toBeDefined();
+
+			const valueRefs = indexer.queries
+				.getAllEdges()
+				.filter(
+					(edge) =>
+						edge.kind === "references" &&
+						edge.target === valueNode!.id &&
+						edge.resolutionState === "resolved",
+				);
+			expect(valueRefs.length).toBeGreaterThan(0);
+
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
+		} finally {
+			indexer.close();
+		}
+	});
+
+	test("getAllEdges returns edges sorted by compareEdges contract", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"src/a.ts",
+			`
+      export function a() { return 1; }
+      export function b() { return a(); }
+    `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await indexer.indexAll();
+			const edges = indexer.queries.getAllEdges();
+			const sorted = [...edges].sort(compareEdges);
+			expect(edges.map((edge) => edge.id)).toEqual(sorted.map((edge) => edge.id));
+
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges,
+			});
+		} finally {
+			indexer.close();
+		}
+	});
+
+	test("import type edges are recorded (typeOnly metadata not yet emitted)", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"src/types.ts",
+			`export type Widget = { id: string };`,
+		);
+		await writeProjectFile(
+			root,
+			"src/use.ts",
+			`
+      import type { Widget } from './types';
+      export function describeWidget(widget: Widget) { return widget.id; }
+    `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await indexer.indexAll();
+
+			const widgetNode = indexer.queries
+				.getNodesByFile("src/types.ts")
+				.find((node) => node.name === "Widget");
+			expect(widgetNode).toBeDefined();
+
+			const importEdges = indexer.queries
+				.getAllEdges()
+				.filter((edge) => edge.kind === "imports");
+			expect(importEdges.length).toBeGreaterThan(0);
+			expect(
+				importEdges.some(
+					(edge) =>
+						edge.target === widgetNode!.id &&
+						edge.resolutionState === "resolved",
+				),
+			).toBe(true);
+			// docs/extraction.md §5 expects metadata.typeOnly; resolver does not emit it yet.
+			expect(importEdges.every((edge) => edge.metadata?.typeOnly !== true)).toBe(
+				true,
+			);
+
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
+		} finally {
+			indexer.close();
+		}
+	});
+
+	test("sync after modify matches full re-index normalized graph", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"src/utils.ts",
+			`
+      export function greet(name: string): string {
+        return 'hello ' + name;
+      }
+    `,
+		);
+		await writeProjectFile(
+			root,
+			"src/app.ts",
+			`
+      import { greet } from './utils';
+      export function run() { return greet('world'); }
+    `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await indexer.indexAll();
+
+			await writeProjectFile(
+				root,
+				"src/utils.ts",
+				`
+        export function greet(name: string): string {
+          return 'hi ' + name;
+        }
+        export function farewell(name: string): string {
+          return 'bye ' + name;
+        }
+      `,
+			);
+
+			await indexer.sync();
+			const afterSync = normalizeIndexerGraph(indexer);
+
+			await indexer.indexAll({ force: true });
+			const afterFull = normalizeIndexerGraph(indexer);
+
+			expect(afterSync).toEqual(afterFull);
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
+		} finally {
+			indexer.close();
+		}
+	});
+
+	test("sync heals unresolved edges when a matching symbol is added", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"src/consumer.ts",
+			`
+      export function run() {
+        return laterFn();
+      }
+    `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await indexer.indexAll();
+
+			const unresolvedBefore = indexer.queries
+				.getAllEdges()
+				.filter(
+					(edge) =>
+						edge.resolutionState === "unresolved" &&
+						edge.targetName === "laterFn",
+				);
+			expect(unresolvedBefore.length).toBeGreaterThan(0);
+
+			await writeProjectFile(
+				root,
+				"src/later.ts",
+				`export function laterFn() { return 42; }`,
+			);
+
+			await indexer.sync();
+
+			const laterNode = indexer.queries
+				.getNodesByFile("src/later.ts")
+				.find((node) => node.name === "laterFn");
+			expect(laterNode).toBeDefined();
+
+			const healed = indexer.queries
+				.getAllEdges()
+				.filter(
+					(edge) =>
+						edge.targetName === "laterFn" ||
+						edge.target === laterNode!.id,
+				);
+			expect(
+				healed.some(
+					(edge) =>
+						edge.resolutionState === "resolved" &&
+						edge.target === laterNode!.id,
+				),
+			).toBe(true);
+
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
+		} finally {
+			indexer.close();
+		}
+	});
 });
 
 async function makeTempProject(): Promise<string> {
 	const root = await mkdtemp(`${tmpdir()}/astrograph-passb-`);
 	tempRoots.push(root);
 	return root;
+}
+
+function normalizeIndexerGraph(
+	indexer: Awaited<ReturnType<typeof openProject>>,
+): ReturnType<typeof normalize> {
+	return normalize({
+		nodes: indexer.queries.getAllNodes(),
+		edges: indexer.queries.getAllEdges(),
+	});
 }
 
 async function writeProjectFile(
