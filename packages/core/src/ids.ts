@@ -1,11 +1,11 @@
-import type { Hasher, NodeKind } from './types';
+import type { Hasher, NodeKind } from "./types";
 
 export interface MakeNodeIdInput {
-  project: string;
-  filePath: string;
-  kind: NodeKind;
-  qualifiedName: string;
-  locator?: string;
+	project: string;
+	filePath: string;
+	kind: NodeKind;
+	qualifiedName: string;
+	locator?: string;
 }
 
 /**
@@ -17,14 +17,12 @@ export interface MakeNodeIdInput {
  * anonymous/local declarations.
  */
 export function makeNodeId(input: MakeNodeIdInput, hasher: Hasher): string {
-  const filePath = input.filePath.replaceAll('\\', '/');
-  const qualifiedName = input.qualifiedName.replaceAll('\\', '/');
-  const locator = input.locator ?? '';
-  return hasher.hash([
-    input.project,
-    filePath,
-    input.kind,
-    qualifiedName,
-    locator,
-  ].join('\u001f'));
+	const filePath = input.filePath.replaceAll("\\", "/");
+	const qualifiedName = input.qualifiedName.replaceAll("\\", "/");
+	const locator = input.locator ?? "";
+	return hasher.hash(
+		[input.project, filePath, input.kind, qualifiedName, locator].join(
+			"\u001f",
+		),
+	);
 }

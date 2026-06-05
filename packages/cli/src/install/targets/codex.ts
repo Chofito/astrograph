@@ -1,52 +1,59 @@
-import { join } from 'node:path';
-import type { AgentGuideLink, Location, McpEntry, Target } from '../target';
-import { readToml, serializeToml, type TomlDoc } from '../writers/toml';
+import { join } from "node:path";
+import type { AgentGuideLink, Location, McpEntry, Target } from "../target";
+import { readToml, serializeToml, type TomlDoc } from "../writers/toml";
 
 export const codexTarget: Target = {
-  id: 'codex',
-  label: 'Codex',
+	id: "codex",
+	label: "Codex",
 
-  configPath(_location: Location, _cwd: string, homeDir: string): string {
-    return join(homeDir, '.codex', 'config.toml');
-  },
+	configPath(_location: Location, _cwd: string, homeDir: string): string {
+		return join(homeDir, ".codex", "config.toml");
+	},
 
-  agentGuide(location: Location, _cwd: string, homeDir: string): AgentGuideLink | undefined {
-    if (location !== 'global') return undefined;
-    return { path: join(homeDir, '.codex', 'skills', 'astrograph'), source: 'directory' };
-  },
+	agentGuide(
+		location: Location,
+		_cwd: string,
+		homeDir: string,
+	): AgentGuideLink | undefined {
+		if (location !== "global") return undefined;
+		return {
+			path: join(homeDir, ".codex", "skills", "astrograph"),
+			source: "directory",
+		};
+	},
 
-  supportsLocation(location: Location): boolean {
-    return location === 'global';
-  },
+	supportsLocation(location: Location): boolean {
+		return location === "global";
+	},
 
-  async read(filePath: string): Promise<TomlDoc> {
-    return readToml(filePath);
-  },
+	async read(filePath: string): Promise<TomlDoc> {
+		return readToml(filePath);
+	},
 
-  hasEntry(doc: unknown): boolean {
-    const d = doc as TomlDoc;
-    return !!(d.mcp_servers as Record<string, unknown> | undefined)?.astrograph;
-  },
+	hasEntry(doc: unknown): boolean {
+		const d = doc as TomlDoc;
+		return !!(d.mcp_servers as Record<string, unknown> | undefined)?.astrograph;
+	},
 
-  upsert(doc: unknown, entry: McpEntry): TomlDoc {
-    const d = doc as TomlDoc;
-    return {
-      ...d,
-      mcp_servers: {
-        ...((d.mcp_servers as Record<string, unknown>) ?? {}),
-        astrograph: { command: entry.command, args: entry.args },
-      },
-    };
-  },
+	upsert(doc: unknown, entry: McpEntry): TomlDoc {
+		const d = doc as TomlDoc;
+		return {
+			...d,
+			mcp_servers: {
+				...((d.mcp_servers as Record<string, unknown>) ?? {}),
+				astrograph: { command: entry.command, args: entry.args },
+			},
+		};
+	},
 
-  remove(doc: unknown): TomlDoc {
-    const d = doc as TomlDoc;
-    const servers = { ...((d.mcp_servers as Record<string, unknown>) ?? {}) };
-    delete servers.astrograph;
-    return { ...d, mcp_servers: servers };
-  },
+	remove(doc: unknown): TomlDoc {
+		const d = doc as TomlDoc;
+		const servers = { ...((d.mcp_servers as Record<string, unknown>) ?? {}) };
+		delete servers.astrograph;
+		return { ...d, mcp_servers: servers };
+	},
 
-  serialize(doc: unknown): string {
-    return serializeToml(doc as TomlDoc);
-  },
+	serialize(doc: unknown): string {
+		return serializeToml(doc as TomlDoc);
+	},
 };

@@ -1,13 +1,13 @@
 function Injectable(): ClassDecorator {
-  return (target) => {};
+	return (target) => {};
 }
 
 function Log(): MethodDecorator {
-  return () => {};
+	return () => {};
 }
 
 @Injectable()
 export class AppService {
-  @Log()
-  handle(): void {}
+	@Log()
+	handle(): void {}
 }

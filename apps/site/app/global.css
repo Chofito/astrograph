@@ -1,717 +1,910 @@
-@import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
 
 @theme {
-  --color-astro-space: #050713;
-  --color-astro-space-2: #080a18;
-  --color-astro-space-3: #0d1024;
-  --color-astro-panel: #12112a;
-  --color-astro-purple: #9d6cff;
-  --color-astro-violet: #6e35ff;
-  --color-astro-cyan: #5eead4;
-  --color-astro-star: #ffffff;
-  --color-astro-text: #f5f3ff;
-  --color-astro-muted: #b6aed6;
-  --color-astro-border: color-mix(in oklab, var(--color-astro-text) 13%, transparent);
+	--color-astro-space: #050713;
+	--color-astro-space-2: #080a18;
+	--color-astro-space-3: #0d1024;
+	--color-astro-panel: #12112a;
+	--color-astro-purple: #9d6cff;
+	--color-astro-violet: #6e35ff;
+	--color-astro-cyan: #5eead4;
+	--color-astro-star: #ffffff;
+	--color-astro-text: #f5f3ff;
+	--color-astro-muted: #b6aed6;
+	--color-astro-border: color-mix(
+		in oklab,
+		var(--color-astro-text) 13%,
+		transparent
+	);
 
-  /* terminal token palette */
-  --t-prompt: var(--color-astro-cyan);
-  --t-cmd: #c4a6ff;
-  --t-arg: #8fb8ff;
-  --t-str: #f0b97a;
-  --t-ok: #6ee7a8;
+	/* terminal token palette */
+	--t-prompt: var(--color-astro-cyan);
+	--t-cmd: #c4a6ff;
+	--t-arg: #8fb8ff;
+	--t-str: #f0b97a;
+	--t-ok: #6ee7a8;
 }
 
 /* Map Fumadocs UI variables onto the space palette so /docs shares the identity. */
 :root,
 .dark {
-  --color-fd-background: var(--color-astro-space);
-  --color-fd-foreground: var(--color-astro-text);
-  --color-fd-muted: color-mix(in oklab, var(--color-astro-panel) 76%, var(--color-astro-space));
-  --color-fd-muted-foreground: color-mix(in oklab, var(--color-astro-text) 66%, transparent);
-  --color-fd-popover: var(--color-astro-space-3);
-  --color-fd-popover-foreground: var(--color-astro-text);
-  --color-fd-card: color-mix(in oklab, var(--color-astro-panel) 80%, var(--color-astro-space));
-  --color-fd-card-foreground: var(--color-astro-text);
-  --color-fd-border: var(--color-astro-border);
-  --color-fd-primary: var(--color-astro-purple);
-  --color-fd-primary-foreground: var(--color-astro-space);
-  --color-fd-secondary: color-mix(in oklab, var(--color-astro-violet) 24%, var(--color-astro-space));
-  --color-fd-secondary-foreground: var(--color-astro-text);
-  --color-fd-accent: color-mix(in oklab, var(--color-astro-purple) 22%, transparent);
-  --color-fd-accent-foreground: var(--color-astro-text);
-  --color-fd-ring: var(--color-astro-cyan);
-  --fd-layout-width: 1400px;
+	--color-fd-background: var(--color-astro-space);
+	--color-fd-foreground: var(--color-astro-text);
+	--color-fd-muted: color-mix(
+		in oklab,
+		var(--color-astro-panel) 76%,
+		var(--color-astro-space)
+	);
+	--color-fd-muted-foreground: color-mix(
+		in oklab,
+		var(--color-astro-text) 66%,
+		transparent
+	);
+	--color-fd-popover: var(--color-astro-space-3);
+	--color-fd-popover-foreground: var(--color-astro-text);
+	--color-fd-card: color-mix(
+		in oklab,
+		var(--color-astro-panel) 80%,
+		var(--color-astro-space)
+	);
+	--color-fd-card-foreground: var(--color-astro-text);
+	--color-fd-border: var(--color-astro-border);
+	--color-fd-primary: var(--color-astro-purple);
+	--color-fd-primary-foreground: var(--color-astro-space);
+	--color-fd-secondary: color-mix(
+		in oklab,
+		var(--color-astro-violet) 24%,
+		var(--color-astro-space)
+	);
+	--color-fd-secondary-foreground: var(--color-astro-text);
+	--color-fd-accent: color-mix(
+		in oklab,
+		var(--color-astro-purple) 22%,
+		transparent
+	);
+	--color-fd-accent-foreground: var(--color-astro-text);
+	--color-fd-ring: var(--color-astro-cyan);
+	--fd-layout-width: 1400px;
 }
 
 * {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 
 html {
-  width: 100%;
-  scrollbar-gutter: stable;
-  background: var(--color-astro-space);
+	width: 100%;
+	scrollbar-gutter: stable;
+	background: var(--color-astro-space);
 }
 
 html > body[data-scroll-locked] {
-  margin-right: 0px !important;
-  --removed-body-scroll-bar-size: 0px !important;
+	margin-right: 0px !important;
+	--removed-body-scroll-bar-size: 0px !important;
 }
 
 body {
-  min-width: 0;
-  width: 100%;
-  background:
-    radial-gradient(900px 520px at 78% -8%, color-mix(in oklab, var(--color-astro-violet) 24%, transparent), transparent 70%),
-    radial-gradient(760px 480px at 12% 4%, color-mix(in oklab, var(--color-astro-purple) 16%, transparent), transparent 70%),
-    radial-gradient(700px 600px at 50% 120%, color-mix(in oklab, var(--color-astro-cyan) 9%, transparent), transparent 72%),
-    linear-gradient(180deg, var(--color-astro-space-2) 0%, var(--color-astro-space) 50%, #07060f 100%);
-  color: var(--color-astro-text);
-  font-family: var(--font-sans), Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	min-width: 0;
+	width: 100%;
+	background:
+		radial-gradient(
+			900px 520px at 78% -8%,
+			color-mix(in oklab, var(--color-astro-violet) 24%, transparent),
+			transparent 70%
+		),
+		radial-gradient(
+			760px 480px at 12% 4%,
+			color-mix(in oklab, var(--color-astro-purple) 16%, transparent),
+			transparent 70%
+		),
+		radial-gradient(
+			700px 600px at 50% 120%,
+			color-mix(in oklab, var(--color-astro-cyan) 9%, transparent),
+			transparent 72%
+		),
+		linear-gradient(
+			180deg,
+			var(--color-astro-space-2) 0%,
+			var(--color-astro-space) 50%,
+			#07060f 100%
+		);
+	color: var(--color-astro-text);
+	font-family:
+		var(--font-sans), Inter, ui-sans-serif, system-ui, -apple-system,
+		BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 ::selection {
-  background: color-mix(in oklab, var(--color-astro-purple) 42%, transparent);
-  color: var(--color-astro-text);
+	background: color-mix(in oklab, var(--color-astro-purple) 42%, transparent);
+	color: var(--color-astro-text);
 }
 
 .astro-grad {
-  background: linear-gradient(100deg, var(--color-astro-purple) 8%, var(--color-astro-cyan) 92%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+	background: linear-gradient(
+		100deg,
+		var(--color-astro-purple) 8%,
+		var(--color-astro-cyan) 92%
+	);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
 }
 
 /* ---------- nav wordmark ---------- */
 .astro-wordmark {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  gap: 0.55rem;
-  color: var(--color-astro-text);
-  font-weight: 800;
-  letter-spacing: -0.01em;
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	gap: 0.55rem;
+	color: var(--color-astro-text);
+	font-weight: 800;
+	letter-spacing: -0.01em;
 }
 
 .astro-wordmark-glyph {
-  width: 1.55rem;
-  height: 1.55rem;
-  flex: 0 0 auto;
-  color: var(--color-astro-purple);
-  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--color-astro-purple) 60%, transparent));
+	width: 1.55rem;
+	height: 1.55rem;
+	flex: 0 0 auto;
+	color: var(--color-astro-purple);
+	filter: drop-shadow(
+		0 0 10px color-mix(in oklab, var(--color-astro-purple) 60%, transparent)
+	);
 }
 
 .astro-wordmark-glyph path {
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-width: 1.8;
+	fill: none;
+	stroke: currentColor;
+	stroke-linecap: round;
+	stroke-width: 1.8;
 }
 
 .astro-wordmark-glyph circle {
-  fill: var(--color-astro-space);
-  stroke: var(--color-astro-cyan);
-  stroke-width: 1.8;
+	fill: var(--color-astro-space);
+	stroke: var(--color-astro-cyan);
+	stroke-width: 1.8;
 }
 
 /* ---------- starfield (two parallax layers) ---------- */
 .astro-starfield {
-  position: absolute;
-  inset: -6% -6% 0;
-  z-index: -2;
-  pointer-events: none;
-  mask-image: linear-gradient(180deg, #000 0%, #000 58%, transparent 100%);
+	position: absolute;
+	inset: -6% -6% 0;
+	z-index: -2;
+	pointer-events: none;
+	mask-image: linear-gradient(180deg, #000 0%, #000 58%, transparent 100%);
 }
 
 .astro-starfield-layer {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  will-change: transform;
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	will-change: transform;
 }
 
 .astro-starfield-far {
-  animation: astro-drift-far 46s ease-in-out infinite alternate;
+	animation: astro-drift-far 46s ease-in-out infinite alternate;
 }
 
 .astro-starfield-near {
-  animation: astro-drift-near 32s ease-in-out infinite alternate;
+	animation: astro-drift-near 32s ease-in-out infinite alternate;
 }
 
 .astro-star {
-  animation: astro-twinkle 4s ease-in-out infinite alternate;
+	animation: astro-twinkle 4s ease-in-out infinite alternate;
 }
 
 .astro-star-bright {
-  filter: drop-shadow(0 0 3px color-mix(in oklab, var(--color-astro-star) 70%, transparent));
+	filter: drop-shadow(
+		0 0 3px color-mix(in oklab, var(--color-astro-star) 70%, transparent)
+	);
 }
 
 /* ---------- home shell ---------- */
 .astro-home {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
 }
 
 /* ---------- hero ---------- */
 .astro-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(300px, 0.82fr);
-  align-items: center;
-  gap: clamp(1.5rem, 4vw, 3.5rem);
-  width: min(1140px, calc(100% - 2.5rem));
-  min-height: calc(100vh - 64px);
-  margin: 0 auto;
-  padding: clamp(3rem, 7vw, 5rem) 0 4rem;
+	display: grid;
+	grid-template-columns: minmax(0, 1.02fr) minmax(300px, 0.82fr);
+	align-items: center;
+	gap: clamp(1.5rem, 4vw, 3.5rem);
+	width: min(1140px, calc(100% - 2.5rem));
+	min-height: calc(100vh - 64px);
+	margin: 0 auto;
+	padding: clamp(3rem, 7vw, 5rem) 0 4rem;
 }
 
 .astro-hero-copy,
 .astro-hero-visual,
 .astro-term-grid {
-  min-width: 0;
+	min-width: 0;
 }
 
 .astro-hero-copy {
-  max-width: 640px;
+	max-width: 640px;
 }
 
 .astro-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  margin-bottom: 1.15rem;
-  color: color-mix(in oklab, var(--color-astro-purple) 60%, var(--color-astro-text));
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.55rem;
+	margin-bottom: 1.15rem;
+	color: color-mix(
+		in oklab,
+		var(--color-astro-purple) 60%,
+		var(--color-astro-text)
+	);
+	font-size: 0.76rem;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
 }
 
 .astro-eyebrow-dot {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 999px;
-  background: var(--color-astro-cyan);
-  box-shadow: 0 0 12px var(--color-astro-cyan);
+	width: 0.45rem;
+	height: 0.45rem;
+	border-radius: 999px;
+	background: var(--color-astro-cyan);
+	box-shadow: 0 0 12px var(--color-astro-cyan);
 }
 
 .astro-hero h1 {
-  max-width: 12ch;
-  overflow-wrap: anywhere;
-  font-size: clamp(2.1rem, 4.6vw, 3.7rem);
-  font-weight: 800;
-  line-height: 1.06;
-  letter-spacing: -0.02em;
+	max-width: 12ch;
+	overflow-wrap: anywhere;
+	font-size: clamp(2.1rem, 4.6vw, 3.7rem);
+	font-weight: 800;
+	line-height: 1.06;
+	letter-spacing: -0.02em;
 }
 
 .astro-subhead {
-  max-width: 540px;
-  margin-top: 1.35rem;
-  color: color-mix(in oklab, var(--color-astro-text) 74%, transparent);
-  font-size: clamp(1rem, 1.6vw, 1.1rem);
-  line-height: 1.7;
+	max-width: 540px;
+	margin-top: 1.35rem;
+	color: color-mix(in oklab, var(--color-astro-text) 74%, transparent);
+	font-size: clamp(1rem, 1.6vw, 1.1rem);
+	line-height: 1.7;
 }
 
 .astro-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-  margin-top: 2rem;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.8rem;
+	margin-top: 2rem;
 }
 
 .astro-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  max-width: 100%;
-  min-height: 2.85rem;
-  border-radius: 999px;
-  padding: 0 1.3rem;
-  font-size: 0.95rem;
-  font-weight: 700;
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	max-width: 100%;
+	min-height: 2.85rem;
+	border-radius: 999px;
+	padding: 0 1.3rem;
+	font-size: 0.95rem;
+	font-weight: 700;
+	transition:
+		transform 180ms ease,
+		box-shadow 180ms ease,
+		border-color 180ms ease,
+		background 180ms ease;
 }
 
 .astro-button-primary {
-  background: linear-gradient(135deg, var(--color-astro-purple), var(--color-astro-cyan));
-  color: #06060f;
-  box-shadow: 0 14px 44px color-mix(in oklab, var(--color-astro-violet) 36%, transparent);
+	background: linear-gradient(
+		135deg,
+		var(--color-astro-purple),
+		var(--color-astro-cyan)
+	);
+	color: #06060f;
+	box-shadow: 0 14px 44px
+		color-mix(in oklab, var(--color-astro-violet) 36%, transparent);
 }
 
 .astro-button-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 20px 60px color-mix(in oklab, var(--color-astro-violet) 50%, transparent);
+	transform: translateY(-2px);
+	box-shadow: 0 20px 60px
+		color-mix(in oklab, var(--color-astro-violet) 50%, transparent);
 }
 
 .astro-button-secondary {
-  border: 1px solid var(--color-astro-border);
-  background: color-mix(in oklab, var(--color-astro-text) 5%, transparent);
-  color: var(--color-astro-text);
-  backdrop-filter: blur(8px);
+	border: 1px solid var(--color-astro-border);
+	background: color-mix(in oklab, var(--color-astro-text) 5%, transparent);
+	color: var(--color-astro-text);
+	backdrop-filter: blur(8px);
 }
 
 .astro-button-secondary:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in oklab, var(--color-astro-cyan) 55%, transparent);
+	transform: translateY(-2px);
+	border-color: color-mix(in oklab, var(--color-astro-cyan) 55%, transparent);
 }
 
 /* ---------- hero visual: constellation + terminal ---------- */
 .astro-hero-visual {
-  position: relative;
-  display: flex;
-  align-self: stretch;
-  align-items: center;
-  justify-content: center;
+	position: relative;
+	display: flex;
+	align-self: stretch;
+	align-items: center;
+	justify-content: center;
 }
 
 .astro-constellation-wrap {
-  position: absolute;
-  inset: 3% -4% auto auto;
-  width: min(106%, 560px);
-  z-index: -1;
-  pointer-events: none;
-  will-change: transform;
+	position: absolute;
+	inset: 3% -4% auto auto;
+	width: min(106%, 560px);
+	z-index: -1;
+	pointer-events: none;
+	will-change: transform;
 }
 
 .astro-constellation {
-  display: block;
-  width: 100%;
-  height: auto;
-  opacity: 0.95;
-  filter: drop-shadow(0 0 28px color-mix(in oklab, var(--color-astro-purple) 34%, transparent));
-  animation: astro-float 18s ease-in-out infinite alternate;
+	display: block;
+	width: 100%;
+	height: auto;
+	opacity: 0.95;
+	filter: drop-shadow(
+		0 0 28px color-mix(in oklab, var(--color-astro-purple) 34%, transparent)
+	);
+	animation: astro-float 18s ease-in-out infinite alternate;
 }
 
 .astro-edge {
-  stroke: color-mix(in oklab, var(--color-astro-purple) 72%, var(--color-astro-cyan));
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-dasharray: 460;
-  stroke-dashoffset: 460;
-  opacity: 0.6;
-  animation: astro-draw 1.1s ease forwards, astro-edge-pulse 5.5s ease-in-out 1.2s infinite alternate;
+	stroke: color-mix(
+		in oklab,
+		var(--color-astro-purple) 72%,
+		var(--color-astro-cyan)
+	);
+	stroke-width: 1.4;
+	stroke-linecap: round;
+	stroke-dasharray: 460;
+	stroke-dashoffset: 460;
+	opacity: 0.6;
+	animation:
+		astro-draw 1.1s ease forwards,
+		astro-edge-pulse 5.5s ease-in-out 1.2s infinite alternate;
 }
 
 .astro-node-halo {
-  fill: color-mix(in oklab, var(--color-astro-purple) 40%, transparent);
+	fill: color-mix(in oklab, var(--color-astro-purple) 40%, transparent);
 }
 
 .astro-node-core {
-  fill: var(--color-astro-star);
+	fill: var(--color-astro-star);
 }
 
 .astro-node-g {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: astro-node-pulse 4.4s ease-in-out infinite alternate;
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: astro-node-pulse 4.4s ease-in-out infinite alternate;
 }
 
 .astro-term {
-  position: relative;
-  width: 100%;
-  max-width: 460px;
-  border: 1px solid var(--color-astro-border);
-  border-radius: 12px;
-  background:
-    linear-gradient(180deg, color-mix(in oklab, var(--color-astro-panel) 94%, transparent), color-mix(in oklab, var(--color-astro-space-2) 92%, transparent));
-  box-shadow:
-    0 30px 90px color-mix(in oklab, #000 66%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--color-astro-purple) 12%, transparent),
-    0 0 60px color-mix(in oklab, var(--color-astro-purple) 16%, transparent);
-  overflow: hidden;
-  backdrop-filter: blur(6px);
+	position: relative;
+	width: 100%;
+	max-width: 460px;
+	border: 1px solid var(--color-astro-border);
+	border-radius: 12px;
+	background: linear-gradient(
+		180deg,
+		color-mix(in oklab, var(--color-astro-panel) 94%, transparent),
+		color-mix(in oklab, var(--color-astro-space-2) 92%, transparent)
+	);
+	box-shadow:
+		0 30px 90px color-mix(in oklab, #000 66%, transparent),
+		0 0 0 1px color-mix(in oklab, var(--color-astro-purple) 12%, transparent),
+		0 0 60px color-mix(in oklab, var(--color-astro-purple) 16%, transparent);
+	overflow: hidden;
+	backdrop-filter: blur(6px);
 }
 
 .astro-term-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.7rem 0.9rem;
-  border-bottom: 1px solid color-mix(in oklab, var(--color-astro-text) 8%, transparent);
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.7rem 0.9rem;
+	border-bottom: 1px solid
+		color-mix(in oklab, var(--color-astro-text) 8%, transparent);
 }
 
 .astro-term-dot {
-  width: 0.66rem;
-  height: 0.66rem;
-  border-radius: 999px;
+	width: 0.66rem;
+	height: 0.66rem;
+	border-radius: 999px;
 }
-.astro-term-dot-r { background: #ff5f56; }
-.astro-term-dot-y { background: #ffbd2e; }
-.astro-term-dot-g { background: #27c93f; }
+.astro-term-dot-r {
+	background: #ff5f56;
+}
+.astro-term-dot-y {
+	background: #ffbd2e;
+}
+.astro-term-dot-g {
+	background: #27c93f;
+}
 
 .astro-term-name {
-  margin-left: 0.5rem;
-  color: color-mix(in oklab, var(--color-astro-text) 52%, transparent);
-  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.72rem;
+	margin-left: 0.5rem;
+	color: color-mix(in oklab, var(--color-astro-text) 52%, transparent);
+	font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 0.72rem;
 }
 
 .astro-term-body {
-  margin: 0;
-  padding: 1.05rem 1.15rem 1.25rem;
-  overflow-x: auto;
-  color: color-mix(in oklab, var(--color-astro-text) 88%, transparent);
-  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.8rem;
-  line-height: 1.7;
+	margin: 0;
+	padding: 1.05rem 1.15rem 1.25rem;
+	overflow-x: auto;
+	color: color-mix(in oklab, var(--color-astro-text) 88%, transparent);
+	font-family:
+		var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+		monospace;
+	font-size: 0.8rem;
+	line-height: 1.7;
 }
 
-.astro-term-body .tl { display: inline; }
-.t-prompt { color: var(--t-prompt); font-weight: 700; }
-.t-cmd { color: var(--t-cmd); font-weight: 700; }
-.t-arg { color: var(--t-arg); }
-.t-str { color: var(--t-str); }
-.t-dim { color: color-mix(in oklab, var(--color-astro-text) 42%, transparent); }
-.t-id { color: var(--color-astro-text); }
-.t-path { color: var(--color-astro-cyan); }
-.t-key { color: color-mix(in oklab, var(--color-astro-purple) 55%, var(--color-astro-text)); }
-.t-ok { color: var(--t-ok); font-weight: 600; }
+.astro-term-body .tl {
+	display: inline;
+}
+.t-prompt {
+	color: var(--t-prompt);
+	font-weight: 700;
+}
+.t-cmd {
+	color: var(--t-cmd);
+	font-weight: 700;
+}
+.t-arg {
+	color: var(--t-arg);
+}
+.t-str {
+	color: var(--t-str);
+}
+.t-dim {
+	color: color-mix(in oklab, var(--color-astro-text) 42%, transparent);
+}
+.t-id {
+	color: var(--color-astro-text);
+}
+.t-path {
+	color: var(--color-astro-cyan);
+}
+.t-key {
+	color: color-mix(
+		in oklab,
+		var(--color-astro-purple) 55%,
+		var(--color-astro-text)
+	);
+}
+.t-ok {
+	color: var(--t-ok);
+	font-weight: 600;
+}
 
 /* ---------- surfaces strip ---------- */
 .astro-surfaces {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  width: min(1140px, calc(100% - 2.5rem));
-  margin: 0 auto;
-  padding: 0 0 2rem;
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 1rem;
+	width: min(1140px, calc(100% - 2.5rem));
+	margin: 0 auto;
+	padding: 0 0 2rem;
 }
 
 .astro-surface {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
-  padding: 1.1rem 1.2rem;
-  border: 1px solid var(--color-astro-border);
-  border-radius: 12px;
-  background: color-mix(in oklab, var(--color-astro-text) 4%, transparent);
+	display: flex;
+	align-items: flex-start;
+	gap: 0.85rem;
+	padding: 1.1rem 1.2rem;
+	border: 1px solid var(--color-astro-border);
+	border-radius: 12px;
+	background: color-mix(in oklab, var(--color-astro-text) 4%, transparent);
 }
 
-.astro-surface svg { color: var(--color-astro-cyan); flex: 0 0 auto; margin-top: 0.15rem; }
-.astro-surface h3 { font-size: 0.95rem; font-weight: 800; }
-.astro-surface p { margin-top: 0.3rem; font-size: 0.85rem; line-height: 1.55; color: color-mix(in oklab, var(--color-astro-text) 66%, transparent); }
+.astro-surface svg {
+	color: var(--color-astro-cyan);
+	flex: 0 0 auto;
+	margin-top: 0.15rem;
+}
+.astro-surface h3 {
+	font-size: 0.95rem;
+	font-weight: 800;
+}
+.astro-surface p {
+	margin-top: 0.3rem;
+	font-size: 0.85rem;
+	line-height: 1.55;
+	color: color-mix(in oklab, var(--color-astro-text) 66%, transparent);
+}
 
 /* ---------- why ---------- */
 .astro-why {
-  width: min(1140px, calc(100% - 2.5rem));
-  margin: 0 auto;
-  padding: clamp(2.5rem, 6vw, 4.5rem) 0;
+	width: min(1140px, calc(100% - 2.5rem));
+	margin: 0 auto;
+	padding: clamp(2.5rem, 6vw, 4.5rem) 0;
 }
 
 .astro-why-head {
-  max-width: 620px;
-  margin-bottom: 2rem;
+	max-width: 620px;
+	margin-bottom: 2rem;
 }
 
 .astro-why-head h2 {
-  max-width: 14ch;
-  margin-top: 1rem;
-  overflow-wrap: anywhere;
-  font-size: clamp(1.8rem, 3.4vw, 2.9rem);
-  font-weight: 800;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
+	max-width: 14ch;
+	margin-top: 1rem;
+	overflow-wrap: anywhere;
+	font-size: clamp(1.8rem, 3.4vw, 2.9rem);
+	font-weight: 800;
+	line-height: 1.08;
+	letter-spacing: -0.02em;
 }
 
 .astro-why-sub {
-  margin-top: 1.1rem;
-  max-width: 38ch;
-  color: color-mix(in oklab, var(--color-astro-text) 64%, transparent);
-  font-size: 0.98rem;
-  line-height: 1.65;
+	margin-top: 1.1rem;
+	max-width: 38ch;
+	color: color-mix(in oklab, var(--color-astro-text) 64%, transparent);
+	font-size: 0.98rem;
+	line-height: 1.65;
 }
 
 .astro-term-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-  gap: 1.1rem;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+	gap: 1.1rem;
 }
 
 .astro-feature {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.85rem;
+	margin: 0;
 }
 
 .astro-feature figcaption {
-  color: color-mix(in oklab, var(--color-astro-text) 64%, transparent);
-  font-size: 0.88rem;
-  line-height: 1.55;
+	color: color-mix(in oklab, var(--color-astro-text) 64%, transparent);
+	font-size: 0.88rem;
+	line-height: 1.55;
 }
 
 .astro-term-mini {
-  max-width: none;
+	max-width: none;
 }
 
 .astro-term-mini .astro-term-body {
-  padding: 1rem 1.1rem 1.1rem;
-  font-size: 0.78rem;
+	padding: 1rem 1.1rem 1.1rem;
+	font-size: 0.78rem;
 }
 
 /* ---------- 404 ---------- */
 .astro-notfound {
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
-  text-align: center;
+	display: grid;
+	place-items: center;
+	min-height: 100vh;
+	text-align: center;
 }
 
 .astro-notfound-inner {
-  width: min(560px, calc(100% - 2.5rem));
+	width: min(560px, calc(100% - 2.5rem));
 }
 
 .astro-notfound h1 {
-  margin-top: 0.5rem;
-  font-size: clamp(1.9rem, 5vw, 3rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+	margin-top: 0.5rem;
+	font-size: clamp(1.9rem, 5vw, 3rem);
+	font-weight: 800;
+	letter-spacing: -0.02em;
 }
 
 .astro-notfound .astro-eyebrow,
 .astro-notfound .astro-actions {
-  justify-content: center;
+	justify-content: center;
 }
 
 .astro-notfound .astro-subhead {
-  margin-inline: auto;
+	margin-inline: auto;
 }
 
 /* ---------- section kicker (subtle, no dot) ---------- */
 .astro-kicker {
-  display: block;
-  margin-bottom: 0.9rem;
-  color: color-mix(in oklab, var(--color-astro-purple) 58%, var(--color-astro-muted));
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+	display: block;
+	margin-bottom: 0.9rem;
+	color: color-mix(
+		in oklab,
+		var(--color-astro-purple) 58%,
+		var(--color-astro-muted)
+	);
+	font-size: 0.74rem;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
 }
 
 /* ---------- works-with strip ---------- */
 .astro-compat {
-  width: min(1140px, calc(100% - 2.5rem));
-  margin: 0 auto;
-  padding: clamp(1.5rem, 4vw, 2.5rem) 0 0.5rem;
-  text-align: center;
+	width: min(1140px, calc(100% - 2.5rem));
+	margin: 0 auto;
+	padding: clamp(1.5rem, 4vw, 2.5rem) 0 0.5rem;
+	text-align: center;
 }
 
 .astro-compat .astro-kicker {
-  margin-bottom: 1rem;
+	margin-bottom: 1rem;
 }
 
 .astro-compat-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.6rem 0.8rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.6rem 0.8rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
 }
 
 .astro-compat-row li {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.95rem;
-  border: 1px solid var(--color-astro-border);
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--color-astro-text) 4%, transparent);
-  color: color-mix(in oklab, var(--color-astro-text) 82%, transparent);
-  font-size: 0.9rem;
-  font-weight: 600;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 0.95rem;
+	border: 1px solid var(--color-astro-border);
+	border-radius: 999px;
+	background: color-mix(in oklab, var(--color-astro-text) 4%, transparent);
+	color: color-mix(in oklab, var(--color-astro-text) 82%, transparent);
+	font-size: 0.9rem;
+	font-weight: 600;
 }
 
 .astro-compat-row li::before {
-  content: '';
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 999px;
-  background: var(--color-astro-cyan);
-  box-shadow: 0 0 8px color-mix(in oklab, var(--color-astro-cyan) 80%, transparent);
+	content: "";
+	width: 0.4rem;
+	height: 0.4rem;
+	border-radius: 999px;
+	background: var(--color-astro-cyan);
+	box-shadow: 0 0 8px
+		color-mix(in oklab, var(--color-astro-cyan) 80%, transparent);
 }
 
 /* ---------- closing CTA ---------- */
 .astro-cta {
-  width: min(720px, calc(100% - 2.5rem));
-  margin: 0 auto;
-  padding: clamp(3rem, 7vw, 5rem) 0 clamp(2rem, 5vw, 3rem);
-  text-align: center;
+	width: min(720px, calc(100% - 2.5rem));
+	margin: 0 auto;
+	padding: clamp(3rem, 7vw, 5rem) 0 clamp(2rem, 5vw, 3rem);
+	text-align: center;
 }
 
 .astro-cta h2 {
-  font-size: clamp(1.9rem, 4vw, 3rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+	font-size: clamp(1.9rem, 4vw, 3rem);
+	font-weight: 800;
+	letter-spacing: -0.02em;
 }
 
 .astro-term-cta {
-  margin: 1.6rem auto 0;
-  text-align: left;
+	margin: 1.6rem auto 0;
+	text-align: left;
 }
 
 .astro-actions-center {
-  justify-content: center;
-  margin-top: 1.6rem;
+	justify-content: center;
+	margin-top: 1.6rem;
 }
 
 /* ---------- focus-visible (keyboard a11y) ---------- */
 .astro-home a:focus-visible,
 .astro-button:focus-visible,
 .astro-footer-link:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--color-astro-space),
-    0 0 0 4px var(--color-astro-cyan);
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--color-astro-space),
+		0 0 0 4px var(--color-astro-cyan);
 }
 
 /* ---------- scroll reveal (visible without JS) ---------- */
 .reveal-ready .astro-reveal {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+	opacity: 0;
+	transform: translateY(16px);
+	transition:
+		opacity 0.6s ease,
+		transform 0.6s ease;
 }
 
 .reveal-ready .astro-reveal.is-in {
-  opacity: 1;
-  transform: none;
+	opacity: 1;
+	transform: none;
 }
 
 /* ---------- nav: translucent so content scrolls under cleanly ---------- */
 #nd-nav {
-  backdrop-filter: blur(12px);
-  background: color-mix(in oklab, var(--color-astro-space) 68%, transparent);
+	backdrop-filter: blur(12px);
+	background: color-mix(in oklab, var(--color-astro-space) 68%, transparent);
 }
 
 /* ---------- footer ---------- */
 .astro-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  width: min(1140px, calc(100% - 2.5rem));
-  margin: 0 auto;
-  border-top: 1px solid color-mix(in oklab, var(--color-astro-text) 9%, transparent);
-  padding: 1.6rem 0 2.5rem;
-  color: color-mix(in oklab, var(--color-astro-text) 56%, transparent);
-  font-size: 0.88rem;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	width: min(1140px, calc(100% - 2.5rem));
+	margin: 0 auto;
+	border-top: 1px solid
+		color-mix(in oklab, var(--color-astro-text) 9%, transparent);
+	padding: 1.6rem 0 2.5rem;
+	color: color-mix(in oklab, var(--color-astro-text) 56%, transparent);
+	font-size: 0.88rem;
 }
 
-.astro-footer-brand { font-weight: 800; color: var(--color-astro-text); }
+.astro-footer-brand {
+	font-weight: 800;
+	color: var(--color-astro-text);
+}
 .astro-footer-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: color-mix(in oklab, var(--color-astro-cyan) 75%, var(--color-astro-text));
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	color: color-mix(
+		in oklab,
+		var(--color-astro-cyan) 75%,
+		var(--color-astro-text)
+	);
 }
 
 /* ---------- docs prose accents ---------- */
 .prose :where(a) {
-  color: color-mix(in oklab, var(--color-astro-cyan) 78%, var(--color-astro-text));
-  text-underline-offset: 3px;
+	color: color-mix(
+		in oklab,
+		var(--color-astro-cyan) 78%,
+		var(--color-astro-text)
+	);
+	text-underline-offset: 3px;
 }
 
 .prose :where(code):not(pre code) {
-  color: color-mix(in oklab, var(--color-astro-cyan) 66%, var(--color-astro-text));
+	color: color-mix(
+		in oklab,
+		var(--color-astro-cyan) 66%,
+		var(--color-astro-text)
+	);
 }
 
 /* ---------- keyframes ---------- */
 @keyframes astro-twinkle {
-  from { opacity: 0.2; }
-  to { opacity: 1; }
+	from {
+		opacity: 0.2;
+	}
+	to {
+		opacity: 1;
+	}
 }
 
 @keyframes astro-drift-far {
-  from { transform: translate3d(-1.4%, -1%, 0) scale(1.02); }
-  to { transform: translate3d(1.6%, 1.2%, 0) scale(1.05); }
+	from {
+		transform: translate3d(-1.4%, -1%, 0) scale(1.02);
+	}
+	to {
+		transform: translate3d(1.6%, 1.2%, 0) scale(1.05);
+	}
 }
 
 @keyframes astro-drift-near {
-  from { transform: translate3d(2.4%, 1.4%, 0); }
-  to { transform: translate3d(-2.6%, -1.6%, 0); }
+	from {
+		transform: translate3d(2.4%, 1.4%, 0);
+	}
+	to {
+		transform: translate3d(-2.6%, -1.6%, 0);
+	}
 }
 
 @keyframes astro-float {
-  from { transform: translate3d(0, -0.5rem, 0) rotate(-1deg); }
-  to { transform: translate3d(0, 0.5rem, 0) rotate(1deg); }
+	from {
+		transform: translate3d(0, -0.5rem, 0) rotate(-1deg);
+	}
+	to {
+		transform: translate3d(0, 0.5rem, 0) rotate(1deg);
+	}
 }
 
 @keyframes astro-draw {
-  to { stroke-dashoffset: 0; }
+	to {
+		stroke-dashoffset: 0;
+	}
 }
 
 @keyframes astro-edge-pulse {
-  from { opacity: 0.45; }
-  to { opacity: 0.85; }
+	from {
+		opacity: 0.45;
+	}
+	to {
+		opacity: 0.85;
+	}
 }
 
 @keyframes astro-node-pulse {
-  from { opacity: 0.78; transform: scale(0.82); }
-  to { opacity: 1; transform: scale(1.12); }
+	from {
+		opacity: 0.78;
+		transform: scale(0.82);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1.12);
+	}
 }
 
 /* ---------- responsive ---------- */
 @media (max-width: 960px) {
-  .astro-hero {
-    grid-template-columns: minmax(0, 1fr);
-    min-height: auto;
-    gap: 2.5rem;
-  }
+	.astro-hero {
+		grid-template-columns: minmax(0, 1fr);
+		min-height: auto;
+		gap: 2.5rem;
+	}
 
-  .astro-hero-visual {
-    justify-content: flex-start;
-  }
+	.astro-hero-visual {
+		justify-content: flex-start;
+	}
 
-  .astro-constellation-wrap {
-    inset: -12% -4% auto auto;
-    width: min(82%, 440px);
-  }
+	.astro-constellation-wrap {
+		inset: -12% -4% auto auto;
+		width: min(82%, 440px);
+	}
 
-  .astro-surfaces {
-    grid-template-columns: minmax(0, 1fr);
-  }
+	.astro-surfaces {
+		grid-template-columns: minmax(0, 1fr);
+	}
 }
 
 @media (max-width: 600px) {
-  .astro-hero,
-  .astro-surfaces,
-  .astro-why,
-  .astro-footer {
-    width: min(100% - 1.5rem, 1140px);
-  }
+	.astro-hero,
+	.astro-surfaces,
+	.astro-why,
+	.astro-footer {
+		width: min(100% - 1.5rem, 1140px);
+	}
 
-  .astro-hero h1 { font-size: clamp(2rem, 9vw, 2.7rem); }
+	.astro-hero h1 {
+		font-size: clamp(2rem, 9vw, 2.7rem);
+	}
 
-  .astro-constellation-wrap {
-    inset: -6% -8% auto auto;
-    width: 64%;
-  }
+	.astro-constellation-wrap {
+		inset: -6% -8% auto auto;
+		width: 64%;
+	}
 
-  .astro-constellation { opacity: 0.55; }
+	.astro-constellation {
+		opacity: 0.55;
+	}
 
-  .astro-actions { flex-direction: column; align-items: stretch; }
-  .astro-button { width: 100%; }
+	.astro-actions {
+		flex-direction: column;
+		align-items: stretch;
+	}
+	.astro-button {
+		width: 100%;
+	}
 
-  .astro-footer { flex-direction: column; gap: 0.5rem; text-align: center; }
+	.astro-footer {
+		flex-direction: column;
+		gap: 0.5rem;
+		text-align: center;
+	}
 }
 
 /* ---------- reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .astro-starfield-far,
-  .astro-starfield-near,
-  .astro-star,
-  .astro-constellation,
-  .astro-node-g,
-  .astro-edge {
-    animation: none !important;
-  }
+	.astro-starfield-far,
+	.astro-starfield-near,
+	.astro-star,
+	.astro-constellation,
+	.astro-node-g,
+	.astro-edge {
+		animation: none !important;
+	}
 
-  .astro-edge { stroke-dashoffset: 0; opacity: 0.55; }
-  .astro-button:hover,
-  .astro-card:hover { transform: none; }
+	.astro-edge {
+		stroke-dashoffset: 0;
+		opacity: 0.55;
+	}
+	.astro-button:hover,
+	.astro-card:hover {
+		transform: none;
+	}
 }

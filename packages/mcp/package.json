@@ -1,23 +1,23 @@
 {
-  "name": "@astrograph/mcp",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "author": "Rodolfo Robles",
-  "license": "Apache-2.0",
-  "description": "MCP server over the official @modelcontextprotocol/sdk — Stage 2 (see docs/tools.md).",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "types": "./src/index.ts",
-  "scripts": {
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@astrograph/core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.26.0"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
-  }
+	"name": "@astrograph/mcp",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"author": "Rodolfo Robles",
+	"license": "Apache-2.0",
+	"description": "MCP server over the official @modelcontextprotocol/sdk — Stage 2 (see docs/tools.md).",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"types": "./src/index.ts",
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@astrograph/core": "workspace:*",
+		"@modelcontextprotocol/sdk": "^1.26.0"
+	},
+	"devDependencies": {
+		"@types/bun": "latest"
+	}
 }

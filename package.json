@@ -1,35 +1,39 @@
 {
-  "name": "astrograph-monorepo",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "author": "Rodolfo Robles",
-  "license": "Apache-2.0",
-  "description": "Local-first code graph for JS/TS — monorepo root (see ROADMAP.md)",
-  "workspaces": [
-    "packages/*",
-    "apps/*"
-  ],
-  "engines": {
-    "bun": ">=1.1.0"
-  },
-  "scripts": {
-    "typecheck": "bun run --filter '*' typecheck",
-    "test": "bun test",
-    "eval": "bun eval/runner.ts",
-    "build": "bun build packages/cli/src/bin/astrograph.ts --compile --outfile dist/astrograph",
-    "web:docs": "cd apps/site && bun run dev",
-    "dev:link": "cd packages/cli && bun link",
-    "dev:unlink": "cd packages/cli && bun unlink",
-    "install:local": "bun run build && mkdir -p ~/.local/bin && cp dist/astrograph ~/.local/bin/astrograph",
-    "clean": "rm -rf dist packages/*/dist apps/*/dist"
-  },
-  "dependencies": {
-    "@astrograph/core": "workspace:*",
-    "chalk": "^5.6.2"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "^5.7.0"
-  }
+	"name": "astrograph-monorepo",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"author": "Rodolfo Robles",
+	"license": "Apache-2.0",
+	"description": "Local-first code graph for JS/TS — monorepo root (see ROADMAP.md)",
+	"workspaces": [
+		"packages/*",
+		"apps/*"
+	],
+	"engines": {
+		"bun": ">=1.1.0"
+	},
+	"scripts": {
+		"typecheck": "bun run --filter '*' typecheck",
+		"test": "bun test",
+		"eval": "bun eval/runner.ts",
+		"build": "bun build packages/cli/src/bin/astrograph.ts --compile --outfile dist/astrograph",
+		"web:docs": "cd apps/site && bun run dev",
+		"dev:link": "cd packages/cli && bun link",
+		"dev:unlink": "cd packages/cli && bun unlink",
+		"install:local": "bun run build && mkdir -p ~/.local/bin && cp dist/astrograph ~/.local/bin/astrograph",
+		"clean": "rm -rf dist packages/*/dist apps/*/dist",
+		"check": "biome check .",
+		"check:fix": "biome check --write .",
+		"format": "biome format --write ."
+	},
+	"dependencies": {
+		"@astrograph/core": "workspace:*",
+		"chalk": "^5.6.2"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.16",
+		"@types/bun": "latest",
+		"typescript": "^5.7.0"
+	}
 }

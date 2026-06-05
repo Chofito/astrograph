@@ -1,37 +1,37 @@
 export function greet(name: string): string {
-  return `Hello, ${name}!`;
+	return `Hello, ${name}!`;
 }
 
 export class UserService {
-  private name: string;
+	private name: string;
 
-  constructor(name: string) {
-    this.name = name;
-  }
+	constructor(name: string) {
+		this.name = name;
+	}
 
-  getName(): string {
-    return this.name;
-  }
+	getName(): string {
+		return this.name;
+	}
 
-  static create(name: string): UserService {
-    return new UserService(name);
-  }
+	static create(name: string): UserService {
+		return new UserService(name);
+	}
 }
 
 export enum Role {
-  Admin = 'admin',
-  User = 'user',
+	Admin = "admin",
+	User = "user",
 }
 
 export type Config = {
-  debug: boolean;
-  port: number;
+	debug: boolean;
+	port: number;
 };
 
 export namespace Utils {
-  export function formatDate(d: Date): string {
-    return d.toISOString();
-  }
+	export function formatDate(d: Date): string {
+		return d.toISOString();
+	}
 }
 
 const MAX_RETRIES = 3;

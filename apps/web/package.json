@@ -1,18 +1,18 @@
 {
-  "name": "@astrograph/web",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "author": "Rodolfo Robles",
-  "license": "Apache-2.0",
-  "description": "3D 'constellation' web UI (Bun.serve + React + three.js) — Stage 3 (see ROADMAP §6). React/three/postprocessing deps added when implemented.",
-  "scripts": {
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@astrograph/core": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
-  }
+	"name": "@astrograph/web",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"author": "Rodolfo Robles",
+	"license": "Apache-2.0",
+	"description": "3D 'constellation' web UI (Bun.serve + React + three.js) — Stage 3 (see ROADMAP §6). React/three/postprocessing deps added when implemented.",
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@astrograph/core": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/bun": "latest"
+	}
 }

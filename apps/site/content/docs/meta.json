@@ -1,12 +1,12 @@
 {
-  "title": "Documentation",
-  "pages": [
-    "---Getting Started---",
-    "index",
-    "quick-start",
-    "---Reference---",
-    "commands",
-    "mcp",
-    "concepts"
-  ]
+	"title": "Documentation",
+	"pages": [
+		"---Getting Started---",
+		"index",
+		"quick-start",
+		"---Reference---",
+		"commands",
+		"mcp",
+		"concepts"
+	]
 }
