@@ -1071,11 +1071,7 @@ describe("Pass B: edge resolution", () => {
       export function beta() { return 'b'; }
     `,
 		);
-		await writeProjectFile(
-			root,
-			"src/index.ts",
-			`export * from './m';`,
-		);
+		await writeProjectFile(root, "src/index.ts", `export * from './m';`);
 		await writeProjectFile(
 			root,
 			"src/use.ts",
@@ -1103,9 +1099,9 @@ describe("Pass B: edge resolution", () => {
 				(edge) => edge.target === alphaNode!.id,
 			);
 			expect(exportsToAlpha.length).toBeGreaterThan(0);
-			expect(exportsToAlpha.every((edge) => edge.resolutionState === "resolved")).toBe(
-				true,
-			);
+			expect(
+				exportsToAlpha.every((edge) => edge.resolutionState === "resolved"),
+			).toBe(true);
 
 			assertGraphIntegrity({
 				nodes: indexer.queries.getAllNodes(),
@@ -1158,11 +1154,7 @@ describe("Pass B: edge resolution", () => {
 
 	test("literal dynamic import resolves member access on the loaded module", async () => {
 		const root = await makeTempProject();
-		await writeProjectFile(
-			root,
-			"src/module.ts",
-			`export const value = 42;`,
-		);
+		await writeProjectFile(root, "src/module.ts", `export const value = 42;`);
 		await writeProjectFile(
 			root,
 			"src/load.ts",
@@ -1223,7 +1215,9 @@ describe("Pass B: edge resolution", () => {
 			await indexer.indexAll();
 			const edges = indexer.queries.getAllEdges();
 			const sorted = [...edges].sort(compareEdges);
-			expect(edges.map((edge) => edge.id)).toEqual(sorted.map((edge) => edge.id));
+			expect(edges.map((edge) => edge.id)).toEqual(
+				sorted.map((edge) => edge.id),
+			);
 
 			assertGraphIntegrity({
 				nodes: indexer.queries.getAllNodes(),
@@ -1274,9 +1268,9 @@ describe("Pass B: edge resolution", () => {
 				),
 			).toBe(true);
 			// docs/extraction.md §5 expects metadata.typeOnly; resolver does not emit it yet.
-			expect(importEdges.every((edge) => edge.metadata?.typeOnly !== true)).toBe(
-				true,
-			);
+			expect(
+				importEdges.every((edge) => edge.metadata?.typeOnly !== true),
+			).toBe(true);
 
 			assertGraphIntegrity({
 				nodes: indexer.queries.getAllNodes(),
@@ -1388,8 +1382,7 @@ describe("Pass B: edge resolution", () => {
 				.getAllEdges()
 				.filter(
 					(edge) =>
-						edge.targetName === "laterFn" ||
-						edge.target === laterNode!.id,
+						edge.targetName === "laterFn" || edge.target === laterNode!.id,
 				);
 			expect(
 				healed.some(

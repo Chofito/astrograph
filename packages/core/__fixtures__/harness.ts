@@ -24,7 +24,12 @@ function fixturePathJoin(...parts: string[]): string {
 	return parts
 		.filter((part) => part.length > 0)
 		.join("/")
-		.replaceAll("//", "/");
+		.replace(/\/{2,}/g, "/");
+}
+
+function isSampleFile(relPath: string): boolean {
+	const base = relPath.split("/").pop() ?? "";
+	return base === "sample.ts" || base === "sample.tsx";
 }
 
 export async function fixtureRelPath(fixturePath: string): Promise<string> {
@@ -48,8 +53,6 @@ async function listFixtureSourceFiles(fixturePath: string): Promise<string[]> {
 	for await (const rel of glob.scan({ cwd: dir, onlyFiles: true })) {
 		const normalized = rel.replaceAll("\\", "/");
 		if (normalized.includes("__golden__/")) continue;
-		const base = normalized.split("/").pop() ?? "";
-		if (base === "sample.ts" || base === "sample.tsx") continue;
 		files.push(fixturePathJoin(fixturePath, normalized));
 	}
 
@@ -59,8 +62,9 @@ async function listFixtureSourceFiles(fixturePath: string): Promise<string[]> {
 /** Pass A + Pass B over all sources in a fixture directory (multi-file). */
 export async function extractFixtureDirectory(
 	fixturePath: string,
+	sources?: string[],
 ): Promise<FixtureExtractResult> {
-	const relPaths = await listFixtureSourceFiles(fixturePath);
+	const relPaths = sources ?? (await listFixtureSourceFiles(fixturePath));
 	if (relPaths.length === 0) {
 		return extractFixtureFull(fixturePath);
 	}
@@ -115,8 +119,9 @@ export async function extractFixtureDirectory(
 export async function extractFixture(
 	fixturePath: string,
 ): Promise<FixtureExtractResult> {
-	if ((await listFixtureSourceFiles(fixturePath)).length > 0) {
-		return extractFixtureDirectory(fixturePath);
+	const relPaths = await listFixtureSourceFiles(fixturePath);
+	if (relPaths.some((relPath) => !isSampleFile(relPath))) {
+		return extractFixtureDirectory(fixturePath, relPaths);
 	}
 	return extractFixtureFull(fixturePath);
 }

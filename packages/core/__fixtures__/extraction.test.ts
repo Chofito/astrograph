@@ -107,7 +107,9 @@ describe("extraction: determinism", () => {
 
 describe("extraction: fixture invariants", () => {
 	test("resolution/ambiguous golden includes ambiguous edges with candidates", async () => {
-		const graph = graphFromFixture(await extractFixture("resolution/ambiguous"));
+		const graph = graphFromFixture(
+			await extractFixture("resolution/ambiguous"),
+		);
 		const ambiguous = graph.edges.filter(
 			(edge) => edge.resolutionState === "ambiguous",
 		);
