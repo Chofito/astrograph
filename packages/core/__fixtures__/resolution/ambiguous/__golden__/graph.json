@@ -1,0 +1,198 @@
+{
+  "nodes": [
+    {
+      "id": "15244734793746026781",
+      "project": "fixture",
+      "kind": "file",
+      "name": "sample.ts",
+      "qualifiedName": "resolution/ambiguous/sample.ts",
+      "filePath": "resolution/ambiguous/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 12,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "18064680640280251220",
+      "project": "fixture",
+      "kind": "function",
+      "name": "merged",
+      "qualifiedName": "resolution/ambiguous/sample.ts::merged",
+      "filePath": "resolution/ambiguous/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "function merged()",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "10666634574238332640",
+      "project": "fixture",
+      "kind": "namespace",
+      "name": "merged",
+      "qualifiedName": "resolution/ambiguous/sample.ts::merged",
+      "filePath": "resolution/ambiguous/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 5,
+        "endLine": 7,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "namespace merged",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "3268049679353276914",
+      "project": "fixture",
+      "kind": "constant",
+      "name": "tag",
+      "qualifiedName": "resolution/ambiguous/sample.ts::merged.tag",
+      "filePath": "resolution/ambiguous/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 6,
+        "endLine": 6,
+        "startColumn": 1,
+        "endColumn": 25
+      },
+      "signature": "export const tag = \"ns\";",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "12913523069176559191",
+      "project": "fixture",
+      "kind": "function",
+      "name": "readTag",
+      "qualifiedName": "resolution/ambiguous/sample.ts::readTag",
+      "filePath": "resolution/ambiguous/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 9,
+        "endLine": 11,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function readTag(): string",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "10666634574238332640",
+      "target": "3268049679353276914",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 6,
+      "col": 1
+    },
+    {
+      "source": "12913523069176559191",
+      "target": "12913523069176559191",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 9,
+      "col": 0
+    },
+    {
+      "source": "12913523069176559191",
+      "target": "18064680640280251220",
+      "targetName": "merged",
+      "kind": "references",
+      "resolutionState": "ambiguous",
+      "confidence": "medium",
+      "provenance": "ts-compiler",
+      "line": 10,
+      "col": 8,
+      "metadata": {
+        "candidates": [
+          "18064680640280251220",
+          "10666634574238332640"
+        ]
+      }
+    },
+    {
+      "source": "12913523069176559191",
+      "target": "3268049679353276914",
+      "targetName": "tag",
+      "kind": "references",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 10,
+      "col": 15
+    },
+    {
+      "source": "15244734793746026781",
+      "target": "10666634574238332640",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 5,
+      "col": 0
+    },
+    {
+      "source": "15244734793746026781",
+      "target": "12913523069176559191",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 9,
+      "col": 0
+    },
+    {
+      "source": "15244734793746026781",
+      "target": "18064680640280251220",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    }
+  ]
+}

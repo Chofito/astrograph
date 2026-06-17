@@ -1,0 +1,224 @@
+{
+  "nodes": [
+    {
+      "id": "8461200778784901649",
+      "project": "fixture",
+      "kind": "file",
+      "name": "sample.ts",
+      "qualifiedName": "exports/sample.ts",
+      "filePath": "exports/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 9,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "4396030685343453875",
+      "project": "fixture",
+      "kind": "function",
+      "name": "namedExport",
+      "qualifiedName": "exports/sample.ts::namedExport",
+      "filePath": "exports/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 0,
+        "endColumn": 38
+      },
+      "signature": "export function namedExport(): void",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "14227416486207024284",
+      "project": "fixture",
+      "kind": "function",
+      "name": "defaultFn",
+      "qualifiedName": "exports/sample.ts::defaultFn",
+      "filePath": "exports/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 44
+      },
+      "signature": "export default function defaultFn(): void",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "16842934645445118754",
+      "project": "fixture",
+      "kind": "class",
+      "name": "ExportedClass",
+      "qualifiedName": "exports/sample.ts::ExportedClass",
+      "filePath": "exports/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 5,
+        "endLine": 5,
+        "startColumn": 0,
+        "endColumn": 29
+      },
+      "signature": "export class ExportedClass",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "2354429603293190348",
+      "project": "fixture",
+      "kind": "constant",
+      "name": "local",
+      "qualifiedName": "exports/sample.ts::local",
+      "filePath": "exports/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 7,
+        "endLine": 7,
+        "startColumn": 0,
+        "endColumn": 17
+      },
+      "signature": "const local = 42;",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "624902293520686046",
+      "project": "fixture",
+      "kind": "export",
+      "name": "{ local }",
+      "qualifiedName": "exports/sample.ts::export({ local })",
+      "filePath": "exports/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 8,
+        "endLine": 8,
+        "startColumn": 0,
+        "endColumn": 17
+      },
+      "signature": "export { local };",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "14227416486207024284",
+      "target": "14227416486207024284",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "16842934645445118754",
+      "target": "16842934645445118754",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 5,
+      "col": 0
+    },
+    {
+      "source": "4396030685343453875",
+      "target": "4396030685343453875",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "624902293520686046",
+      "target": "2354429603293190348",
+      "targetName": "local",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 8,
+      "col": 9
+    },
+    {
+      "source": "8461200778784901649",
+      "target": "14227416486207024284",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "8461200778784901649",
+      "target": "16842934645445118754",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 5,
+      "col": 0
+    },
+    {
+      "source": "8461200778784901649",
+      "target": "2354429603293190348",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 7,
+      "col": 0
+    },
+    {
+      "source": "8461200778784901649",
+      "target": "4396030685343453875",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    }
+  ]
+}

@@ -28,6 +28,27 @@ Bun: `bun test`. Eval: `bun run eval` (separate, opt-in).
 
 Small, single-purpose TS/JS files, each pinned by a golden snapshot. Every JS/TS edge case in [extraction.md §5](extraction.md#5-jsts-edge-cases-checklist-must-be-golden-tested) has a fixture.
 
+**Coverage backlog** (Pass A + B `graph.json` goldens):
+
+- [x] `basic/`
+- [x] `functions/`
+- [x] `jsx/`
+- [x] `decorators/`
+- [x] `exports/`
+- [x] `overloads/`
+- [x] `imports/barrel/`
+- [x] `imports/commonjs/` — golden present; `require` modeled as `calls`/`external` only (no `imports`/`exports` edges yet)
+- [x] `imports/type-only/` — golden present; `metadata.typeOnly` not emitted yet
+- [x] `imports/dynamic-literal/` — golden present; `import()` call stays `unresolved`, member `references` resolve
+- [x] `resolution/ambiguous/`
+- [ ] `inheritance/`
+- [ ] `imports/relative/`
+- [ ] `imports/alias/`
+- [ ] `imports/dynamic/` (non-literal unresolved; integration test only today)
+- [ ] `resolution/external/`
+- [ ] `resolution/unresolved/`
+- [ ] `perf/`
+
 ```
 __fixtures__/
 ├── basic/                 # function, class, method, property, const, enum, type_alias, namespace
@@ -79,7 +100,7 @@ test('imports/alias golden', async () => {
 });
 ```
 
-Updating a golden is a reviewed act (`bun run golden:update <fixture>`), never automatic in CI.
+Updating a golden is a reviewed act — run `bun packages/core/__fixtures__/update-goldens.ts [fixture...]` (or `UPDATE_GOLDENS=1 bun test packages/core/__fixtures__/extraction.test.ts`), never automatic in CI. A missing `graph.json` fails the test suite.
 
 ---
 

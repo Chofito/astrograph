@@ -1,0 +1,94 @@
+{
+  "nodes": [
+    {
+      "id": "2183006307001228690",
+      "project": "fixture",
+      "kind": "constant",
+      "name": "utils",
+      "qualifiedName": "imports/commonjs/main.js::utils",
+      "filePath": "imports/commonjs/main.js",
+      "language": "javascript",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 0,
+        "endColumn": 33
+      },
+      "signature": "const utils = require(\"./utils\");",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "16397354570863598393",
+      "project": "fixture",
+      "kind": "file",
+      "name": "main.js",
+      "qualifiedName": "imports/commonjs/main.js",
+      "filePath": "imports/commonjs/main.js",
+      "language": "javascript",
+      "range": {
+        "startLine": 1,
+        "endLine": 8,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "10145308813272699877",
+      "project": "fixture",
+      "kind": "file",
+      "name": "utils.js",
+      "qualifiedName": "imports/commonjs/utils.js",
+      "filePath": "imports/commonjs/utils.js",
+      "language": "javascript",
+      "range": {
+        "startLine": 1,
+        "endLine": 6,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "16397354570863598393",
+      "target": null,
+      "targetName": "require",
+      "kind": "calls",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 14
+    },
+    {
+      "source": "16397354570863598393",
+      "target": "2183006307001228690",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    }
+  ]
+}

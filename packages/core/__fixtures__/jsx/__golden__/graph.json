@@ -1,0 +1,192 @@
+{
+  "nodes": [
+    {
+      "id": "783684901119789737",
+      "project": "fixture",
+      "kind": "file",
+      "name": "sample.tsx",
+      "qualifiedName": "jsx/sample.tsx",
+      "filePath": "jsx/sample.tsx",
+      "language": "tsx",
+      "range": {
+        "startLine": 1,
+        "endLine": 14,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "17458236325322216569",
+      "project": "fixture",
+      "kind": "import",
+      "name": "react",
+      "qualifiedName": "jsx/sample.tsx::import(react)",
+      "filePath": "jsx/sample.tsx",
+      "language": "tsx",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 0,
+        "endColumn": 26
+      },
+      "signature": "import React from \"react\";",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "735453321559317667",
+      "project": "fixture",
+      "kind": "component",
+      "name": "Button",
+      "qualifiedName": "jsx/sample.tsx::Button",
+      "filePath": "jsx/sample.tsx",
+      "language": "tsx",
+      "range": {
+        "startLine": 3,
+        "endLine": 5,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function Button(props: { label: string })",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "1011806629643433474",
+      "project": "fixture",
+      "kind": "component",
+      "name": "Card",
+      "qualifiedName": "jsx/sample.tsx::Card",
+      "filePath": "jsx/sample.tsx",
+      "language": "tsx",
+      "range": {
+        "startLine": 7,
+        "endLine": 9,
+        "startColumn": 0,
+        "endColumn": 2
+      },
+      "signature": "const Card: React.FC<{ title: string }> = ({ title }) => { return <div>{title}</div>; };",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "16613394459877803871",
+      "project": "fixture",
+      "kind": "function",
+      "name": "helper",
+      "qualifiedName": "jsx/sample.tsx::helper",
+      "filePath": "jsx/sample.tsx",
+      "language": "tsx",
+      "range": {
+        "startLine": 11,
+        "endLine": 13,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function helper()",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "1011806629643433474",
+      "target": null,
+      "targetName": "FC",
+      "kind": "type_of",
+      "resolutionState": "unresolved",
+      "confidence": "low",
+      "provenance": "ts-compiler",
+      "line": 7,
+      "col": 18
+    },
+    {
+      "source": "16613394459877803871",
+      "target": "16613394459877803871",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 11,
+      "col": 0
+    },
+    {
+      "source": "17458236325322216569",
+      "target": null,
+      "targetName": "React",
+      "kind": "imports",
+      "resolutionState": "unresolved",
+      "confidence": "low",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 7
+    },
+    {
+      "source": "735453321559317667",
+      "target": "735453321559317667",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "783684901119789737",
+      "target": "1011806629643433474",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 7,
+      "col": 0
+    },
+    {
+      "source": "783684901119789737",
+      "target": "16613394459877803871",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 11,
+      "col": 0
+    },
+    {
+      "source": "783684901119789737",
+      "target": "735453321559317667",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    }
+  ]
+}

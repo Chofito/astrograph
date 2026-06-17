@@ -1,0 +1,220 @@
+{
+  "nodes": [
+    {
+      "id": "15985315641280657844",
+      "project": "fixture",
+      "kind": "file",
+      "name": "sample.ts",
+      "qualifiedName": "decorators/sample.ts",
+      "filePath": "decorators/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 14,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "2443510625291339159",
+      "project": "fixture",
+      "kind": "function",
+      "name": "Injectable",
+      "qualifiedName": "decorators/sample.ts::Injectable",
+      "filePath": "decorators/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "function Injectable(): ClassDecorator",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "3605111814812297578",
+      "project": "fixture",
+      "kind": "function",
+      "name": "Log",
+      "qualifiedName": "decorators/sample.ts::Log",
+      "filePath": "decorators/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 5,
+        "endLine": 7,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "function Log(): MethodDecorator",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "2478575520971990406",
+      "project": "fixture",
+      "kind": "class",
+      "name": "AppService",
+      "qualifiedName": "decorators/sample.ts::AppService",
+      "filePath": "decorators/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 9,
+        "endLine": 13,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "@Injectable() export class AppService",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "decorators": [
+        "Injectable()"
+      ]
+    },
+    {
+      "id": "14714151590243139404",
+      "project": "fixture",
+      "kind": "method",
+      "name": "handle",
+      "qualifiedName": "decorators/sample.ts::AppService.handle",
+      "filePath": "decorators/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 11,
+        "endLine": 12,
+        "startColumn": 1,
+        "endColumn": 18
+      },
+      "signature": "@Log() handle(): void",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "decorators": [
+        "Log()"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "source": "14714151590243139404",
+      "target": "3605111814812297578",
+      "targetName": "Log",
+      "kind": "decorates",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 11,
+      "col": 2
+    },
+    {
+      "source": "15985315641280657844",
+      "target": "2443510625291339159",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "15985315641280657844",
+      "target": "2478575520971990406",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 9,
+      "col": 0
+    },
+    {
+      "source": "15985315641280657844",
+      "target": "3605111814812297578",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 5,
+      "col": 0
+    },
+    {
+      "source": "2443510625291339159",
+      "target": null,
+      "targetName": "ClassDecorator",
+      "kind": "returns",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 23
+    },
+    {
+      "source": "2478575520971990406",
+      "target": "14714151590243139404",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 11,
+      "col": 1
+    },
+    {
+      "source": "2478575520971990406",
+      "target": "2443510625291339159",
+      "targetName": "Injectable",
+      "kind": "decorates",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 9,
+      "col": 1
+    },
+    {
+      "source": "2478575520971990406",
+      "target": "2478575520971990406",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 9,
+      "col": 0
+    },
+    {
+      "source": "3605111814812297578",
+      "target": null,
+      "targetName": "MethodDecorator",
+      "kind": "returns",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 5,
+      "col": 16
+    }
+  ]
+}

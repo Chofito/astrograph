@@ -1,0 +1,226 @@
+{
+  "nodes": [
+    {
+      "id": "7949898185972377373",
+      "project": "fixture",
+      "kind": "file",
+      "name": "sample.ts",
+      "qualifiedName": "functions/sample.ts",
+      "filePath": "functions/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 20,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "9242155125795647064",
+      "project": "fixture",
+      "kind": "function",
+      "name": "declaration",
+      "qualifiedName": "functions/sample.ts::declaration",
+      "filePath": "functions/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "function declaration(a: number, b: number): number",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "5316540537477009727",
+      "project": "fixture",
+      "kind": "function",
+      "name": "arrow",
+      "qualifiedName": "functions/sample.ts::arrow",
+      "filePath": "functions/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 5,
+        "endLine": 7,
+        "startColumn": 0,
+        "endColumn": 2
+      },
+      "signature": "const arrow = (x: string): string => { return x.toUpperCase(); };",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "12961990539380366149",
+      "project": "fixture",
+      "kind": "function",
+      "name": "fnExpr",
+      "qualifiedName": "functions/sample.ts::fnExpr",
+      "filePath": "functions/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 9,
+        "endLine": 11,
+        "startColumn": 0,
+        "endColumn": 2
+      },
+      "signature": "const fnExpr = function (items: string[]): number { return items.length; };",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "7967858820747861763",
+      "project": "fixture",
+      "kind": "function",
+      "name": "asyncDecl",
+      "qualifiedName": "functions/sample.ts::asyncDecl",
+      "filePath": "functions/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 13,
+        "endLine": 15,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "async function asyncDecl(): Promise<void>",
+      "isExported": false,
+      "isAsync": true,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "14526458575492142773",
+      "project": "fixture",
+      "kind": "function",
+      "name": "asyncArrow",
+      "qualifiedName": "functions/sample.ts::asyncArrow",
+      "filePath": "functions/sample.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 17,
+        "endLine": 19,
+        "startColumn": 0,
+        "endColumn": 2
+      },
+      "signature": "const asyncArrow = async (): Promise<string> => { return \"done\"; };",
+      "isExported": false,
+      "isAsync": true,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "12961990539380366149",
+      "target": null,
+      "targetName": "length",
+      "kind": "references",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 10,
+      "col": 14
+    },
+    {
+      "source": "5316540537477009727",
+      "target": null,
+      "targetName": "toUpperCase",
+      "kind": "calls",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 6,
+      "col": 8
+    },
+    {
+      "source": "7949898185972377373",
+      "target": "12961990539380366149",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 9,
+      "col": 0
+    },
+    {
+      "source": "7949898185972377373",
+      "target": "14526458575492142773",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 17,
+      "col": 0
+    },
+    {
+      "source": "7949898185972377373",
+      "target": "5316540537477009727",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 5,
+      "col": 0
+    },
+    {
+      "source": "7949898185972377373",
+      "target": "7967858820747861763",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 13,
+      "col": 0
+    },
+    {
+      "source": "7949898185972377373",
+      "target": "9242155125795647064",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "7967858820747861763",
+      "target": null,
+      "targetName": "resolve",
+      "kind": "calls",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 14,
+      "col": 7
+    }
+  ]
+}
