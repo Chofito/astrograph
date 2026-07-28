@@ -1,8 +1,12 @@
+import { type QueryBuilder, toEdgeRef, toNodeRef } from "../db/queries";
+import { resolveSymbol, type SymbolLookupResult } from "../graph/symbol-lookup";
+import { findPath, traverseGraph } from "../graph/traversal";
 import type {
-	CallersInput,
-	CallersOutput,
+	BackendStatus,
 	CalleesInput,
 	CalleesOutput,
+	CallersInput,
+	CallersOutput,
 	CodeBlock,
 	ContextInput,
 	ContextOutput,
@@ -31,9 +35,6 @@ import type {
 	TraceOutput,
 } from "../types";
 import { AstrographError as CoreError } from "../types";
-import { QueryBuilder, toEdgeRef, toNodeRef } from "../db/queries";
-import { findPath, traverseGraph } from "../graph/traversal";
-import { resolveSymbol, type SymbolLookupResult } from "../graph/symbol-lookup";
 import { CodeBlockSlicer } from "./code-blocks";
 import { buildMeta } from "./meta";
 
@@ -42,15 +43,18 @@ export interface GraphQueriesOptions {
 	fs: FileSystem;
 	root: string;
 	project?: string;
+	backends?: BackendStatus[];
 }
 
 export class GraphQueries {
 	private readonly queries: QueryBuilder;
 	private readonly slicer: CodeBlockSlicer;
+	private readonly backends: BackendStatus[];
 
 	constructor(options: GraphQueriesOptions) {
 		this.queries = options.queries;
 		this.slicer = new CodeBlockSlicer({ fs: options.fs, root: options.root });
+		this.backends = options.backends ?? [];
 	}
 
 	async search(input: SearchInput): Promise<ToolResult<SearchOutput>> {
@@ -473,6 +477,9 @@ export class GraphQueries {
 
 	async getStats(_input: StatusInput): Promise<ToolResult<StatusOutput>> {
 		const data = this.queries.getStats();
+		if (this.backends.length > 0) {
+			data.backends = this.backends;
+		}
 		return { data, meta: this.meta() };
 	}
 

@@ -1,3 +1,4 @@
+import { toExactNameBoostToken, toFtsMatchQuery } from "../search/fts-query";
 import type {
 	Confidence,
 	Coverage,
@@ -19,7 +20,6 @@ import type {
 	StorageAdapter,
 	Visibility,
 } from "../types";
-import { toExactNameBoostToken, toFtsMatchQuery } from "../search/fts-query";
 
 type JsonRecord = Record<string, unknown>;
 

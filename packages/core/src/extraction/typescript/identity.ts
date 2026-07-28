@@ -1,7 +1,7 @@
 import ts from "typescript";
-import type { Hasher, NodeKind, Range } from "../types";
-import { makeNodeId } from "../ids";
-import { buildQualifiedName } from "./qualified-name";
+import { makeNodeId } from "../../ids";
+import type { Hasher, NodeKind, Range } from "../../types";
+import { buildQualifiedName } from "../shared/qualified-name";
 
 export interface NodeIdentity {
 	id: string;

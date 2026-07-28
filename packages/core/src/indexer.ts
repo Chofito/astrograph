@@ -1,18 +1,22 @@
-import ts from "typescript";
+import type { QueryBuilder } from "./db/queries";
+import { type ReconcileStats, reconcileNodes } from "./extraction/reconcile";
+import type { LanguageRegistry } from "./extraction/registry";
+import { languageFromPath } from "./extraction/shared/language";
 import type {
 	AstrographConfig,
+	Edge,
+	EdgeResolutionResult,
 	ExtractionError,
 	FileRecord,
 	FileSystem,
 	GlobScanner,
 	Hasher,
 	IndexProgress,
-	ProjectExtractor,
+	LanguageBackend,
+	Node,
 	StorageAdapter,
 	WatchEvent,
 } from "./types";
-import { QueryBuilder } from "./db/queries";
-import { languageFromPath } from "./extraction/language";
 
 export interface IndexerOptions {
 	queries: QueryBuilder;
@@ -20,7 +24,7 @@ export interface IndexerOptions {
 	fs: FileSystem;
 	hasher: Hasher;
 	glob: GlobScanner;
-	extractor: ProjectExtractor;
+	registry: LanguageRegistry;
 	config?: AstrographConfig;
 	root: string;
 	now?: () => number;
@@ -38,10 +42,22 @@ export class Indexer {
 	private readonly fs: FileSystem;
 	private readonly hasher: Hasher;
 	private readonly glob: GlobScanner;
-	private readonly extractor: ProjectExtractor;
+	private readonly registry: LanguageRegistry;
 	private readonly config: AstrographConfig;
 	private readonly root: string;
 	private readonly now: () => number;
+
+	/**
+	 * One `resolveEdges` result per file per pass. Each call re-runs a full TS
+	 * parse, and both Pass B phases need the same answer.
+	 */
+	private readonly resolveCache = new Map<string, EdgeResolutionResult>();
+	/** Reconciliation counters for the most recent pass, for diagnostics/tests. */
+	private lastReconcileStats: ReconcileStats = {
+		matched: 0,
+		added: 0,
+		dropped: 0,
+	};
 
 	constructor(options: IndexerOptions) {
 		this.queries = options.queries;
@@ -49,10 +65,15 @@ export class Indexer {
 		this.fs = options.fs;
 		this.hasher = options.hasher;
 		this.glob = options.glob;
-		this.extractor = options.extractor;
+		this.registry = options.registry;
 		this.config = options.config ?? {};
 		this.root = normalizePath(options.root);
 		this.now = options.now ?? Date.now;
+	}
+
+	/** Pass A vs Pass B set arithmetic totals from the last index/sync. */
+	reconcileStats(): ReconcileStats {
+		return { ...this.lastReconcileStats };
 	}
 
 	async indexAll(options: IndexAllOptions = {}): Promise<void> {
@@ -65,12 +86,7 @@ export class Indexer {
 			total: files.length,
 		});
 
-		this.extractor.loadProject({
-			rootPath: this.root,
-			tsconfigPath: this.config.tsconfigPath,
-			fileNames: files,
-			loadNodesForFile: (filePath) => this.queries.getNodesByFile(filePath),
-		});
+		this.beginPass(files);
 
 		for (let i = 0; i < files.length; i++) {
 			const relPath = files[i]!;
@@ -83,6 +99,8 @@ export class Indexer {
 			await this.indexFilePassA(relPath, { force: options.force ?? false });
 		}
 
+		// Pass B is two-phase: reconcile all nodes first (FK-safe targets), then
+		// edges. Files whose backend has no enricher are already final.
 		for (let i = 0; i < files.length; i++) {
 			const relPath = files[i]!;
 			options.onProgress?.({
@@ -91,7 +109,10 @@ export class Indexer {
 				total: files.length,
 				file: relPath,
 			});
-			this.indexFilePassB(relPath);
+			this.indexFileReconcile(relPath);
+		}
+		for (const relPath of files) {
+			this.indexFileResolveEdges(relPath);
 		}
 
 		this.persistProjectMetadata(configHash);
@@ -100,6 +121,11 @@ export class Indexer {
 			current: files.length,
 			total: files.length,
 		});
+	}
+
+	/** Extensions every registered backend claims. See `AstrographCore`. */
+	indexableExtensions(): string[] {
+		return this.registry.allExtensions();
 	}
 
 	async sync(): Promise<{
@@ -155,23 +181,18 @@ export class Indexer {
 		}
 
 		if (changedFiles.length > 0) {
-			this.extractor.loadProject({
-				rootPath: this.root,
-				tsconfigPath: this.config.tsconfigPath,
-				fileNames: scanned,
-				loadNodesForFile: (filePath) => this.queries.getNodesByFile(filePath),
-			});
+			this.beginPass(scanned);
 
 			for (const relPath of changedFiles) {
 				await this.indexFilePassA(relPath, { force: true });
 			}
 
-			for (const relPath of changedFiles) {
-				this.indexFilePassB(relPath);
+			const resolveSet = [...new Set([...changedFiles, ...referrerFiles])];
+			for (const relPath of resolveSet) {
+				this.indexFileReconcile(relPath);
 			}
-
-			for (const relPath of referrerFiles) {
-				this.indexFilePassB(relPath);
+			for (const relPath of resolveSet) {
+				this.indexFileResolveEdges(relPath);
 			}
 
 			this.healUnresolvedEdges(changedFiles);
@@ -247,23 +268,18 @@ export class Indexer {
 			}
 			projectFiles.sort(compareStrings);
 
-			this.extractor.loadProject({
-				rootPath: this.root,
-				tsconfigPath: this.config.tsconfigPath,
-				fileNames: projectFiles,
-				loadNodesForFile: (filePath) => this.queries.getNodesByFile(filePath),
-			});
+			this.beginPass(projectFiles);
 
 			for (const relPath of changedFiles) {
 				await this.indexFilePassA(relPath, { force: true });
 			}
 
-			for (const relPath of changedFiles) {
-				this.indexFilePassB(relPath);
+			const resolveSet = [...new Set([...changedFiles, ...referrerFiles])];
+			for (const relPath of resolveSet) {
+				this.indexFileReconcile(relPath);
 			}
-
-			for (const relPath of referrerFiles) {
-				this.indexFilePassB(relPath);
+			for (const relPath of resolveSet) {
+				this.indexFileResolveEdges(relPath);
 			}
 
 			this.healUnresolvedEdges(changedFiles);
@@ -280,6 +296,50 @@ export class Indexer {
 		this.storage.close();
 	}
 
+	/**
+	 * Start a fresh pass: drop the per-file resolve cache, reset counters, and
+	 * give every enricher the slice of the project its own backend owns. The TS
+	 * program no longer sees `.php` paths in its rootNames.
+	 */
+	private beginPass(files: string[]): void {
+		this.resolveCache.clear();
+		this.lastReconcileStats = { matched: 0, added: 0, dropped: 0 };
+
+		const byBackend = new Map<string, string[]>();
+		for (const relPath of files) {
+			const backend = this.registry.backendForPath(relPath);
+			if (!backend) continue;
+			const bucket = byBackend.get(backend.id);
+			if (bucket) bucket.push(relPath);
+			else byBackend.set(backend.id, [relPath]);
+		}
+
+		for (const backend of this.registry.list()) {
+			const loadProject = backend.enricher?.loadProject;
+			if (!loadProject) continue;
+			loadProject.call(backend.enricher, {
+				rootPath: this.root,
+				tsconfigPath: this.config.tsconfigPath,
+				fileNames: byBackend.get(backend.id) ?? [],
+				loadNodesForFile: (filePath) => this.queries.getNodesByFile(filePath),
+			});
+		}
+	}
+
+	/** `resolveEdges` is expensive (a full re-parse); memoize it per pass. */
+	private resolveFor(
+		relPath: string,
+		backend: LanguageBackend,
+	): EdgeResolutionResult | undefined {
+		const enricher = backend.enricher;
+		if (!enricher || enricher.mode === "none") return undefined;
+		const cached = this.resolveCache.get(relPath);
+		if (cached) return cached;
+		const result = enricher.resolveEdges(relPath);
+		this.resolveCache.set(relPath, result);
+		return result;
+	}
+
 	private async indexFilePassA(
 		relPath: string,
 		options: { force: boolean },
@@ -287,20 +347,42 @@ export class Indexer {
 		const absolutePath = this.joinRoot(relPath);
 		const stat = await this.fs.stat(absolutePath);
 		const maxFileSizeBytes = this.config.maxFileSizeBytes ?? 2_000_000;
+		const backend = this.registry.backendForPath(relPath);
 
 		if (stat.size > maxFileSizeBytes) {
-			const error: ExtractionError = {
-				message: `File exceeds maxFileSizeBytes (${maxFileSizeBytes})`,
-				filePath: relPath,
-				severity: "warning",
-				code: "FILE_TOO_LARGE",
-			};
 			this.writeParsedFile(relPath, {
 				contentHash: "",
 				size: stat.size,
 				modifiedAt: stat.modifiedAt,
 				nodes: [],
-				errors: [error],
+				edges: [],
+				errors: [
+					{
+						message: `File exceeds maxFileSizeBytes (${maxFileSizeBytes})`,
+						filePath: relPath,
+						severity: "warning",
+						code: "FILE_TOO_LARGE",
+					},
+				],
+			});
+			return;
+		}
+
+		if (!backend) {
+			this.writeParsedFile(relPath, {
+				contentHash: "",
+				size: stat.size,
+				modifiedAt: stat.modifiedAt,
+				nodes: [],
+				edges: [],
+				errors: [
+					{
+						message: `No language backend claims ${relPath}`,
+						filePath: relPath,
+						severity: "warning",
+						code: "NO_BACKEND",
+					},
+				],
 			});
 			return;
 		}
@@ -310,18 +392,82 @@ export class Indexer {
 		const existing = this.queries.getFile(relPath);
 		if (!options.force && existing?.contentHash === contentHash) return;
 
-		const extraction = this.extractor.extractNodes(relPath, source);
+		// A "replace" enricher owns the node set outright; running Pass A would
+		// only produce rows it is about to delete.
+		const skipPassA = backend.enricher?.mode === "replace";
+		const extraction = skipPassA
+			? { nodes: [], edges: [], errors: [] }
+			: backend.parser.extractNodes(relPath, source);
+
 		this.writeParsedFile(relPath, {
 			contentHash,
 			size: stat.size,
 			modifiedAt: stat.modifiedAt,
 			nodes: extraction.nodes,
+			edges: extraction.edges,
 			errors: extraction.errors,
+			// Without an enricher, Pass A is the final answer for this file.
+			state: backend.enricher === undefined ? "resolved" : "parsed",
 		});
 	}
 
-	private indexFilePassB(relPath: string): void {
-		const result = this.extractor.resolveEdges(relPath);
+	/**
+	 * Pass B phase 1: reconcile the enricher's node view onto Pass A by node id
+	 * instead of deleting every Pass A row. Matched ids keep their row (and
+	 * every cross-file edge pointing at them) and are updated in place.
+	 */
+	private indexFileReconcile(relPath: string): void {
+		const backend = this.registry.backendForPath(relPath);
+		if (!backend) return;
+		const result = this.resolveFor(relPath, backend);
+		if (!result?.nodes) return;
+		const enriched = result.nodes;
+
+		const write = this.storage.transaction(() => {
+			const passANodes = this.queries.getNodesByFile(relPath);
+			const plan = reconcileNodes(passANodes, enriched, {
+				provenance: "ts-compiler",
+				filePath: relPath,
+			});
+
+			// Pass A's `contains` edges reference Pass A ids; Pass B rewrites the
+			// file's edges wholesale in phase 2, so clear them before touching nodes.
+			for (const node of passANodes) {
+				for (const edge of this.queries.getEdgesBySource(node.id)) {
+					if (edge.id !== undefined) this.queries.deleteEdge(edge.id);
+				}
+			}
+			for (const nodeId of plan.delete) this.queries.deleteNode(nodeId);
+			for (const node of plan.update) this.queries.upsertNode(node);
+			for (const node of plan.insert) this.queries.upsertNode(node);
+			for (const node of result.externalNodes) this.queries.upsertNode(node);
+
+			this.lastReconcileStats = {
+				matched: this.lastReconcileStats.matched + plan.stats.matched,
+				added: this.lastReconcileStats.added + plan.stats.added,
+				dropped: this.lastReconcileStats.dropped + plan.stats.dropped,
+			};
+
+			const file = this.queries.getFile(relPath);
+			if (file) {
+				this.queries.upsertFile({
+					...file,
+					nodeCount: enriched.filter((n) => n.filePath === relPath).length,
+					state: "parsed",
+					errors: mergeErrors(file.errors, plan.errors),
+				});
+			}
+		});
+		write();
+	}
+
+	/** Pass B phase 2: write edges after all reconciled nodes exist. */
+	private indexFileResolveEdges(relPath: string): void {
+		const backend = this.registry.backendForPath(relPath);
+		if (!backend) return;
+		const result = this.resolveFor(relPath, backend);
+		// No enricher: Pass A already wrote the file's nodes, edges and state.
+		if (!result) return;
 
 		const write = this.storage.transaction(() => {
 			const fileNodes = this.queries.getNodesByFile(relPath);
@@ -347,6 +493,10 @@ export class Indexer {
 		});
 
 		write();
+
+		// Phase 2 is the last reader of this file's result. Dropping it here keeps
+		// the memoization from holding every file's nodes+edges until the pass ends.
+		this.resolveCache.delete(relPath);
 	}
 
 	private healUnresolvedEdges(changedFiles: string[]): void {
@@ -425,8 +575,10 @@ export class Indexer {
 			contentHash: string;
 			size: number;
 			modifiedAt: number;
-			nodes: ReturnType<ProjectExtractor["extractNodes"]>["nodes"];
+			nodes: Node[];
+			edges: Edge[];
 			errors: ExtractionError[];
+			state?: FileRecord["state"];
 		},
 	): void {
 		const write = this.storage.transaction(() => {
@@ -434,17 +586,22 @@ export class Indexer {
 			for (const node of input.nodes) {
 				this.queries.upsertNode(node);
 			}
+			// Pass A edges reference Pass A ids only, so they are always insertable
+			// here and make the `parsed` state structurally useful on its own.
+			for (const edge of input.edges) {
+				this.queries.upsertEdge(edge);
+			}
 
 			const file: FileRecord = {
 				path: relPath,
 				project: "root",
 				contentHash: input.contentHash,
-				language: languageFromPath(relPath),
+				language: languageFromPath(relPath) ?? "unknown",
 				size: input.size,
 				modifiedAt: input.modifiedAt,
 				indexedAt: this.now(),
 				nodeCount: input.nodes.length,
-				state: "parsed",
+				state: input.state ?? "parsed",
 				errors: input.errors.length > 0 ? input.errors : undefined,
 			};
 			this.queries.upsertFile(file);
@@ -480,7 +637,11 @@ export class Indexer {
 			".astrograph/config.json",
 		];
 
-		const parts = [`typescript:${ts.version}`];
+		// Ask every registered backend for its real versions, so bumping a grammar
+		// or the compiler actually invalidates the index.
+		const parts = Object.entries(this.registry.versionKeys()).map(
+			([key, value]) => `${key}:${value}`,
+		);
 		for (const relPath of inputs) {
 			const absolutePath = this.joinRoot(relPath);
 			if (!(await this.fs.exists(absolutePath))) continue;
@@ -495,7 +656,9 @@ export class Indexer {
 		const write = this.storage.transaction(() => {
 			this.upsertProjectMetadata("rootPath", this.root, now);
 			this.upsertProjectMetadata("lastIndexedAt", String(now), now);
-			this.upsertProjectMetadata("tsVersion", ts.version, now);
+			for (const [key, value] of Object.entries(this.registry.versionKeys())) {
+				this.upsertProjectMetadata(`version:${key}`, value, now);
+			}
 			this.upsertProjectMetadata("configHash", configHash, now);
 		});
 		write();
@@ -535,6 +698,18 @@ function normalizePath(path: string): string {
 
 function compareStrings(a: string, b: string): number {
 	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** Keep a file's Pass A errors and append reconciliation warnings, de-duped. */
+function mergeErrors(
+	existing: ExtractionError[] | undefined,
+	added: ExtractionError[],
+): ExtractionError[] | undefined {
+	const kept = (existing ?? []).filter(
+		(error) => error.code !== "PASS_A_NODE_DROPPED",
+	);
+	const merged = [...kept, ...added];
+	return merged.length > 0 ? merged : undefined;
 }
 
 function uniqueStrings(values: string[]): string[] {

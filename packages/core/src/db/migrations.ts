@@ -1,5 +1,5 @@
-import schemaSql from "./schema.sql" with { type: "text" };
 import type { StorageAdapter } from "../types";
+import schemaSql from "./schema.sql" with { type: "text" };
 
 export const LATEST_SCHEMA_VERSION = 1;
 

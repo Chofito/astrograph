@@ -1,5 +1,5 @@
 import ts from "typescript";
-import type { Edge } from "../../types";
+import type { Edge } from "../../../types";
 
 export function pickDeclaration(
 	decls: ts.Declaration[],

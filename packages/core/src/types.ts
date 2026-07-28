@@ -32,7 +32,8 @@ export type EdgeKind =
 	| "overrides"
 	| "decorates";
 
-export type Language = "typescript" | "tsx" | "javascript" | "jsx";
+export type Language = string;
+export type KnownLanguage = "typescript" | "tsx" | "javascript" | "jsx" | "php";
 
 export type ResolutionState =
 	| "resolved"
@@ -40,7 +41,11 @@ export type ResolutionState =
 	| "unresolved"
 	| "ambiguous";
 export type Confidence = "high" | "medium" | "low";
-export type Provenance = "ts-compiler" | "heuristic" | `synthesized:${string}`;
+export type Provenance =
+	| "tree-sitter"
+	| "ts-compiler"
+	| "heuristic"
+	| `synthesized:${string}`;
 export type CoverageState = "pending" | "parsed" | "resolved";
 export type Visibility = "public" | "private" | "protected" | "internal";
 
@@ -192,10 +197,46 @@ export interface LoadProjectOptions {
 	loadNodesForFile?: (filePath: string) => Node[];
 }
 
+/** Pass A output: structural nodes + structural edges, from the base parser. */
+export interface PassAResult {
+	nodes: Node[];
+	edges: Edge[];
+	errors: ExtractionError[];
+}
+
+export interface Parser {
+	extractNodes(filePath: string, source: string): PassAResult;
+}
+
+/**
+ * How a backend's enricher relates to its Pass A parser.
+ * - `complement`: Pass A runs, the enricher's node view is reconciled onto it.
+ * - `replace`: Pass A is skipped; the enricher is the only source of nodes.
+ * - `none`: there is no enricher; Pass A output is the final answer.
+ */
+export type EnricherMode = "complement" | "replace" | "none";
+
+export interface Enricher {
+	readonly mode: EnricherMode;
+	loadProject?(opts: LoadProjectOptions): void;
+	resolveEdges(filePath: string): EdgeResolutionResult;
+}
+
 export interface EdgeResolutionResult {
 	edges: Edge[];
 	errors: ExtractionError[];
 	externalNodes: Node[];
+	/** The enricher's authoritative node view for the file, when it has one. */
+	nodes?: Node[];
+}
+
+export interface LanguageBackend {
+	id: string;
+	languages: Language[];
+	extensions: string[];
+	parser: Parser;
+	enricher?: Enricher;
+	versionKeys(): Record<string, string>;
 }
 
 export interface EdgeResolver {
@@ -204,10 +245,7 @@ export interface EdgeResolver {
 }
 
 export interface Extractor {
-	extractNodes(
-		filePath: string,
-		source: string,
-	): { nodes: Node[]; errors: ExtractionError[] };
+	extractNodes(filePath: string, source: string): PassAResult;
 	resolveEdges(filePath: string): EdgeResolutionResult;
 }
 
@@ -345,6 +383,20 @@ export type FilesOutput = {
 };
 
 export interface StatusInput extends Scoped {}
+export interface BackendStatus {
+	id: string;
+	languages: string[];
+	extensions: string[];
+	/** Version keys that feed the config hash (parser + enricher versions). */
+	versions: Record<string, string>;
+	/** Enricher mode; "none" when the backend has no enricher. */
+	enricher: EnricherMode;
+	/** Grammars this backend needs that are loaded and ready. */
+	grammarsLoaded: string[];
+	/** Grammars this backend needs that failed to load, with the reason. */
+	grammarsUnavailable: { lang: string; reason: string }[];
+}
+
 export interface StatusOutput {
 	nodeCount: number;
 	edgeCount: number;
@@ -358,6 +410,8 @@ export interface StatusOutput {
 	lastUpdated: number;
 	backend: string;
 	journalMode: string;
+	/** Active language backends (parser + optional enricher). */
+	backends?: BackendStatus[];
 }
 
 export interface AstrographCore {
@@ -375,6 +429,12 @@ export interface AstrographCore {
 		force?: boolean;
 		onProgress?: (e: IndexProgress) => void;
 	}): Promise<void>;
+	/**
+	 * Extensions the registered language backends can parse, e.g. `[".ts", ".php"]`.
+	 * Single source of truth: the file scanner and the freshness watcher both ask
+	 * here instead of keeping their own hardcoded lists.
+	 */
+	indexableExtensions(): string[];
 	sync(): Promise<{ added: string[]; modified: string[]; removed: string[] }>;
 	syncFiles(
 		events: WatchEvent[],
@@ -396,6 +456,12 @@ export interface AstrographConfig {
 	kinds?: NodeKind[];
 	watchDebounceMs?: number;
 	tsconfigPath?: string;
+	/**
+	 * Per-backend overrides keyed by `LanguageBackend.id`.
+	 * `enabled: false` drops the backend (its files stop being indexed);
+	 * `enricher: false` keeps Pass A but disables Pass B for that backend.
+	 */
+	backends?: Record<string, { enabled?: boolean; enricher?: boolean }>;
 }
 
 export class AstrographError extends Error {

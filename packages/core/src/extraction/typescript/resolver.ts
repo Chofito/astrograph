@@ -1,17 +1,17 @@
 import ts from "typescript";
+import { makeNodeId } from "../../ids";
 import type {
+	Confidence,
 	Edge,
 	ExtractionError,
 	Hasher,
 	Node,
-	Confidence,
 	Provenance,
-} from "../types";
-import { makeNodeId } from "../ids";
+} from "../../types";
 import {
 	computeNodeIdentity,
-	hasExportModifier,
 	hasDefaultModifier,
+	hasExportModifier,
 	kindFromDeclaration,
 	nameFromDeclaration,
 } from "./identity";

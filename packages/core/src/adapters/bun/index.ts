@@ -1,12 +1,12 @@
 export { BunFileSystem } from "./fs";
 export { BunGlobScanner } from "./glob";
 export { BunHasher } from "./hasher";
-export { BunWatcher } from "./watcher";
-export { openProject } from "./project";
 export type { OpenProjectOptions } from "./project";
+export { openProject } from "./project";
+export type { BunSqliteStorageOptions } from "./sqlite";
 export {
-	BunSqliteStorageAdapter,
 	BunSqliteStatementAdapter,
+	BunSqliteStorageAdapter,
 	openSqliteStorage,
 } from "./sqlite";
-export type { BunSqliteStorageOptions } from "./sqlite";
+export { BunWatcher } from "./watcher";

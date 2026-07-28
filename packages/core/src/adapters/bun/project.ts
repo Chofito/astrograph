@@ -1,11 +1,16 @@
 import { mkdir } from "node:fs/promises";
-import type { AstrographConfig } from "../../types";
-import { QueryBuilder } from "../../db/queries";
-import { runMigrations } from "../../db/migrations";
-import { TsExtractor } from "../../extraction";
-import { Indexer } from "../../indexer";
 import { Astrograph } from "../../astrograph";
+import { runMigrations } from "../../db/migrations";
+import { QueryBuilder } from "../../db/queries";
+import {
+	createDefaultRegistry,
+	grammarsForRegistry,
+	initTreeSitter,
+	loadGrammars,
+} from "../../extraction";
+import { Indexer } from "../../indexer";
 import { GraphQueries } from "../../query/graph-queries";
+import type { AstrographConfig } from "../../types";
 import { BunFileSystem } from "./fs";
 import { BunGlobScanner } from "./glob";
 import { BunHasher } from "./hasher";
@@ -33,8 +38,20 @@ export async function openProject(
 	const hasher = new BunHasher();
 	const queries = new QueryBuilder(storage);
 	const fs = new BunFileSystem();
-	const glob = new BunGlobScanner();
-	const extractor = new TsExtractor({ hasher, now: opts.now, project: "root" });
+
+	// One registry: it decides which files are scanned, which backend parses
+	// each of them, and what `status` reports.
+	const registry = createDefaultRegistry({
+		hasher,
+		now: opts.now,
+		project: "root",
+		config: opts.config,
+	});
+
+	await initTreeSitter();
+	await loadGrammars(grammarsForRegistry(registry));
+
+	const glob = new BunGlobScanner({ extensions: registry.allExtensions() });
 
 	const indexer = new Indexer({
 		queries,
@@ -42,12 +59,17 @@ export async function openProject(
 		fs,
 		hasher,
 		glob,
-		extractor,
+		registry,
 		config: opts.config,
 		root,
 		now: opts.now,
 	});
-	const graphQueries = new GraphQueries({ queries, fs, root });
+	const graphQueries = new GraphQueries({
+		queries,
+		fs,
+		root,
+		backends: registry.summary(),
+	});
 
 	return new Astrograph({ indexer, graphQueries });
 }

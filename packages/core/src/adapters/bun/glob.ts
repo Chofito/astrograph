@@ -1,7 +1,34 @@
 import ignore from "ignore";
 import type { GlobScanner } from "../../types";
 
-const DEFAULT_INCLUDE = ["**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}"];
+/**
+ * Fallback only. The real list comes from the language registry — see
+ * `BunGlobScanner`'s `extensions` option — so a new backend widens the scan
+ * without anyone editing this file.
+ */
+const FALLBACK_EXTENSIONS = [
+	".ts",
+	".tsx",
+	".js",
+	".jsx",
+	".mjs",
+	".cjs",
+	".mts",
+	".cts",
+];
+
+function includeGlobFor(extensions: string[]): string[] {
+	const suffixes = [
+		...new Set(
+			extensions.map((ext) => (ext.startsWith(".") ? ext.slice(1) : ext)),
+		),
+	]
+		.filter((suffix) => suffix.length > 0)
+		.sort();
+	if (suffixes.length === 0) return [];
+	if (suffixes.length === 1) return [`**/*.${suffixes[0]}`];
+	return [`**/*.{${suffixes.join(",")}}`];
+}
 const ALWAYS_EXCLUDE = [
 	// VCS / tooling internals
 	"node_modules/",
@@ -26,7 +53,20 @@ const ALWAYS_EXCLUDE = [
 	".pnpm/",
 ];
 
+export interface BunGlobScannerOptions {
+	/** Extensions the language registry knows how to parse, e.g. `[".ts", ".php"]`. */
+	extensions?: string[];
+}
+
 export class BunGlobScanner implements GlobScanner {
+	private readonly defaultInclude: string[];
+
+	constructor(opts: BunGlobScannerOptions = {}) {
+		this.defaultInclude = includeGlobFor(
+			opts.extensions ?? FALLBACK_EXTENSIONS,
+		);
+	}
+
 	async *scan(
 		root: string,
 		opts: { include?: string[]; exclude?: string[]; gitignore?: boolean },
@@ -48,7 +88,7 @@ export class BunGlobScanner implements GlobScanner {
 		}
 
 		const found = new Set<string>();
-		for (const pattern of opts.include ?? DEFAULT_INCLUDE) {
+		for (const pattern of opts.include ?? this.defaultInclude) {
 			const glob = new Bun.Glob(pattern);
 			for await (const path of glob.scan({
 				cwd: rootPath,

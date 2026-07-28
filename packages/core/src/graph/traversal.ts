@@ -1,5 +1,5 @@
+import type { QueryBuilder } from "../db/queries";
 import type { Edge, EdgeKind, Node } from "../types";
-import { QueryBuilder } from "../db/queries";
 
 export interface TraverseInput {
 	startId: string;

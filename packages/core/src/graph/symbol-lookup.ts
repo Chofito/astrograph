@@ -1,5 +1,5 @@
+import type { QueryBuilder } from "../db/queries";
 import type { Node } from "../types";
-import { QueryBuilder } from "../db/queries";
 
 export interface SymbolLookupResult {
 	best?: Node;

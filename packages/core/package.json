@@ -17,7 +17,10 @@
 	},
 	"dependencies": {
 		"ignore": "^7.0.0",
-		"typescript": "^5.7.0"
+		"tree-sitter": "^0.25.0",
+		"tree-sitter-wasms": "^0.1.11",
+		"typescript": "^5.7.0",
+		"web-tree-sitter": "^0.25.3"
 	},
 	"devDependencies": {
 		"@types/bun": "latest"

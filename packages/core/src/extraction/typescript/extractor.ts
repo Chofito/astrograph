@@ -1,29 +1,30 @@
 import ts from "typescript";
+import { makeNodeId } from "../../ids";
 import type {
-	Extractor,
-	Node,
 	Edge,
 	ExtractionError,
+	Extractor,
 	Hasher,
-	NodeKind,
 	Language,
 	LoadProjectOptions,
-} from "../types";
-import { makeNodeId } from "../ids";
-import { languageFromPath } from "./language";
-import { isGenerated, isTest } from "./classify";
+	Node,
+	NodeKind,
+	PassAResult,
+} from "../../types";
+import { isGenerated, isTest } from "../shared/classify";
+import { languageFromPath } from "../shared/language";
 import {
 	computeNodeIdentity,
-	getRange,
-	extractDocstring,
 	extractDecorators,
+	extractDocstring,
 	extractTypeParameters,
-	hasExportModifier,
-	hasDefaultModifier,
-	hasAsyncModifier,
-	hasStaticModifier,
-	hasAbstractModifier,
+	getRange,
 	getVisibility,
+	hasAbstractModifier,
+	hasAsyncModifier,
+	hasDefaultModifier,
+	hasExportModifier,
+	hasStaticModifier,
 } from "./identity";
 import { resolveEdgesForFile } from "./resolver";
 
@@ -111,10 +112,7 @@ export class TsExtractor implements Extractor {
 		}
 	}
 
-	extractNodes(
-		filePath: string,
-		source: string,
-	): { nodes: Node[]; errors: ExtractionError[] } {
+	extractNodes(filePath: string, source: string): PassAResult {
 		try {
 			const scriptKind = scriptKindFromPath(filePath);
 			const sourceFile = ts.createSourceFile(
@@ -125,9 +123,9 @@ export class TsExtractor implements Extractor {
 				scriptKind,
 			);
 
-			const lang = languageFromPath(filePath);
-			const generated = isGenerated(filePath, source);
-			const test = isTest(filePath);
+			const lang = languageFromPath(filePath) ?? "unknown";
+			const generated = isGenerated(filePath, source, lang);
+			const test = isTest(filePath, lang);
 			const nodes: Node[] = [];
 			const errors: ExtractionError[] = [];
 
@@ -151,10 +149,13 @@ export class TsExtractor implements Extractor {
 
 			this.nodesByFile.set(filePath, nodes);
 
-			return { nodes, errors };
+			// Pass A edges are the tree-sitter parser's job; the compiler pass
+			// contributes edges through resolveEdges instead.
+			return { nodes, edges: [], errors };
 		} catch (err) {
 			return {
 				nodes: [],
+				edges: [],
 				errors: [
 					{
 						message: err instanceof Error ? err.message : String(err),
@@ -165,6 +166,14 @@ export class TsExtractor implements Extractor {
 				],
 			};
 		}
+	}
+
+	/** Source text for a project file after loadProject, if present in the Program. */
+	getSourceText(filePath: string): string | undefined {
+		if (!this.program || !this.rootPath) return undefined;
+		const absPath =
+			this.absolutePathMap.get(filePath) ?? this.toAbsolute(filePath);
+		return this.program.getSourceFile(absPath)?.getFullText();
 	}
 
 	resolveEdges(filePath: string): {

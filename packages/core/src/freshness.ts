@@ -29,6 +29,7 @@ export class FreshnessManager {
 	private readonly watcher: Watcher | undefined;
 	private readonly debounceMs: number;
 	private readonly excludedPrefixes: string[];
+	private readonly indexableExtensions: string[];
 	private readonly onSyncStart: ((events: WatchEvent[]) => void) | undefined;
 	private readonly onSyncComplete:
 		| ((events: WatchEvent[], result: FreshnessSyncResult) => void)
@@ -53,6 +54,9 @@ export class FreshnessManager {
 		this.onSyncStart = options.onSyncStart;
 		this.onSyncComplete = options.onSyncComplete;
 		this.onSyncError = options.onSyncError;
+		this.indexableExtensions = options.graph
+			.indexableExtensions()
+			.map((ext) => ext.toLowerCase());
 		this.excludedPrefixes = [
 			"node_modules/",
 			".git/",
@@ -188,7 +192,11 @@ export class FreshnessManager {
 	}
 
 	private isSourcePath(path: string): boolean {
-		if (!/\.(tsx?|jsx?|mjs|cjs|mts|cts)$/.test(path)) return false;
+		// Ask the language registry rather than keeping a fourth copy of the
+		// extension list — a new backend widens the watcher for free.
+		const lower = path.toLowerCase();
+		if (!this.indexableExtensions.some((ext) => lower.endsWith(ext)))
+			return false;
 		return !this.excludedPrefixes.some(
 			(prefix) => path === prefix.slice(0, -1) || path.startsWith(prefix),
 		);

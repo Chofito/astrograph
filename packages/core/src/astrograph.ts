@@ -1,9 +1,13 @@
+import type { QueryBuilder } from "./db/queries";
+import type { ReconcileStats } from "./extraction/reconcile";
+import type { Indexer } from "./indexer";
+import type { GraphQueries } from "./query/graph-queries";
 import type {
 	AstrographCore,
-	CallersInput,
-	CallersOutput,
 	CalleesInput,
 	CalleesOutput,
+	CallersInput,
+	CallersOutput,
 	ContextInput,
 	ContextOutput,
 	ExploreInput,
@@ -24,9 +28,6 @@ import type {
 	TraceOutput,
 	WatchEvent,
 } from "./types";
-import type { QueryBuilder } from "./db/queries";
-import type { Indexer } from "./indexer";
-import { GraphQueries } from "./query/graph-queries";
 
 export interface AstrographOptions {
 	indexer: Indexer;
@@ -90,6 +91,21 @@ export class Astrograph implements AstrographCore {
 		onProgress?: (e: IndexProgress) => void;
 	}): Promise<void> {
 		return this.indexer.indexAll(opts);
+	}
+
+	indexableExtensions(): string[] {
+		return this.indexer.indexableExtensions();
+	}
+
+	/**
+	 * Pass A vs Pass B set arithmetic from the last index/sync.
+	 *
+	 * Deliberately off `AstrographCore`: it is a diagnostic seam, not part of the
+	 * tool surface. `dropped > 0` means tree-sitter emitted a node the enricher
+	 * did not — i.e. Pass A broke its subset contract and ids churned.
+	 */
+	reconcileStats(): ReconcileStats {
+		return this.indexer.reconcileStats();
 	}
 
 	sync(): Promise<{ added: string[]; modified: string[]; removed: string[] }> {
