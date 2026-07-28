@@ -220,7 +220,7 @@ export interface Parser {
  * - `complement` — Pass A emits a conservative SUBSET; the enricher reconciles by node id,
  *   enriches matches in place, and adds its own nodes (§5.1).
  * - `replace`     — enricher output supersedes Pass A for the relationships it covers.
- * - `none`        — no enricher runs; tree-sitter output is final (e.g. PHP).
+ * - `none`        — no enricher runs; tree-sitter output is final.
  */
 export type EnricherMode = 'complement' | 'replace' | 'none';
 

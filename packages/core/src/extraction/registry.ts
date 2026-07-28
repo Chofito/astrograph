@@ -133,6 +133,7 @@ export function createDefaultRegistry(
 				hasher: opts.hasher,
 				now: opts.now,
 				project: opts.project,
+				enricher: wantsEnricher("php"),
 			}),
 		);
 	}

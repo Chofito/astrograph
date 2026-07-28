@@ -237,11 +237,11 @@ behavior.
 - Re-exports: `export { x as y } from './module'` — emit an `exports` edge, Pass B will trace it.
 - Dynamic imports: `import('x')` — treat like a call to a special function; Edge is low-confidence.
 
-**PHP** (no enricher — Pass A output is final for these files):
+**PHP** (tree-sitter Pass A + name-resolution enricher):
 - A file may open and close PHP mode repeatedly; only `php`-mode regions carry declarations, the rest is inline HTML text.
-- `namespace` declarations feed `qualifiedName`; `use` statements emit `imports` edges resolved as far as the syntax allows and left `unresolved` beyond that, never guessed.
+- `namespace` declarations feed `qualifiedName`. Pass A does **not** emit leaf `import` nodes for `use` (they were dead ends — contained, but with no outbound edge). The enricher emits followable `imports` edges from the file node to the resolved FQN instead, with the same strict resolution states as heritage (`resolved` / `external` / `unresolved`).
 - Visibility modifiers (`public`/`protected`/`private`) map directly to `Node.visibility`; there is no inference to do.
-- Because nothing runs after Pass A, its edges are the ones that ship — mark anything cross-file it cannot pin as `unresolved` rather than optimistically `resolved`.
+- The enricher also resolves `extends` / `implements` and type-position edges (`type_of` on params/properties, `returns` on callables) via the alias→FQN table — never bare-name search.
 
 ---
 

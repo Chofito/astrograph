@@ -90,9 +90,9 @@ agent to:
 - **Trust results; check the coverage/staleness banner** after edits; if a file is
   flagged pending, `Read` it directly.
 - **Know the fidelity floor.** JS/TS edges come from the TypeScript Compiler enricher
-  (`provenance: 'ts-compiler'`); languages whose backend has no enricher give structural,
-  tree-sitter-provenance edges. Both are honest, but only the former implies type-level
-  certainty — don't present a `tree-sitter` edge as a type-checked fact.
+  (`provenance: 'ts-compiler'`). PHP edges come from a name-resolution enricher
+  (`provenance: 'tree-sitter'`) — FQN + `use` aliases only, never type-checked.
+  Don't present a `tree-sitter` edge as a type-checked fact.
 - If `.astrograph/` is missing, offer to run `astrograph init`.
 
 The MCP `initialize` response stays the runtime source of truth for active tool

@@ -50,7 +50,9 @@ Small, single-purpose source files, each pinned by a golden snapshot. Every JS/T
 - [ ] `resolution/external/`
 - [ ] `resolution/unresolved/`
 - [ ] `perf/`
-- [ ] `php/basic/` — **enricher-less backend** (`mode: 'none'`): classes, functions, methods, namespaces, `use` imports. Asserts a PHP file reaches `resolved` with `provenance: 'tree-sitter'` edges (see §2.2).
+- [ ] `php/basic/` — PHP backend (Pass A + name enricher): classes, functions, methods, namespaces. `use` becomes `imports` edges (no leaf `import` nodes).
+- [x] `php/heritage/` — extends/implements via alias/FQN resolution (plain/aliased/grouped `use`, same-namespace, absolute `\`, missing → `external`)
+- [x] `php/types/` — `type_of` / `returns` from parameters, property promotion, typed properties, return types; scalars skipped; `imports` edges from `use`
 - [ ] `mixed/` — a repo fragment with `.ts` **and** `.php` side by side. Asserts extension routing, per-language coverage counts, and that `status.filesByLanguage` / `status.backends` report both.
 
 ```
@@ -74,6 +76,8 @@ __fixtures__/
 │   └── ambiguous/         # merged declaration / union
 ├── php/
 │   └── basic/             # enricher-less backend: classes, functions, `use` imports
+│   ├── heritage/          # extends/implements + imports edges (no import nodes)
+│   └── types/             # type_of / returns from DI-style type positions
 ├── mixed/                 # .ts + .php in one tree — routing, per-language coverage
 └── perf/                  # a generated 1k-symbol file for budget tests
 ```

@@ -85,16 +85,32 @@ describe("createDefaultRegistry", () => {
 	test("backends.<id>.enricher: false keeps the backend but drops its enricher", () => {
 		const registry = createDefaultRegistry({
 			hasher: HASHER,
-			config: { backends: { typescript: { enricher: false } } },
+			config: {
+				backends: {
+					typescript: { enricher: false },
+					php: { enricher: false },
+				},
+			},
 		});
-		const ts = registry.backendById("typescript");
-		expect(ts).toBeDefined();
-		expect(ts?.enricher).toBeUndefined();
+		expect(registry.backendById("typescript")?.enricher).toBeUndefined();
+		expect(registry.backendById("php")?.enricher).toBeUndefined();
+		expect(registry.backendById("php")?.capabilities.edgeKinds).toEqual([
+			"contains",
+		]);
 	});
 
-	test("php has no enricher regardless of config, since it has none to disable", () => {
+	test("php ships a name-resolution enricher that can emit extends/implements", () => {
 		const registry = createDefaultRegistry({ hasher: HASHER });
-		expect(registry.backendById("php")?.enricher).toBeUndefined();
+		const php = registry.backendById("php");
+		expect(php?.enricher?.mode).toBe("complement");
+		expect(php?.capabilities.edgeKinds).toEqual([
+			"contains",
+			"extends",
+			"implements",
+			"imports",
+			"type_of",
+			"returns",
+		]);
 	});
 });
 

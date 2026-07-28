@@ -865,9 +865,9 @@ function hasFcAnnotation(node: TsNode): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * PHP has no enricher, so Pass A *is* the answer here and the subset rule does
- * not bind — but the same walker shape is used so both languages produce the
- * same `contains` skeleton. Node type names verified against tree-sitter-php.
+ * PHP has a name-resolution enricher (FQN + `use` aliases), but Pass A still
+ * owns the node set and `contains` skeleton. Node type names verified against
+ * tree-sitter-php.
  */
 function collectPhp(
 	container: TsNode,
@@ -896,17 +896,11 @@ function collectPhp(
 				break;
 			}
 
-			case "namespace_use_declaration": {
-				const clause = firstNamedChildOfTypes(node, ["namespace_use_clause"]);
-				const target = clause?.namedChild(0)?.text;
-				if (target === undefined) break;
-				pushCandidate(
-					phpCandidate("import", target, [`import(${target})`], node),
-					out,
-					parentIndex,
-				);
+			case "namespace_use_declaration":
+				// `use` is resolved by the PHP enricher into `imports` edges from
+				// the file node. Emitting leaf `import` nodes here bloated Magento
+				// graphs (~30% of nodes) without any outbound edge an agent could follow.
 				break;
-			}
 
 			case "function_definition": {
 				const name = fieldText(node, "name");

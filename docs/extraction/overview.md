@@ -142,7 +142,7 @@ Optional Pass B, **per file**, driven by a project loaded once via `loadProject`
 **Modes:**
 - `complement` — Pass A emits a conservative **subset** with byte-identical ids; Pass B reconciles by id (see below). **This is the TypeScript backend's mode.**
 - `replace` — Pass B supersedes Pass A for the relationships it covers.
-- `none` — no enricher; tree-sitter output is final. **This is the PHP backend's mode.**
+- `none` — no enricher; tree-sitter output is final. (Disable a language's enricher with `backends.<id>.enricher: false`.)
 
 ### `complement` reconciliation (the rule that keeps ids stable)
 

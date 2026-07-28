@@ -32,7 +32,7 @@ function shout(string $msg): string
 }
 `;
 
-describe("PHP backend: end-to-end via openProject (tree-sitter only, no enricher)", () => {
+describe("PHP backend: end-to-end via openProject", () => {
 	test("indexes real symbol nodes, not just a lone file node", async () => {
 		const root = await makeTempProject();
 		await writeProjectFile(root, "src/Greeter.php", PHP_SOURCE);
@@ -55,7 +55,8 @@ describe("PHP backend: end-to-end via openProject (tree-sitter only, no enricher
 
 			const file = indexer.queries.getFile("src/Greeter.php");
 			expect(file).toBeDefined();
-			// PHP has no enricher: Pass A alone is the final answer for the file.
+			// PHP Pass A alone reaches resolved when the name enricher is off; with
+			// the enricher on (default), the file still ends resolved after heritage.
 			expect(file?.state).toBe("resolved");
 			expect(file?.nodeCount).toBe(nodes.length);
 		} finally {
