@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { AgentGuideLink, Location, McpEntry, Target } from "../target";
-import { readJson, serializeJson, type JsonDoc } from "../writers/json";
+import { type JsonDoc, readJson, serializeJson } from "../writers/json";
 
 export const claudeTarget: Target = {
 	id: "claude",

@@ -1,11 +1,12 @@
 import {
 	existsSync,
-	readFileSync,
-	writeFileSync,
-	unlinkSync,
 	openSync,
+	readFileSync,
+	unlinkSync,
+	writeFileSync,
 } from "node:fs";
 import { spawn } from "bun";
+import { selfCommand } from "../runtime";
 
 export interface DaemonMetadata {
 	pid: number;
@@ -121,11 +122,7 @@ export async function stopDaemon(root: string): Promise<boolean> {
 }
 
 function daemonCommand(root: string): string[] {
-	const entry = process.argv[1];
-	if (entry !== undefined && /\.(tsx?|jsx?|mjs|cjs)$/.test(entry)) {
-		return [process.execPath, "run", entry, "daemon", "--path", root];
-	}
-	return [process.execPath, "daemon", "--path", root];
+	return selfCommand(["daemon", "--path", root]);
 }
 
 async function waitForExit(pid: number, timeoutMs: number): Promise<boolean> {

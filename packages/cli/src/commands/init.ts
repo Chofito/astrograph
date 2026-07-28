@@ -3,19 +3,19 @@ import { resolve } from "node:path";
 import { openProject } from "@astrograph/core/bun";
 import type { CliContext, CliRunResult } from "../cli";
 import { CliError, ok } from "../cli";
-import { booleanValue, parseCommandArgs } from "./parse";
-import { loadConfig } from "./shared";
 import { style, symbols } from "../format/style";
-import {
-	isDaemonRunning,
-	readDaemonMetadata,
-	spawnDaemon,
-} from "./daemon-utils";
 import {
 	createInitReporter,
 	formatInitReceipt,
 	summaryFromStatus,
 } from "../ui/init-reporter";
+import {
+	isDaemonRunning,
+	readDaemonMetadata,
+	spawnDaemon,
+} from "./daemon-utils";
+import { booleanValue, parseCommandArgs } from "./parse";
+import { loadConfig } from "./shared";
 
 export async function runInit(
 	args: string[],

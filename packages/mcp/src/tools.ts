@@ -71,7 +71,14 @@ const NODE_KINDS: NodeKind[] = [
 	"component",
 ];
 
-const LANGUAGES: Language[] = ["typescript", "tsx", "javascript", "jsx"];
+const LANGUAGES = [
+	"typescript",
+	"tsx",
+	"javascript",
+	"jsx",
+	"php",
+	"python",
+] as const;
 
 export function createTools(session: ToolProjectSession): McpToolDefinition[] {
 	return [

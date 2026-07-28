@@ -1,13 +1,13 @@
 import type { CliContext, CliRunResult } from "../cli";
 import { ok } from "../cli";
-import { parseCommandArgs } from "./parse";
-import { resolveProjectPath } from "../root";
 import { style } from "../format/style";
+import { resolveProjectPath } from "../root";
 import {
 	isDaemonRunning,
 	readDaemonMetadata,
 	stopDaemon,
 } from "./daemon-utils";
+import { parseCommandArgs } from "./parse";
 
 export async function runStop(
 	args: string[],

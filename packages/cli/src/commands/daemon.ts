@@ -3,19 +3,18 @@ import {
 	type FreshnessSyncResult,
 	type WatchEvent,
 } from "@astrograph/core";
-import { openProject } from "@astrograph/core/bun";
-import { BunWatcher } from "@astrograph/core/bun";
+import { BunWatcher, openProject } from "@astrograph/core/bun";
 import type { CliContext, CliRunResult } from "../cli";
 import { ok } from "../cli";
-import { stringValue, parseCommandArgs } from "./parse";
-import { loadConfig } from "./shared";
 import { requireProjectRoot, resolveProjectPath } from "../root";
-import { removeDaemonMetadata } from "./daemon-utils";
 import {
 	createInitReporter,
 	formatInitReceipt,
 	summaryFromStatus,
 } from "../ui/init-reporter";
+import { removeDaemonMetadata } from "./daemon-utils";
+import { parseCommandArgs, stringValue } from "./parse";
+import { loadConfig } from "./shared";
 
 export async function runDaemon(
 	args: string[],

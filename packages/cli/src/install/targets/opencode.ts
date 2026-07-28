@@ -2,10 +2,10 @@ import { join } from "node:path";
 import type { AgentGuideLink, Location, McpEntry, Target } from "../target";
 import {
 	getJsoncValue,
+	type JsoncDoc,
 	readJsonc,
 	serializeJsonc,
 	setJsoncPath,
-	type JsoncDoc,
 } from "../writers/jsonc";
 
 export const opencodeTarget: Target = {

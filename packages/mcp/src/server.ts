@@ -2,8 +2,8 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
 	CallToolRequestSchema,
-	ListToolsRequestSchema,
 	type CallToolResult,
+	ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import pkg from "../package.json";
 import { SERVER_INSTRUCTIONS } from "./instructions";

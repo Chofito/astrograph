@@ -2,9 +2,9 @@ import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import type { CliContext, CliRunResult } from "../cli";
 import { ok } from "../cli";
+import { style } from "../format/style";
 import { requireProjectRoot, resolveProjectPath } from "../root";
 import { parseCommandArgs } from "./parse";
-import { style } from "../format/style";
 
 export async function runUnlock(
 	args: string[],

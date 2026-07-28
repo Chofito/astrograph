@@ -1,5 +1,5 @@
 export { SERVER_INSTRUCTIONS } from "./instructions";
-export { MissingIndexError, ProjectSession, findProjectRoot } from "./project";
+export { findProjectRoot, MissingIndexError, ProjectSession } from "./project";
 export {
 	callTool,
 	createAstrographMcpServer,

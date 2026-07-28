@@ -1,10 +1,10 @@
 import type { CliContext, CliRunResult } from "../cli";
 import { CliError, ok } from "../cli";
+import { style, symbols } from "../format/style";
 import { requireProjectRoot, resolveProjectPath } from "../root";
+import { isDaemonRunning, readDaemonMetadata } from "./daemon-utils";
 import { booleanValue, parseCommandArgs } from "./parse";
 import { withGraph } from "./shared";
-import { style, symbols } from "../format/style";
-import { isDaemonRunning, readDaemonMetadata } from "./daemon-utils";
 
 export async function runSync(
 	args: string[],

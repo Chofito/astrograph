@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import {
 	applyEdits,
+	type FormattingOptions,
 	modify,
 	parse,
-	type FormattingOptions,
 } from "jsonc-parser";
 
 const FMT: FormattingOptions = { tabSize: 2, insertSpaces: true, eol: "\n" };

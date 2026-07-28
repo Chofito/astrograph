@@ -1,16 +1,19 @@
 import { existsSync } from "node:fs";
-import type { AstrographConfig, ToolResult } from "@astrograph/core";
+import type {
+	Astrograph,
+	AstrographConfig,
+	ToolResult,
+} from "@astrograph/core";
 import { openProject } from "@astrograph/core/bun";
-import type { Astrograph } from "@astrograph/core";
 import {
+	type CliContext,
 	CliError,
+	type CliRunResult,
 	failOnPartial,
 	ok,
-	type CliContext,
-	type CliRunResult,
 } from "../cli";
 import { jsonEnvelope } from "../format/json";
-import { resolveProjectPath, requireProjectRoot } from "../root";
+import { requireProjectRoot, resolveProjectPath } from "../root";
 
 export interface ReadFlags {
 	json?: boolean;

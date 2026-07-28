@@ -4,10 +4,10 @@ import type { CliContext, CliRunResult } from "../cli";
 import { CliError, ok } from "../cli";
 import { style } from "../format/style";
 import {
+	type AgentGuideResult,
 	isAgentGuideInstalled,
 	resolveAgentGuideSource,
 	uninstallAgentGuide,
-	type AgentGuideResult,
 } from "../install/agent-guide";
 import { confirm } from "../install/prompt";
 import type { AgentGuideLink, Location, Target } from "../install/target";

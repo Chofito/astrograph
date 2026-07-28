@@ -22,6 +22,12 @@ export function formatStatus(
 		`${symbols.bullet} journal    ${style.dim(result.data.journalMode)}`,
 	];
 
+	if (result.data.backends !== undefined && result.data.backends.length > 0) {
+		const summary = result.data.backends
+			.map((b) => `${b.id}[${b.languages.join(",")}]`)
+			.join(", ");
+		lines.push(`${symbols.bullet} languages  ${style.dim(summary)}`);
+	}
 	if (daemon) {
 		if (daemon.running && daemon.pid !== undefined) {
 			const since = daemon.startedAt

@@ -6,10 +6,10 @@ import type { CliContext, CliRunResult } from "../cli";
 import { CliError, ok } from "../cli";
 import { style, symbols } from "../format/style";
 import {
+	type AgentGuideResult,
 	installAgentGuide,
 	isAgentGuideInstalled,
 	resolveAgentGuideSource,
-	type AgentGuideResult,
 } from "../install/agent-guide";
 import { confirm } from "../install/prompt";
 import { resolveCommand } from "../install/resolve-command";

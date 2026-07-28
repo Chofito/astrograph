@@ -1,5 +1,5 @@
 import { serveMcp } from "@astrograph/mcp";
-import { CliError, ok, type CliContext, type CliRunResult } from "../cli";
+import { type CliContext, CliError, type CliRunResult, ok } from "../cli";
 import { booleanValue, parseCommandArgs, stringValue } from "./parse";
 
 export async function runServe(

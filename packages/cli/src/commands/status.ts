@@ -3,9 +3,9 @@ import { ok } from "../cli";
 import { jsonEnvelope } from "../format/json";
 import { formatStatus } from "../format/status";
 import { requireProjectRoot, resolveProjectPath } from "../root";
+import { peekDaemonRunning, readDaemonMetadata } from "./daemon-utils";
 import { booleanValue, parseCommandArgs } from "./parse";
 import { withGraph } from "./shared";
-import { peekDaemonRunning, readDaemonMetadata } from "./daemon-utils";
 
 export async function runStatus(
 	args: string[],

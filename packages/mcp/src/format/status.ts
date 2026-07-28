@@ -9,6 +9,11 @@ export function formatStatus(result: ToolResult<StatusOutput>): string {
 		`backend ${data.backend} · journal ${data.journalMode} · db ${data.dbSizeBytes} bytes · updated ${data.lastUpdated}`,
 		`coverage ${data.coverage.resolved}/${data.coverage.total} resolved, ${data.coverage.parsed} parsed, ${data.coverage.pending} pending`,
 	];
+	if (data.backends !== undefined && data.backends.length > 0) {
+		lines.push(
+			`language backends: ${data.backends.map((b) => `${b.id}(${b.languages.join(",")})`).join("; ")}`,
+		);
+	}
 	if (data.pendingSync !== undefined && data.pendingSync.length > 0) {
 		lines.push(`pending sync: ${data.pendingSync.join(", ")}`);
 	}

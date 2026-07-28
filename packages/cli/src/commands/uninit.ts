@@ -1,12 +1,12 @@
 import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
-import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
+import { createInterface } from "node:readline/promises";
 import type { CliContext, CliRunResult } from "../cli";
 import { ok } from "../cli";
-import { booleanValue, parseCommandArgs } from "./parse";
-import { resolveProjectPath } from "../root";
 import { style } from "../format/style";
+import { resolveProjectPath } from "../root";
+import { booleanValue, parseCommandArgs } from "./parse";
 
 export async function runUninit(
 	args: string[],
