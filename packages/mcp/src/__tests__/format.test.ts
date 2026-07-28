@@ -22,6 +22,22 @@ describe("MCP formatters", () => {
 			].join("\n"),
 		);
 	});
+
+	test("empty callers prefers the capability note over (no results)", async () => {
+		const { formatCallers } = await import("../format/callers");
+		const result: ToolResult<[]> = {
+			data: [],
+			meta: {
+				coverage: { total: 1, resolved: 1, parsed: 0, pending: 0 },
+				partial: true,
+				notes: ["php backend produces no call edges"],
+			},
+		};
+		expect(formatCallers(result as never)).toContain(
+			"(php backend produces no call edges)",
+		);
+		expect(formatCallers(result as never)).not.toContain("(no results)");
+	});
 });
 
 function node(name: string): NodeRef {

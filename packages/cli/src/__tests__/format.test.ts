@@ -50,4 +50,19 @@ describe("CLI formatters", () => {
 		);
 		expect(jsonEnvelope(result)).toBe(JSON.stringify(result));
 	});
+
+	test("empty callers surfaces php capability note in the body", async () => {
+		const { formatCallers } = await import("../format/callers");
+		const result: ToolResult<[]> = {
+			data: [],
+			meta: {
+				coverage: { total: 1, resolved: 1, parsed: 0, pending: 0 },
+				partial: true,
+				notes: ["php backend produces no call edges"],
+			},
+		};
+		expect(formatCallers(result as never)).toContain(
+			"(php backend produces no call edges)",
+		);
+	});
 });

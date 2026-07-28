@@ -60,11 +60,11 @@ export interface BunGlobScannerOptions {
 
 export class BunGlobScanner implements GlobScanner {
 	private readonly defaultInclude: string[];
+	private readonly extensions: string[];
 
 	constructor(opts: BunGlobScannerOptions = {}) {
-		this.defaultInclude = includeGlobFor(
-			opts.extensions ?? FALLBACK_EXTENSIONS,
-		);
+		this.extensions = opts.extensions ?? FALLBACK_EXTENSIONS;
+		this.defaultInclude = includeGlobFor(this.extensions);
 	}
 
 	async *scan(
@@ -74,18 +74,27 @@ export class BunGlobScanner implements GlobScanner {
 		const rootPath = normalizePath(root);
 		// TODO(perf): Bun.Glob does not expose directory-pruning hooks; ignored
 		// directories are filtered after enumeration for now.
-		const matcher = ignore().add(ALWAYS_EXCLUDE);
+		const hardExclude = ignore().add(ALWAYS_EXCLUDE);
+		if (opts.exclude !== undefined && opts.exclude.length > 0) {
+			hardExclude.add(opts.exclude);
+		}
 
-		if (opts.gitignore !== false) {
+		const gitignoreMatcher = ignore();
+		const useGitignore = opts.gitignore !== false;
+		if (useGitignore) {
 			const gitignoreFile = Bun.file(`${rootPath}/.gitignore`);
 			if (await gitignoreFile.exists()) {
-				matcher.add(await gitignoreFile.text());
+				gitignoreMatcher.add(await gitignoreFile.text());
 			}
 		}
 
-		if (opts.exclude !== undefined && opts.exclude.length > 0) {
-			matcher.add(opts.exclude);
-		}
+		// Git's rule: a tracked file is never ignored by .gitignore, even when a
+		// whitelist pattern (e.g. Magento's leading `*`) would otherwise drop it.
+		// One `git ls-files` beats per-path `git check-ignore` on 3k+ file repos.
+		const tracked =
+			useGitignore && (await isGitRepo(rootPath))
+				? await listTrackedFiles(rootPath)
+				: null;
 
 		const found = new Set<string>();
 		for (const pattern of opts.include ?? this.defaultInclude) {
@@ -97,7 +106,28 @@ export class BunGlobScanner implements GlobScanner {
 				onlyFiles: true,
 			})) {
 				const relPath = normalizePath(path);
-				if (matcher.ignores(relPath)) continue;
+				if (hardExclude.ignores(relPath)) continue;
+				if (
+					useGitignore &&
+					gitignoreMatcher.ignores(relPath) &&
+					tracked?.has(relPath) !== true
+				) {
+					continue;
+				}
+				found.add(relPath);
+			}
+		}
+
+		// Tracked files that match our include globs but were never yielded above
+		// (rare) still join the scan set — same hard excludes still apply.
+		if (tracked !== null) {
+			const includeGlobs = (opts.include ?? this.defaultInclude).map(
+				(pattern) => new Bun.Glob(pattern),
+			);
+			for (const relPath of tracked) {
+				if (found.has(relPath)) continue;
+				if (hardExclude.ignores(relPath)) continue;
+				if (!matchesAnyGlob(relPath, includeGlobs)) continue;
 				found.add(relPath);
 			}
 		}
@@ -105,6 +135,49 @@ export class BunGlobScanner implements GlobScanner {
 		for (const relPath of [...found].sort(compareStrings)) {
 			yield relPath;
 		}
+	}
+}
+
+function matchesAnyGlob(relPath: string, globs: Bun.Glob[]): boolean {
+	for (const glob of globs) {
+		if (glob.match(relPath)) return true;
+	}
+	return false;
+}
+
+async function isGitRepo(rootPath: string): Promise<boolean> {
+	try {
+		const proc = Bun.spawn(
+			["git", "-C", rootPath, "rev-parse", "--is-inside-work-tree"],
+			{ stdout: "pipe", stderr: "pipe" },
+		);
+		const exit = await proc.exited;
+		if (exit !== 0) return false;
+		const text = (await new Response(proc.stdout).text()).trim();
+		return text === "true";
+	} catch {
+		return false;
+	}
+}
+
+/** Relative paths from `git ls-files`, or null when git is unavailable. */
+async function listTrackedFiles(rootPath: string): Promise<Set<string> | null> {
+	try {
+		const proc = Bun.spawn(["git", "-C", rootPath, "ls-files", "-z"], {
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		const exit = await proc.exited;
+		if (exit !== 0) return null;
+		const text = await new Response(proc.stdout).text();
+		const tracked = new Set<string>();
+		for (const entry of text.split("\0")) {
+			if (entry === "") continue;
+			tracked.add(normalizePath(entry));
+		}
+		return tracked;
+	} catch {
+		return null;
 	}
 }
 

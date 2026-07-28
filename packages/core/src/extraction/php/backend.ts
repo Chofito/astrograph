@@ -1,4 +1,5 @@
 import type {
+	BackendCapabilities,
 	Hasher,
 	Language,
 	LanguageBackend,
@@ -13,6 +14,11 @@ export interface PhpBackendOptions {
 	now?: () => number;
 	project?: string;
 }
+
+/** Pass A only — structural containment, no call/import resolution. */
+const PHP_CAPABILITIES: BackendCapabilities = {
+	edgeKinds: ["contains"],
+};
 
 /**
  * PHP backend: tree-sitter only, no enricher.
@@ -31,6 +37,7 @@ export class PhpLanguageBackend implements LanguageBackend {
 	readonly extensions = [".php"];
 	readonly parser: Parser;
 	readonly enricher = undefined;
+	readonly capabilities = PHP_CAPABILITIES;
 
 	constructor(opts: PhpBackendOptions) {
 		this.parser = new TreeSitterParser(opts);

@@ -3,10 +3,16 @@ import { footer } from "./footer";
 import { loc } from "./shared";
 
 export function formatCallers(result: ToolResult<CallersOutput>): string {
-	const rows = result.data.map(
-		(item) =>
-			`${item.caller.kind} ${item.caller.name}  ${loc(item.caller)}  ${edgeLoc(item.callSite)}`,
+	const capability = result.meta.notes?.find((note) =>
+		note.includes("produces no"),
 	);
+	const rows =
+		result.data.length === 0 && capability !== undefined
+			? [`(${capability})`]
+			: result.data.map(
+					(item) =>
+						`${item.caller.kind} ${item.caller.name}  ${loc(item.caller)}  ${edgeLoc(item.callSite)}`,
+				);
 	return [...rows, footer(result.meta)].join("\n");
 }
 

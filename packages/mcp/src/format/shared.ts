@@ -47,3 +47,10 @@ export function formatCodeBlock(block: CodeBlock): string {
 export function empty(label: string): string {
 	return `${label}\n(no results)`;
 }
+
+/** Prefer an explicit capability note over a bare "(no results)". */
+export function emptyWithNotes(label: string, meta: ToolMeta): string {
+	const capability = meta.notes?.find((note) => note.includes("produces no"));
+	if (capability !== undefined) return `${label}\n(${capability})`;
+	return empty(label);
+}

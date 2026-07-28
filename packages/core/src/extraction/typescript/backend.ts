@@ -1,5 +1,6 @@
 import ts from "typescript";
 import type {
+	BackendCapabilities,
 	EdgeResolutionResult,
 	Enricher,
 	EnricherMode,
@@ -17,6 +18,29 @@ export interface TypescriptBackendOptions extends TsExtractorOptions {
 	/** Set false to run Pass A only (config `backends.typescript.enricher`). */
 	enricher?: boolean;
 }
+
+/** Pass A alone — structural containment only. */
+const PASS_A_ONLY_CAPABILITIES: BackendCapabilities = {
+	edgeKinds: ["contains"],
+};
+
+/** Pass A + TS compiler enricher. */
+const ENRICHED_CAPABILITIES: BackendCapabilities = {
+	edgeKinds: [
+		"contains",
+		"calls",
+		"imports",
+		"exports",
+		"extends",
+		"implements",
+		"references",
+		"type_of",
+		"returns",
+		"instantiates",
+		"overrides",
+		"decorates",
+	],
+};
 
 /**
  * JS/TS backend: tree-sitter Pass A (structural) + TypeScript Compiler Pass B.
@@ -45,6 +69,7 @@ export class TypescriptLanguageBackend
 
 	readonly parser: TreeSitterParser;
 	readonly enricher: Enricher | undefined;
+	readonly capabilities: BackendCapabilities;
 
 	private readonly tsExtractor: TsExtractor;
 	private projectFiles: string[] = [];
@@ -61,6 +86,10 @@ export class TypescriptLanguageBackend
 						loadProject: (o) => this.loadProject(o),
 						resolveEdges: (filePath) => this.resolveEdges(filePath),
 					};
+		this.capabilities =
+			this.enricher === undefined
+				? PASS_A_ONLY_CAPABILITIES
+				: ENRICHED_CAPABILITIES;
 	}
 
 	versionKeys(): Record<string, string> {

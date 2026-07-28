@@ -77,7 +77,9 @@ export interface Node {
 export interface Edge {
   id?: number;                // storage rowid; absent before insert
   source: string;             // always a real project node id
-  target: string | null;      // null when unresolved
+  target: string | null;      // null when unresolved, OR when external and the
+                              // declaration is not persisted as a node (TS default
+                              // libs / paths outside the project root — graph-model §5/§6)
   targetName?: string;        // textual ref kept for re-resolution / display
   kind: EdgeKind;
   resolutionState: ResolutionState;
@@ -126,7 +128,8 @@ export interface NodeRef {
 
 export interface EdgeRef {
   source: string;
-  target: string | null;
+  target: string | null;      // same null cases as Edge.target (unresolved, or
+                              // external without a persisted node — graph-model §6)
   targetName?: string;
   kind: EdgeKind;
   resolutionState: ResolutionState;
@@ -239,12 +242,17 @@ export interface Enricher {
 }
 
 /** A registered language backend: tree-sitter parser + optional enricher. */
+export interface BackendCapabilities {
+  edgeKinds: EdgeKind[];          // edge kinds this backend can emit
+}
+
 export interface LanguageBackend {
   id: string;                 // registry key, e.g. 'typescript', 'php'
   languages: Language[];      // languages this backend claims
   extensions: string[];       // '.ts', '.tsx', '.php' — how files are routed to it
   parser: Parser;
   enricher?: Enricher;
+  capabilities: BackendCapabilities;
   /** Extraction identity: grammar/enricher versions folded into `project_metadata.configHash`. */
   versionKeys(): Record<string, string>;
 }
@@ -335,6 +343,7 @@ export interface BackendStatus {
   extensions: string[];
   versions: Record<string, string>;      // from LanguageBackend.versionKeys() — grammar + enricher versions
   enricher: EnricherMode;                // 'none' when the backend has no enricher
+  capabilities: BackendCapabilities;     // edge kinds this backend can produce
   grammarsLoaded: string[];              // grammars loaded and ready this session
   grammarsUnavailable: { lang: string; reason: string }[];  // declared but unloadable — degrade, never throw
 }

@@ -440,7 +440,11 @@ export class Indexer {
 			for (const nodeId of plan.delete) this.queries.deleteNode(nodeId);
 			for (const node of plan.update) this.queries.upsertNode(node);
 			for (const node of plan.insert) this.queries.upsertNode(node);
-			for (const node of result.externalNodes) this.queries.upsertNode(node);
+			for (const node of result.externalNodes) {
+				if (isPersistableExternalNode(node, this.root)) {
+					this.queries.upsertNode(node);
+				}
+			}
 
 			this.lastReconcileStats = {
 				matched: this.lastReconcileStats.matched + plan.stats.matched,
@@ -479,7 +483,9 @@ export class Indexer {
 			}
 
 			for (const node of result.externalNodes) {
-				this.queries.upsertNode(node);
+				if (isPersistableExternalNode(node, this.root)) {
+					this.queries.upsertNode(node);
+				}
 			}
 
 			for (const edge of result.edges) {
@@ -710,6 +716,21 @@ function mergeErrors(
 	);
 	const merged = [...kept, ...added];
 	return merged.length > 0 ? merged : undefined;
+}
+
+/**
+ * External nodes must stay portable: no absolute paths that only make sense on
+ * the machine where TypeScript's default libs were resolved at compile time.
+ */
+function isPersistableExternalNode(node: Node, root: string): boolean {
+	const filePath = node.filePath.replaceAll("\\", "/");
+	if (filePath.startsWith("/") || /^[A-Za-z]:\//.test(filePath)) {
+		const normalizedRoot = root.replaceAll("\\", "/").replace(/\/$/, "");
+		return (
+			filePath === normalizedRoot || filePath.startsWith(`${normalizedRoot}/`)
+		);
+	}
+	return true;
 }
 
 function uniqueStrings(values: string[]): string[] {

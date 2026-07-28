@@ -5,9 +5,11 @@ import type {
 	Edge,
 	ExtractionError,
 	Hasher,
+	Language,
 	Node,
 	Provenance,
 } from "../../types";
+import { languageFromPath } from "../shared/language";
 import {
 	computeNodeIdentity,
 	hasDefaultModifier,
@@ -70,20 +72,38 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
 	const emittedEdgeKeys = new Set<string>();
 	const coveredReferencePositions = new Set<number>();
 	const errors: ExtractionError[] = [];
+	const referrerLanguage: Language = languageFromPath(filePath) ?? "typescript";
 
 	function toRelative(absPath: string): string {
 		const normalized = normalizeFsPath(absPath);
 		const root = normalizeFsPath(rootPath);
-		if (normalized.startsWith(root + "/"))
+		if (normalized.startsWith(`${root}/`))
 			return normalized.slice(root.length + 1);
 		return normalized;
+	}
+
+	function isInsideProjectRoot(absPath: string): boolean {
+		const normalized = normalizeFsPath(absPath);
+		const root = normalizeFsPath(rootPath);
+		return normalized === root || normalized.startsWith(`${root}/`);
+	}
+
+	/** Default libs and paths outside the project must never become graph nodes. */
+	function canPersistExternal(declFile: ts.SourceFile): boolean {
+		if (program.isSourceFileDefaultLibrary(declFile)) return false;
+		return isInsideProjectRoot(declFile.fileName);
 	}
 
 	function isProjectFile(absPath: string): boolean {
 		return projectFiles.has(toRelative(absPath));
 	}
 
-	function ensureExternalNode(sym: ts.Symbol, declFile: ts.SourceFile): string {
+	function ensureExternalNode(
+		sym: ts.Symbol,
+		declFile: ts.SourceFile,
+	): string | null {
+		if (!canPersistExternal(declFile)) return null;
+
 		const decl = pickDeclaration(sym.getDeclarations() ?? []);
 		if (!decl) return makeExternalFallbackId(sym, declFile);
 
@@ -106,7 +126,7 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
 			name: identity.name,
 			qualifiedName: identity.qualifiedName,
 			filePath: relPath,
-			language: "typescript",
+			language: referrerLanguage,
 			range: { startLine: 0, endLine: 0, startColumn: 0, endColumn: 0 },
 			isExported: false,
 			isAsync: false,
@@ -124,7 +144,9 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
 	function makeExternalFallbackId(
 		sym: ts.Symbol,
 		declFile: ts.SourceFile,
-	): string {
+	): string | null {
+		if (!canPersistExternal(declFile)) return null;
+
 		const relPath = toRelative(declFile.fileName);
 		const name = sym.getName();
 		const id = makeNodeId(
@@ -146,7 +168,7 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
 				name,
 				qualifiedName: `${relPath}::${name}`,
 				filePath: relPath,
-				language: "typescript",
+				language: referrerLanguage,
 				range: { startLine: 0, endLine: 0, startColumn: 0, endColumn: 0 },
 				isExported: false,
 				isAsync: false,

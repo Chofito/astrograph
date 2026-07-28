@@ -16,6 +16,7 @@ function fakeBackend(id: string, extensions: string[]): LanguageBackend {
 		languages: [id],
 		extensions,
 		parser: { extractNodes: () => NOOP_PASS_A },
+		capabilities: { edgeKinds: ["contains"] },
 		versionKeys: () => ({ version: "1" }),
 	};
 }

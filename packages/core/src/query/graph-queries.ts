@@ -232,6 +232,9 @@ export class GraphQueries {
 	async callers(input: CallersInput): Promise<ToolResult<CallersOutput>> {
 		const lookup = this.resolveOrThrow(input.symbol);
 		const limit = input.limit ?? 20;
+		const capabilityNotes = this.capabilityNotes(lookup.best, ["calls"], {
+			callLabel: true,
+		});
 		const edges = this.queries.getEdgesByTarget(lookup.best.id, "calls");
 		const includedEdges: Edge[] = [];
 		const data = sortCallerOutputs(
@@ -252,8 +255,9 @@ export class GraphQueries {
 		return {
 			data,
 			meta: this.meta({
-				forcePartial: !this.isFullyResolved(),
+				forcePartial: capabilityNotes.length > 0 || !this.isFullyResolved(),
 				notes: [
+					...capabilityNotes,
 					...this.ambiguityLookupNotes(lookup),
 					...edgeNotes(includedEdges),
 				],
@@ -264,6 +268,11 @@ export class GraphQueries {
 	async callees(input: CalleesInput): Promise<ToolResult<CalleesOutput>> {
 		const lookup = this.resolveOrThrow(input.symbol);
 		const limit = input.limit ?? 20;
+		const capabilityNotes = this.capabilityNotes(
+			lookup.best,
+			["calls", "instantiates"],
+			{ callLabel: true },
+		);
 		const edges = [
 			...this.queries.getEdgesBySource(lookup.best.id, "calls"),
 			...this.queries.getEdgesBySource(lookup.best.id, "instantiates"),
@@ -289,7 +298,9 @@ export class GraphQueries {
 			data,
 			meta: this.meta({
 				scopeFiles: [lookup.best.filePath],
+				forcePartial: capabilityNotes.length > 0,
 				notes: [
+					...capabilityNotes,
 					...this.ambiguityLookupNotes(lookup),
 					...edgeNotes(includedEdges),
 				],
@@ -299,10 +310,18 @@ export class GraphQueries {
 
 	async impact(input: ImpactInput): Promise<ToolResult<ImpactOutput>> {
 		const lookup = this.resolveOrThrow(input.symbol);
+		const impactKinds: EdgeKind[] = [
+			"calls",
+			"references",
+			"imports",
+			"extends",
+			"implements",
+		];
+		const capabilityNotes = this.capabilityNotes(lookup.best, impactKinds);
 		const visits = traverseGraph(this.queries, {
 			startId: lookup.best.id,
 			direction: "incoming",
-			edgeKinds: ["calls", "references", "imports", "extends", "implements"],
+			edgeKinds: impactKinds,
 			maxDepth: input.depth ?? 2,
 			limit: 250,
 		});
@@ -322,8 +341,9 @@ export class GraphQueries {
 		return {
 			data,
 			meta: this.meta({
-				forcePartial: !this.isFullyResolved(),
+				forcePartial: capabilityNotes.length > 0 || !this.isFullyResolved(),
 				notes: [
+					...capabilityNotes,
 					...this.ambiguityLookupNotes(lookup),
 					...edgeNotes(visits.flatMap((visit) => visit.path)),
 				],
@@ -334,11 +354,16 @@ export class GraphQueries {
 	async trace(input: TraceInput): Promise<ToolResult<TraceOutput>> {
 		const from = this.resolveOrThrow(input.from);
 		const to = this.resolveOrThrow(input.to);
+		const traceKinds: EdgeKind[] = ["calls", "references"];
+		const capabilityNotes = [
+			...this.capabilityNotes(from.best, traceKinds),
+			...this.capabilityNotes(to.best, traceKinds),
+		].filter((note, index, all) => all.indexOf(note) === index);
 		const path = findPath(this.queries, {
 			startId: from.best.id,
 			targetId: to.best.id,
 			direction: "outgoing",
-			edgeKinds: ["calls", "references"],
+			edgeKinds: traceKinds,
 			maxDepth: input.maxDepth ?? 6,
 		});
 
@@ -376,7 +401,9 @@ export class GraphQueries {
 						to.best,
 						...this.nodesForEdges(path),
 					]),
+					forcePartial: capabilityNotes.length > 0,
 					notes: [
+						...capabilityNotes,
 						...this.ambiguityLookupNotes(from, "from"),
 						...this.ambiguityLookupNotes(to, "to"),
 						...edgeNotes(path),
@@ -397,8 +424,12 @@ export class GraphQueries {
 			data: { found: false, hops: [], endpoints },
 			meta: this.meta({
 				scopeFiles: filesForNodes(inlineNodes),
+				forcePartial: capabilityNotes.length > 0,
 				notes: [
-					"No calls/references path found within maxDepth",
+					...capabilityNotes,
+					...(capabilityNotes.length === 0
+						? ["No calls/references path found within maxDepth"]
+						: []),
 					...this.ambiguityLookupNotes(from, "from"),
 					...this.ambiguityLookupNotes(to, "to"),
 				],
@@ -604,6 +635,33 @@ export class GraphQueries {
 					`${label} is ambiguous; selected ${lookup.best?.qualifiedName ?? "no candidate"} from ${lookup.candidates.length} candidates`,
 				]
 			: [];
+	}
+
+	/**
+	 * When the symbol's owning backend cannot produce the edge kinds this query
+	 * needs, say so — an empty list under a clean banner would look like
+	 * "nothing calls this" rather than "this backend has no call edges".
+	 */
+	private capabilityNotes(
+		node: Node,
+		required: EdgeKind[],
+		opts: { callLabel?: boolean } = {},
+	): string[] {
+		const backend = this.backends.find((entry) =>
+			entry.languages.includes(node.language),
+		);
+		if (backend === undefined) return [];
+		const supported = new Set(backend.capabilities.edgeKinds);
+		const missing = required.filter((kind) => !supported.has(kind));
+		if (missing.length === 0) return [];
+		if (
+			opts.callLabel === true &&
+			missing.includes("calls") &&
+			missing.every((kind) => kind === "calls" || kind === "instantiates")
+		) {
+			return [`${backend.id} backend produces no call edges`];
+		}
+		return [`${backend.id} backend produces no ${missing.join("/")} edges`];
 	}
 
 	private meta(options: Parameters<typeof buildMeta>[1] = {}): ToolMeta {

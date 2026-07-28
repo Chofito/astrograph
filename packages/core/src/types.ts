@@ -230,12 +230,23 @@ export interface EdgeResolutionResult {
 	nodes?: Node[];
 }
 
+/**
+ * Declared graph edges a backend can produce. Queries that need an edge kind
+ * absent from this set must say so in `ToolMeta` — empty results under a clean
+ * coverage banner would otherwise look like "nothing calls this".
+ */
+export interface BackendCapabilities {
+	edgeKinds: EdgeKind[];
+}
+
 export interface LanguageBackend {
 	id: string;
 	languages: Language[];
 	extensions: string[];
 	parser: Parser;
 	enricher?: Enricher;
+	/** Edge kinds this backend can emit (Pass A and/or enricher). */
+	capabilities: BackendCapabilities;
 	versionKeys(): Record<string, string>;
 }
 
@@ -391,6 +402,8 @@ export interface BackendStatus {
 	versions: Record<string, string>;
 	/** Enricher mode; "none" when the backend has no enricher. */
 	enricher: EnricherMode;
+	/** Edge kinds this backend can produce. */
+	capabilities: BackendCapabilities;
 	/** Grammars this backend needs that are loaded and ready. */
 	grammarsLoaded: string[];
 	/** Grammars this backend needs that failed to load, with the reason. */

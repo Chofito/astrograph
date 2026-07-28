@@ -1400,6 +1400,58 @@ describe("Pass B: edge resolution", () => {
 			indexer.close();
 		}
 	});
+
+	test("JS-only project never persists external nodes outside the project root", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"jsconfig.json",
+			JSON.stringify({
+				compilerOptions: {
+					target: "ESNext",
+					module: "ESNext",
+					moduleResolution: "bundler",
+					checkJs: true,
+					skipLibCheck: true,
+				},
+				include: ["src/**/*.js"],
+			}),
+		);
+		await writeProjectFile(
+			root,
+			"src/app.js",
+			`
+        export function run(values) {
+          return Promise.resolve(values).then((xs) => xs.map((x) => x + 1));
+        }
+      `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+			config: { backends: { php: { enabled: false } } },
+		});
+		try {
+			await indexer.indexAll();
+
+			const nodes = indexer.queries.getAllNodes();
+			const rootPrefix = `${root.replaceAll("\\", "/")}/`;
+			for (const node of nodes) {
+				const path = node.filePath.replaceAll("\\", "/");
+				expect(path.startsWith("/")).toBe(false);
+				expect(/^[A-Za-z]:\//.test(path)).toBe(false);
+				expect(path.startsWith(rootPrefix)).toBe(false);
+			}
+
+			const external = nodes.filter((node) => node.isExternal);
+			for (const node of external) {
+				expect(node.language).toBe("javascript");
+			}
+		} finally {
+			indexer.close();
+		}
+	});
 });
 
 async function makeTempProject(): Promise<string> {

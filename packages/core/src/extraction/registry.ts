@@ -79,6 +79,7 @@ export class LanguageRegistry {
 				extensions: backend.extensions,
 				versions: backend.versionKeys(),
 				enricher: backend.enricher?.mode ?? "none",
+				capabilities: backend.capabilities,
 				grammarsLoaded: needed.filter((lang) => loaded.has(lang)).sort(),
 				grammarsUnavailable: unavailable
 					.filter((entry) => needed.includes(entry.lang))

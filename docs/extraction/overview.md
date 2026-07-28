@@ -94,6 +94,7 @@ interface LanguageBackend {
   extensions: string[];       // '.ts', '.tsx', '.php' — how files route to it
   parser: Parser;
   enricher?: Enricher;
+  capabilities: { edgeKinds: EdgeKind[] };
   versionKeys(): Record<string, string>;  // grammar/enricher versions → configHash
 }
 ```

@@ -186,10 +186,10 @@ CREATE VIRTUAL TABLE nodes_fts USING fts5(
 
 ROADMAP §11: index **only project files** as nodes, but refs into `node_modules`/`.d.ts` must still resolve so `callees`/`context`/`explore` can show "calls `lodash.debounce`".
 
-Decision: when a reference resolves to a non-project file, **lazily create a minimal external node** (`is_external=1`, no body, `range` may be 0) and point the edge at it with `resolution_state='external'`. Benefits:
+Decision: when a reference resolves to a non-project file **under the project root** (typically `node_modules`/`.d.ts`), **lazily create a minimal external node** (`is_external=1`, no body, `range` may be 0) and point the edge at it with `resolution_state='external'`. Declarations that are TypeScript default libraries or that live **outside** the project root are **not** persisted as nodes — the edge stays `external` with `target` NULL and `target_name` set (§6). Benefits:
 - Edges stay **uniform** (`target` is always a node id or NULL) — no special-casing in every traversal.
 - The FK holds; cascade still works.
-- Bounded cost: external nodes only exist for symbols actually referenced, not all of `node_modules`.
+- Bounded cost: external nodes only exist for symbols actually referenced under the root, not all of `node_modules`, and never for absolute build-machine default-lib paths.
 - Enriches a future `astrograph_diff`/dependency tool for free.
 
 Tools filter `is_external` when they want project-only results (e.g. `impact` defaults to project scope).
@@ -203,7 +203,7 @@ Every edge carries `resolution_state`:
 | State | `target` | `target_name` | Meaning |
 |---|---|---|---|
 | `resolved` | node id | — | Exactly one project symbol was identified, by the best authority the file's backend has (§6.1) |
-| `external` | external node id (§5) | pkg/symbol | resolves into `node_modules`/`.d.ts` |
+| `external` | external node id (§5), or **NULL** | pkg/symbol | Resolves outside the project. `target` is an external node id when the declaration lives under the project root (e.g. a referenced `node_modules`/`.d.ts` that was lazily persisted per §5). `target` is **NULL** when the declaration is deliberately never persisted — TypeScript default libraries and any path outside the root — so the graph never grows absolute build-machine paths. `target_name` is still set in both cases. |
 | `ambiguous` | best-candidate id | name | multiple candidates; `metadata.candidates=[ids]` |
 | `unresolved` | **NULL** | the reference text | dynamic `import()`, `any`, broken alias, not-yet-parsed target |
 

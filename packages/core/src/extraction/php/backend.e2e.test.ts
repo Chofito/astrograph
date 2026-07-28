@@ -138,6 +138,42 @@ describe("PHP backend: end-to-end via openProject (tree-sitter only, no enricher
 			indexer.close();
 		}
 	});
+
+	test("callers on a PHP symbol states that the php backend produces no call edges", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(root, "src/Greeter.php", PHP_SOURCE);
+
+		const graph = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await graph.indexAll();
+
+			const callers = await graph.callers({ symbol: "greet" });
+			expect(callers.data).toEqual([]);
+			expect(callers.meta.notes).toContain(
+				"php backend produces no call edges",
+			);
+			expect(callers.meta.partial).toBe(true);
+
+			const callees = await graph.callees({ symbol: "greet" });
+			expect(callees.data).toEqual([]);
+			expect(callees.meta.notes).toContain(
+				"php backend produces no call edges",
+			);
+
+			const impact = await graph.impact({ symbol: "greet" });
+			expect(impact.data).toEqual([]);
+			expect(
+				impact.meta.notes?.some((note) =>
+					note.startsWith("php backend produces no"),
+				),
+			).toBe(true);
+		} finally {
+			graph.close();
+		}
+	});
 });
 
 async function makeTempProject(): Promise<string> {
