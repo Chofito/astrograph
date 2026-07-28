@@ -1,8 +1,8 @@
 # Astrograph
 
-Astrograph is a local code graph for JavaScript and TypeScript projects.
+Astrograph is a **local-first code graph** powered by **tree-sitter** for broad structural extraction and language-specific **enrichers** (JS/TS ships with TypeScript Compiler enricher for semantic depth).
 
-It indexes symbols, relationships, call paths, imports, inheritance, references, and file coverage into a local SQLite database, then exposes that knowledge through a small set of deterministic tools.
+It indexes symbols, relationships, call paths, imports, inheritance, references, and file coverage into a local SQLite database, then exposes that knowledge through a small set of deterministic tools — **CLI, MCP, and agent skills**.
 
 The goal is simple: help humans and coding agents understand a codebase without repeatedly burning time on broad grep searches and file by file spelunking.
 
@@ -10,14 +10,15 @@ The goal is simple: help humans and coding agents understand a codebase without 
 
 ## What It Does
 
-Astrograph turns a JS or TS repo into a queryable graph:
+Astrograph turns a code repo into a queryable graph:
 
 ```text
-source files
-  TypeScript Compiler API
+source files (any language with a backend — JS/TS and PHP today)
+  tree-sitter structural extraction (Pass A)
+  language enrichers (Pass B, e.g. TS Compiler)
   symbols and edges
   SQLite plus FTS5
-  CLI, MCP, future Web UI
+  CLI, MCP server, agent skills
 ```
 
 It knows about:
@@ -27,6 +28,17 @@ It knows about:
 * external symbols from `node_modules` and `.d.ts` files
 * unresolved and ambiguous edges, reported honestly instead of hidden
 * coverage states so every answer can say whether it is complete or partial
+
+**JS/TS has semantic depth:** the TypeScript Compiler enricher (Pass B) provides exact import/type/call resolution. **Languages without an enricher get tree-sitter structural extraction**, which is a real, queryable graph — just structural rather than type-resolved.
+
+Language backends shipping today:
+
+| Backend | Files | Pass B enricher |
+|---|---|---|
+| `typescript` | `.ts` `.tsx` `.js` `.jsx` `.mjs` `.cjs` | TypeScript Compiler (semantic depth) |
+| `php` | `.php` | none — tree-sitter only |
+
+`astrograph status` lists the active backends. Adding a language means registering another backend, not changing the core.
 
 ## Why It Exists
 
@@ -51,50 +63,47 @@ Instead of dumping files, Astrograph returns structured results with locations, 
 
 ## Current Status
 
-Stage 1 is focused on the core graph and CLI.
+Stage 1 (core graph + CLI) is complete and in polish; Stage 2 (MCP server + agent skills) is built and
+in use. Stage 3 (promo/docs site) is live and being filled in.
 
 ```text
 Core storage              done
-JS and TS extraction      done
+JS and TS extraction      done (tree-sitter + TS Compiler enricher)
+PHP extraction            done (tree-sitter only, no enricher)
 Edge resolution           done
 Read tools                done
-CLI                       active
-Tier 1 eval harness       active
-MCP server                active
-3D web constellation      later stage
+CLI                       done, in polish
+MCP server                done, in polish
+Tier 1 eval harness       active (calibrating on real repos)
+Promo/docs site           active (Stage 3)
+3D explorer               parked
 ```
 
 See [ROADMAP.md](ROADMAP.md) for the full staged plan and [docs/contracts.md](docs/contracts.md) for the canonical types.
 
 ## Quick Start
 
-Install dependencies:
+### Install the binary
 
 ```bash
-bun install
+curl -fsSL https://www.chofito.dev/astrograph/install.sh | sh
 ```
 
-Build the local CLI binary:
+That installs `astrograph` to `~/.local/bin` (ensure it is on your `PATH`). Full details: [docs/install.md](docs/install.md).
 
-```bash
-bun run build
-```
+| Step | Command | What it does |
+|---|---|---|
+| Install the tool | `curl …/install.sh \| sh` | Puts the binary on your machine |
+| Configure agents | `astrograph install` | MCP config + agent guide into Claude/Cursor/Codex/opencode |
+| Index a repo | `astrograph init` | Creates `.astrograph/` and builds the graph |
 
-Optionally install it into `~/.local/bin`. The compiled binary carries the
-Astrograph agent guide, so `astrograph install` can set up Claude Code, Codex,
-Cursor, and opencode without needing a checkout of this repo.
-
-```bash
-bun run install:local
-```
-
-Index a project:
+### Index a project
 
 ```bash
 astrograph init /path/to/project
 ```
 
-Ask questions:
+### Ask questions
 
 ```bash
 astrograph search "auth session"
@@ -111,6 +120,16 @@ Every read command also supports JSON output:
 
 ```bash
 astrograph context "how does checkout work?" --json
+```
+
+### Contributors (from source)
+
+Building the binary yourself instead of using the installer:
+
+```bash
+bun install
+bun run build
+bun run install:local
 ```
 
 ## CLI Commands
@@ -143,8 +162,8 @@ astrograph trace <from> <to>       trace a call or reference path
 astrograph explore <terms...>      group related code by file
 astrograph files                   show indexed files
 astrograph serve --mcp             run the MCP server over stdio
-astrograph install                 install MCP config and agent guide into hosts
-astrograph uninstall               remove MCP config and agent guide from hosts
+astrograph install                 configure agent hosts (MCP config, agent skills)
+astrograph uninstall               remove MCP config and agent skills from hosts
 ```
 
 By default, `callers`, `callees`, `context`, and `explore` focus on project symbols. Use `--include-external` on callers or callees when you want `node_modules` and `.d.ts` symbols in the result.
@@ -182,9 +201,10 @@ stats
 
 ```text
 packages/core
-  storage adapters
+  storage adapters (bun:sqlite)
   schema and migrations
-  TS extraction
+  tree-sitter extraction (Pass A)
+  language enrichers (Pass B, e.g. TS Compiler)
   edge resolution
   graph traversal
   read tools
@@ -195,10 +215,11 @@ packages/cli
   JSON envelope output
 
 packages/mcp
-  reserved for the Stage 2 MCP server
+  MCP server (stdio) + host installers
 
-apps/web
-  reserved for the Stage 3 visual graph UI
+apps/
+  site/    promo + docs site
+  web/     3D explorer (PARKED)
 ```
 
 The core is runtime decoupled. Bun specific code lives under:
@@ -271,18 +292,23 @@ bun run --filter @astrograph/cli typecheck
 * [ROADMAP.md](ROADMAP.md): product scope and staged plan
 * [docs/contracts.md](docs/contracts.md): canonical public types
 * [docs/cli.md](docs/cli.md): command usage, daemon, MCP install and troubleshooting
+* [docs/install.md](docs/install.md): binary installation, platforms, checksums
+* [docs/extraction/overview.md](docs/extraction/overview.md): extraction passes, enricher architecture
+* [docs/extraction/tree-sitter.md](docs/extraction/tree-sitter.md): tree-sitter Pass A
+* [docs/extraction/typescript.md](docs/extraction/typescript.md): TS Compiler enricher (Pass B)
 * [agents/astrograph/SKILL.md](agents/astrograph/SKILL.md): agent guidance for using Astrograph before broad text search
 * [docs/graph-model.md](docs/graph-model.md): schema, IDs, indexes, resolution states
-* [docs/extraction.md](docs/extraction.md): TS Compiler API extraction rules
 * [docs/tools.md](docs/tools.md): tool behavior and result shapes
 * [docs/testing.md](docs/testing.md): fixtures, determinism, eval harness
 * [docs/progressive-indexing.md](docs/progressive-indexing.md): coverage and partiality model
 
-Spanish mirrors exist for the roadmap and selected docs:
+Spanish mirrors exist for selected docs:
 
-* [ROADMAP.es.md](ROADMAP.es.md)
-* [docs/tools.es.md](docs/tools.es.md)
-* [docs/progressive-indexing.es.md](docs/progressive-indexing.es.md)
+All three are **stale** — they predate the tree-sitter + enrichers refactor. Refer to the English originals.
+
+* [ROADMAP.es.md](ROADMAP.es.md) — roadmap
+* [docs/tools.es.md](docs/tools.es.md) — tool contract
+* [docs/progressive-indexing.es.md](docs/progressive-indexing.es.md) — coverage model
 
 ## Design Principles
 
@@ -298,9 +324,9 @@ IDs, query ordering, ranking, tests, and eval output are designed to be stable.
 
 External, unresolved, ambiguous, stale, and partial results are first class states.
 
-### JS and TS depth first
+### Pluggable language backends
 
-Astrograph starts narrow so it can be accurate. More languages can come later without weakening the JS and TS foundation.
+Astrograph uses **tree-sitter** for structural extraction and **per-language enrichers** (like the TS Compiler for JS/TS) for semantic depth. A backend is a parser plus an optional enricher: JS/TS is first-class with the Compiler enricher, PHP ships parser-only, and a new language is a new backend registration. Files from an enricher-less backend still reach full coverage — their edges just carry `tree-sitter` provenance instead of `ts-compiler`, so you always know how much an edge is worth.
 
 ## Project Layout
 
@@ -311,6 +337,7 @@ astrograph/
     cli/
     mcp/
   apps/
+    site/
     web/
   docs/
   eval/

@@ -60,22 +60,27 @@ apps/site/
 ## 3. Landing page (the "flashy" part)
 
 A custom marketing page; suggested sections:
-1. **Hero** — one-liner ("Local-first code graph for JS/TS that supercharges AI agents"), animated tagline, primary CTA → Docs / install, secondary → GitHub.
-2. **The differentiator** — "TS Compiler API depth, not heuristics" (mirror ROADMAP §10): exact resolution, honest coverage, fewer agent tokens/tool-calls.
+1. **Hero** — one-liner ("Local-first code graph — tree-sitter structure plus language enrichers (TypeScript Compiler for JS/TS) — that supercharges AI agents"), animated tagline, primary CTA → Docs / install, secondary → GitHub.
+2. **The differentiator** — tree-sitter breadth + enricher depth: structural extraction for any language with a backend (JS/TS and PHP today), TS Compiler semantic enricher for JS/TS (exact resolution, not heuristics), honest coverage, fewer agent tokens/tool-calls.
 3. **Surfaces** — CLI · MCP server · agent skills (with a short snippet each).
 4. **How it works** — index → query (search/context/impact/trace) → fresh via watcher.
-5. **Install** — `astrograph init` + one-command MCP install per host (Claude Code, Cursor, Codex, opencode).
+5. **Get started** — the landing shows **`astrograph init`** (the one-command index) and links to the docs Install page. **Reconciled with what shipped:** the `curl | sh` snippet is *not* on the landing; it lives on `/docs/install` (`content/docs/install.mdx`, served from `public/install.sh`) together with per-host MCP install commands (Claude Code, Cursor, Codex, opencode). Keep it that way — the landing CTA stays a single command; installation detail stays in the docs.
 6. **Footer** — links, license (Apache-2.0), author.
 
 Visual treatment is free rein (gradients, a subtle "constellation"/starfield motif nods to the parked explorer without needing 3D). Keep it lightweight — static export, no heavy runtime.
 
 ## 4. Docs content
 
-- Curate the repo's `docs/*.md` into `content/docs/*.mdx`. Candidate initial pages:
-  `index` (what is Astrograph), `install`, `cli` (from `docs/cli.md`), `mcp` (from
-  `docs/mcp.md`), `tools` (from `docs/tools.md`), `graph-model`, `contracts`,
-  `testing`, `roadmap` (link or excerpt).
-- `meta.json` controls sidebar grouping/order (e.g. *Getting Started* → *Guides* → *Reference*).
+- Curate the repo's `docs/*.md` into `content/docs/*.mdx`. **Shipped pages** (`meta.json` order):
+  *Getting Started* → `index` (what is Astrograph), `install` (from `docs/install.md`),
+  `quick-start`; *Reference* → `commands` (from `docs/cli.md`), `mcp` (from `docs/mcp.md`),
+  `concepts` (from `docs/graph-model.md` + `docs/extraction/*`).
+- Not yet mirrored on the site (repo-only, deliberately — they are design docs, not user docs):
+  `docs/tools.md`, `docs/graph-model.md`, `docs/contracts.md`, `docs/testing.md`,
+  `docs/extraction/{overview,tree-sitter,typescript}.md`, `docs/progressive-indexing.md`,
+  `ROADMAP.md`. If any of them are promoted later, add the page **and** the `meta.json` entry
+  in the same change — a page without a `meta.json` entry does not appear in the sidebar.
+- `meta.json` controls sidebar grouping/order (*Getting Started* → *Reference*).
 - Keep the **repo `docs/` as source of truth**; the site curates and polishes. Decide per-page whether to copy or transclude — a small sync step is fine for V1.
 
 ## 5. Search (static, no server)

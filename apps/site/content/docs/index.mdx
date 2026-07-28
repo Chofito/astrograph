@@ -1,14 +1,14 @@
 ---
 title: What is Astrograph
-description: A local-first code graph for JavaScript and TypeScript, built for humans and AI agents.
+description: A local-first code graph with a tree-sitter base and language enrichers, built for humans and AI agents.
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
 
-Astrograph indexes a JavaScript or TypeScript repository into a **local graph of symbols and
-relationships** — functions, classes, interfaces, imports, exports, calls, inheritance, references, and
-type usage — stored in SQLite. It then exposes that graph through a fast **CLI** and an **MCP server**, so
-both humans and coding agents can ask sharp structural questions instead of grepping blindly.
+Astrograph indexes a repository into a **local graph of symbols and relationships** — functions,
+classes, imports, exports, calls, inheritance, references — stored in SQLite. It exposes that graph
+through a fast **CLI** and an **MCP server**, so humans and coding agents can ask sharp structural
+questions instead of grepping blindly.
 
 ## Why it exists
 
@@ -30,18 +30,28 @@ astrograph context "how does session refresh work?"
 
 ## What makes it different
 
-Astrograph trades breadth for depth. Instead of covering 20+ languages with heuristic resolution, it
-focuses on **JS/TS only** and resolves relationships with the **real TypeScript Compiler API** — exact
-module resolution, path aliases, overloads, inheritance, and re-exports.
+Astrograph uses a **modular extraction pipeline**:
 
-When a relationship is `external`, `unresolved`, `ambiguous`, `stale`, or `partial`, Astrograph **says so**
-instead of hiding it. Humans and agents always know what the graph can actually prove.
+- **Pass A — tree-sitter** for fast structural symbols, in every language that has a backend.
+- **Pass B — language enrichers** for semantic depth where available. JS/TS ships with the
+  **TypeScript Compiler** enricher (exact module resolution, aliases, inheritance, re-exports).
+
+Two backends ship today: **JS/TS** (`.ts` `.tsx` `.js` `.jsx`) with the Compiler enricher, and **PHP**
+(`.php`) with tree-sitter only. A language without an enricher still gets a real, queryable graph — its
+edges are marked `tree-sitter` rather than `ts-compiler`, so you can see exactly how much they prove.
+A file type no backend claims is not indexed; `astrograph status` tells you which are active.
+
+When a relationship is `external`, `unresolved`, `ambiguous`, `stale`, or `partial`, Astrograph
+**says so** instead of hiding it. Humans and agents always know what the graph can actually prove.
 
 ## Explore the docs
 
 <Cards>
+  <Card title="Install" href="/docs/install">
+    curl|sh binary install, upgrades, and uninstall.
+  </Card>
   <Card title="Quick Start" href="/docs/quick-start">
-    Install, index a repo, and run your first queries.
+    Index a repo and run your first queries.
   </Card>
   <Card title="Commands" href="/docs/commands">
     The full CLI reference.
@@ -58,4 +68,4 @@ instead of hiding it. Humans and agents always know what the graph can actually 
 
 - **100% local.** No API keys, no external services — everything lives in `.astrograph/`.
 - **Incremental.** A file watcher keeps the graph fresh by re-indexing only what changed.
-- **Honest.** Coverage and resolution states are first-class, never silently dropped.
+- **Honest.** Coverage, freshness, and resolution confidence are first-class in every answer.

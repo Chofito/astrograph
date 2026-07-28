@@ -16,6 +16,11 @@ Agents are steered (via the MCP `initialize` instructions) to prefer `context` f
 `trace` for "how does X reach Y", `impact` before edits, and to treat returned code as already read —
 checking the coverage banner before trusting a result.
 
+The tools are **language-agnostic**: they answer over whatever the language backends indexed. JS/TS edges
+carry `ts-compiler` provenance (resolved by the TypeScript Compiler enricher); a language whose backend
+has no enricher yet gives structural, `tree-sitter`-provenance edges. `astrograph_status` reports the
+active backends, so an agent can tell "not in the graph" from "no backend for that file type".
+
 ## Install into a host
 
 `astrograph install` writes the MCP server config and an agent guide into the hosts you choose. It is

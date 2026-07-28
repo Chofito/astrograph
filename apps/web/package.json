@@ -7,7 +7,7 @@
 	"license": "Apache-2.0",
 	"description": "3D 'constellation' web UI (Bun.serve + React + three.js) — Stage 3 (see ROADMAP §6). React/three/postprocessing deps added when implemented.",
 	"scripts": {
-		"typecheck": "tsc --noEmit"
+		"typecheck": "echo 'skipped — parked, no sources yet (see docs/web.md)'"
 	},
 	"dependencies": {
 		"@astrograph/core": "workspace:*"

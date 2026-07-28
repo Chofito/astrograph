@@ -5,28 +5,40 @@ description: Install Astrograph, index a repository, and run your first graph qu
 
 Get from zero to a queryable code graph in a couple of minutes.
 
-## Install
-
-Astrograph ships as a single self-contained binary (Bun runtime embedded).
+## Install the binary
 
 ```bash
-# from source (Bun)
-bun run build            # produces dist/astrograph
-bun run install:local    # copies the binary to ~/.local/bin
+curl -fsSL https://www.chofito.dev/astrograph/install.sh | sh
 ```
 
-Make sure `~/.local/bin` is on your `PATH`.
+Make sure `~/.local/bin` is on your `PATH`. Details: **[Install](/docs/install)**.
+
+### Optional: configure agent hosts
+
+```bash
+astrograph install
+```
+
+This writes MCP config and the agent guide into Claude Code, Cursor, Codex, or opencode.
+It does **not** install the binary — that is the curl step above.
+
+### Contributors (from source)
+
+```bash
+bun run build
+bun run install:local
+```
 
 ## Index a project
 
-From the root of any JS/TS repository:
+From the root of a repository (JS/TS gets full semantic enrichment; PHP is indexed structurally):
 
 ```bash
 astrograph init
 ```
 
-This creates a local `.astrograph/` directory (the SQLite graph, config, and watcher metadata) and runs
-the first full index. Re-running stays incremental — only changed files are re-extracted.
+This creates a local `.astrograph/` directory (the SQLite graph, config, and watcher metadata) and
+runs the first full index. Re-running stays incremental — only changed files are re-extracted.
 
 ## Run your first queries
 
@@ -61,6 +73,7 @@ astrograph sync
 
 ## Next steps
 
+- Install details → **[Install](/docs/install)**.
 - Wire it into your agents → **[MCP & skills](/docs/mcp)**.
 - Browse the full command set → **[Commands](/docs/commands)**.
 - Understand the data model → **[Concepts](/docs/concepts)**.

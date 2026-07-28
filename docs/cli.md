@@ -9,6 +9,10 @@ Astrograph is local first. It writes an index into the target project's
 
 ## Quick Start
 
+To install the binary, see [docs/install.md](install.md) for pre-compiled releases and checksums.
+
+**From source (development):**
+
 Install dependencies in the Astrograph repo:
 
 ```bash
@@ -21,9 +25,7 @@ Build the CLI:
 bun run build
 ```
 
-Optionally place the compiled binary in `~/.local/bin`. The compiled binary
-carries the Astrograph agent guide, so `astrograph install` can configure host
-skills/rules without needing a checkout of this repo.
+Optionally place the compiled binary in `~/.local/bin`:
 
 ```bash
 bun run install:local
@@ -166,7 +168,7 @@ Like `index`, `sync` refuses to run while the daemon is active.
 
 ### `astrograph status [path]`
 
-Show graph health, coverage, backend details, pending sync data, and daemon state.
+Show graph health, coverage, storage backend, **registered language backends**, pending sync data, and daemon state.
 
 ```bash
 astrograph status
@@ -185,10 +187,17 @@ Astrograph Status
 * backend    sqlite
 * journal    wal
 * daemon     running (pid 12345, since 12m)
+* languages  typescript[typescript,tsx,javascript,jsx] php[php]
 
 coverage 248/248 resolved
 partial: no
 ```
+
+`backend`/`journal` describe **storage** (SQLite). The `languages` line is the **language backend**
+registry: each entry is `<backend id>[<languages it claims>]`. If a file type you expect is missing,
+this is the first place to look — no entry claiming its extension means it was never indexed.
+`--json` returns the full `backends` array (ids, extensions, versions, and any grammar that failed to
+load) — see [docs/contracts.md §6](contracts.md#6-tool-io-the-10--see-docstoolsmd-for-behavior).
 
 ### `astrograph uninit [path]`
 

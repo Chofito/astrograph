@@ -1,5 +1,7 @@
 # Indexación progresiva (streaming, estilo "WoW")
 
+> ⚠️ **DESACTUALIZADO — docs/progressive-indexing.md (inglés) es la fuente de verdad.** Este documento no refleja la arquitectura actual: el modelo de dos pasadas (tree-sitter + enrichers), qué significa `resolved` para un lenguaje sin enricher, ni la cascada de resolución por backend. Consulta [progressive-indexing.md](progressive-indexing.md).
+
 > 🌐 Idiomas: **Español** (este archivo) · [English](progressive-indexing.md)
 
 > Documento de diseño. Pertenece a la **Etapa 2 (daemon MCP)** del [ROADMAP](../ROADMAP.es.md), pero impone **requisitos al core de V1** (ver §6). El ROADMAP solo referencia este documento; el detalle vive aquí para no saturarlo.

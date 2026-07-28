@@ -1,13 +1,11 @@
 ---
 name: astrograph
-description: Use Astrograph's local code graph before grep/read loops for JS/TS architecture, call flow, dependency, impact, symbol lookup, and task-context questions. Trigger when an indexed project has Astrograph MCP tools or the astrograph CLI available, especially when the user asks how code works, who calls what, what depends on a symbol, or where a change may reach.
+description: Use Astrograph's local code graph before grep/read loops. Covers JS/TS (semantic, via the TypeScript Compiler enricher) and PHP (structural); other languages need a backend first. Prefer for architecture/call flow, dependency, impact, and symbol lookup questions.
 ---
 
 # Astrograph
 
-Astrograph is a pre-built local code graph for JavaScript and TypeScript projects.
-Use it to answer structural code questions with fewer broad searches and fewer
-file reads.
+Astrograph is a **pre-built local code graph** powered by tree-sitter (structural extraction, per registered language backend) + language-specific enrichers (JS/TS gets the TypeScript Compiler enricher for semantic depth). Use it to answer structural code questions with fewer broad searches and fewer file reads.
 
 ## First Check
 
@@ -22,6 +20,24 @@ Before relying on the graph in a project, check freshness:
 - If the daemon is running, trust it as the freshness owner.
 - Always read the coverage/staleness banner before deciding whether to inspect
   files directly.
+
+## Language Support
+
+Astrograph indexes a file only if a **language backend** claims its extension. What ships today:
+
+| Files | Coverage | Edge provenance |
+|---|---|---|
+| `.ts` `.tsx` `.js` `.jsx` `.mjs` `.cjs` | structural **+ semantic** — exact import/call/type resolution via the TypeScript Compiler enricher | `ts-compiler` |
+| `.php` | structural — symbols, containment, syntactic references | `tree-sitter` |
+
+**Anything else is not in the graph.** Python, Go, Rust, Java and friends have no backend yet, so
+`astrograph` will not find their symbols — use `rg` and direct reads for those files. This is the
+extension path, not a current capability: adding a language means registering a backend, and it becomes
+useful as soon as its tree-sitter parser lands, with an enricher optional and later.
+
+Check `astrograph_status` (or `astrograph status`) if unsure — it lists the active backends and the
+extensions they claim. "Astrograph found nothing" and "that language isn't indexed" are different
+answers, and only status tells them apart.
 
 ## Tool Choice
 
@@ -70,6 +86,7 @@ Use Astrograph first for:
 Use `rg`, glob, or direct file reads when:
 
 - the graph is missing and the user does not want to initialize it
+- the file's language has no backend (see Language Support) — the graph simply has nothing for it
 - the coverage banner says a specific file is pending or partial
 - you need raw text not modeled by the graph, such as comments, copy, env var
   names, config keys, or test snapshots
@@ -124,4 +141,3 @@ coverage banner before trusting old graph results.
 When Astrograph answers the question, cite the symbols and files it returned and
 avoid narrating a separate grep/read expedition. If the graph is partial, say what
 may be missing and inspect only the pending or relevant files directly.
-

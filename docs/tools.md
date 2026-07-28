@@ -2,21 +2,25 @@
 
 > 🌐 Languages: **English** (this file) · [Español](tools.es.md)
 
-> Design document. Defines the **transport-agnostic tool contract** that Astrograph exposes to consumers. The contract (name, inputs, **structured result**) lives in `packages/core`; **MCP** (Stage 2), the **CLI** (Stage 1), and the **Web UI** (Stage 3) are thin formatters over the same structured results. See [ROADMAP §5](../ROADMAP.md#5-stage-2--mcp-support).
+> Design document. Defines the **transport-agnostic tool contract** that Astrograph exposes to consumers. The contract (name, inputs, **structured result**) lives in `packages/core`; the **CLI** (Stage 1) and **MCP** (Stage 2) are thin formatters over the same structured results. See [ROADMAP §5](../ROADMAP.md#5-stage-2--mcp-support).
+>
+> The Stage 3 **website is not a consumer of this contract** — it is a static export with no server runtime, decoupled from the binary ([docs/site.md](site.md) §1). It documents the tools; it does not call them.
 
 ## 1. Why a contract, not "MCP tools"
 
-codegraph keeps the heavy logic in a core facade that both its CLI and MCP layer call — but the **tool definitions and agent-facing formatting live inside its MCP layer** (`mcp/tools.ts`), and the CLI re-formats independently. Astrograph goes one step further: each tool's **structured result** is part of the core contract, so all three surfaces (CLI, MCP, Web) reuse the same result and only differ in presentation.
+codegraph keeps the heavy logic in a core facade that both its CLI and MCP layer call — but the **tool definitions and agent-facing formatting live inside its MCP layer** (`mcp/tools.ts`), and the CLI re-formats independently. Astrograph goes one step further: each tool's **structured result** is part of the core contract, so every surface reuses the same result and only differs in presentation.
 
 ```
 packages/core
   ├── queries (search, buildContext, trace, callers, …)   ← logic
   └── tool contract (name + input schema + StructuredResult)  ← single source of truth
         ↓ thin formatters
-   CLI (terminal text) · MCP (agent text + envelope) · Web (JSON → 3D)
+   CLI (terminal text) · MCP (agent text + envelope) · --json (raw envelope)
 ```
 
-This matters because Stage 3's Web UI consumes the *same* results (context, callers, impact…). A shared structured result means we build the assembly logic once.
+This matters because the assembly logic — ranking, slicing, coverage accounting — is built **once** and every present and future surface inherits it, including `--json` for scripts and any later formatter. Adding a surface must never mean re-deriving what `context` considers relevant.
+
+> **Not a consumer:** the Stage 3 promo/docs site. It is a fully static GitHub Pages export with no server runtime and no bundled index ([docs/site.md](site.md) §1), so it cannot call these tools — it renders prose and sample output. Any claim that it "consumes the same structured results" is false; don't reintroduce it.
 
 ## 2. Tool design bars
 
@@ -144,11 +148,12 @@ Shared field types referenced below: `NodeRef` = `{ id, name, kind, qualifiedNam
 - **Core method.** `getFiles()`.
 
 ### 4.10 `astrograph_status`
-- **Purpose.** Index health check (files / nodes / edges) + coverage. Skip unless debugging.
-- **Utility.** Verify freshness; see what's pending. This is *how you inspect coverage*.
-- **Offline.** Stats queries. ✅
+- **Purpose.** Index health check (files / nodes / edges) + coverage + **which language backends are active**. Skip unless debugging.
+- **Utility.** Verify freshness; see what's pending; see whether the language you're asking about is even indexed. This is *how you inspect coverage*.
+- **Offline.** Stats queries + the in-process backend registry. ✅
 - **Inputs.** `projectPath?: string`.
-- **Result.** `GraphStats` = `{ nodeCount, edgeCount, fileCount, nodesByKind, edgesByKind, filesByLanguage, dbSizeBytes, lastUpdated }` + `coverage` summary + `pendingSync?: string[]` + `backend`/`journalMode`.
+- **Result.** `StatusOutput` = `{ nodeCount, edgeCount, fileCount, nodesByKind, edgesByKind, filesByLanguage, dbSizeBytes, lastUpdated }` + `coverage` summary + `pendingSync?: string[]` + `backend`/`journalMode` (storage, not language) + **`backends?: BackendStatus[]`** — per registered language backend: `id`, `languages`, `extensions`, `versions`, and loaded vs unavailable grammars. Canonical shape: [contracts §6](contracts.md#6-tool-io-the-10--see-docstoolsmd-for-behavior).
+- **Note.** `backends` is the honest answer to "why is my `.php` file missing?" — either no backend claims the extension, or its grammar failed to load and is listed as unavailable.
 - **Progressive.** ✅ the introspection tool for coverage itself.
 - **Core method.** `getStats()` + coverage query.
 

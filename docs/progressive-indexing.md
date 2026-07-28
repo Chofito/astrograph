@@ -24,7 +24,8 @@ It's a well-known pattern (LSP servers, IntelliJ). **A differentiator vs codegra
 ## 2. Why our stack fits
 
 - **`bun:sqlite` + WAL** → one writer (the indexer) + many readers (MCP queries) concurrent without blocking. It's the exact model we need.
-- **`ts.LanguageService` is lazy / demand-driven by design** — it's built to request a file's symbols without checking the rest. Progressive indexing *is* its natural mode of use, not a fight against the tool.
+- **tree-sitter structural extraction is fast & per-file** — Pass A is naturally progressive; each file is independent.
+- **Language enrichers (Pass B) are on-demand** — for JS/TS, the TS `LanguageService` is built to request a file's symbols without checking the rest. Progressive indexing *is* its natural mode of use, not a fight against the tool.
 
 ## 3. Design
 
@@ -35,6 +36,13 @@ A state column in the `files` table: **`pending → parsed → resolved`**.
 - `resolved`: edges resolved (imports/calls/extends…). "Full" coverage of that file.
 
 It's the WoW-style "level of detail" per file.
+
+**`resolved` is per-backend, not per-language-privilege.** A file is `resolved` when every pass *its
+backend runs* has run. For a backend with an enricher (JS/TS) that means Pass A + Pass B. For a backend
+without one (`mode: 'none'`, e.g. PHP) Pass A **is** the pipeline, so `parsed → resolved` is immediate
+and its files count as fully covered — otherwise coverage would report a permanent deficit for every
+enricher-less language and every banner would read `partial: yes` forever. Fidelity is carried by edge
+`provenance`/`confidence` instead. Normative: [graph-model §6.1](graph-model.md#61-what-resolved-means-per-backend-language-agnostic).
 
 Stage 2 starts with file-level coverage for simple repos. Later stages should grow this into coverage by project/config, freshness, and edge kind, because "calls are partial" is different from "nodes are missing".
 
@@ -66,8 +74,8 @@ Every MCP response declares coverage: `"coverage 60% · N files pending"`. It ex
 ## 5. Hard parts (real nuances)
 
 1. **Global reverse queries need full coverage** (see §4 table). Nuance #1.
-2. **Resolution cascade.** Resolving an edge to a symbol in B requires B to be at least `parsed`. TS resolves the module *path* without parsing B, but the *symbol edge* does require it → hence the 1-hop boost. It must be bounded or it blows up.
-3. **"Less memory" isn't free.** Peak RAM only drops if you **evict** cold TS Programs (LRU per project/file). Tension: streaming-with-release = low RAM but re-parses on incremental; persistent service = more RAM but instant incremental. It's tunable. In V1 this can be simple; in Stage 5 / v2 it becomes important for monorepos and large repos (index per `tsconfig`, evict the cold ones).
+2. **Resolution cascade.** Resolving an edge to a symbol in file B requires B to be at least `parsed` — this is a **property of Pass B in general**, not of TypeScript. An enricher can usually resolve the module *path* without B's symbols (the TS Compiler does), but the *symbol edge* needs B's nodes to exist → hence the 1-hop boost. It must be bounded or it blows up. A backend whose enricher resolves nothing cross-file (`mode: 'none'`) has **no cascade at all**: its files are independent, so it is perfectly progressive and never needs the boost.
+3. **"Less memory" isn't free.** Peak RAM only drops if you **evict** cold enricher state — for JS/TS that means cold TS `Program`s (LRU per project/file); other enrichers will have their own equivalent. Tension: streaming-with-release = low RAM but re-parses on incremental; persistent service = more RAM but instant incremental. It's tunable. Tree-sitter Pass A is bounded per file and holds nothing between files, so **all of this memory pressure comes from Pass B** — an enricher-less language costs essentially nothing here. In V1 this can be simple; in Stage 5 / v2 it becomes important for monorepos and large repos (index per `tsconfig`, evict the cold ones).
 4. **Write coordination.** A single writer, no exceptions. Single-consumer queue + lock.
 5. **Results that "grow".** Fine for an agent *if labeled*; dangerous if presented as complete.
 

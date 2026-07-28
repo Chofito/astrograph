@@ -14,32 +14,38 @@ A node is any meaningful symbol. Kinds include:
 `constant` · `enum` · `enum_member` · `type_alias` · `namespace` · `parameter` · `import` · `export` ·
 `component`
 
-Each node carries a stable id (hash of `filePath::qualifiedName`), position (line/column range), language,
-a signature, and flags such as `isExported`, `isAsync`, and `isExternal`.
+Each node carries a stable id — a hash of `project · filePath · kind · qualifiedName · locator` —
+plus position (line/column range), language, an optional signature, and flags such as `isExported`,
+`isAsync`, and `isExternal`.
 
-> Stable ids mean nodes survive re-indexing and file moves — sync stays correct and tooling doesn't churn.
+> Stable ids mean nodes survive re-indexing — sync stays correct and tooling does not churn.
 
 ## Edges
 
 An edge is a typed relationship between nodes:
 
 `contains` · `calls` · `imports` · `exports` · `extends` · `implements` · `references` · `type_of` ·
-`returns` · `instantiates` · `decorates`
+`returns` · `instantiates` · `overrides` · `decorates`
 
-Edges record a **resolution state** and **confidence**, because real JS/TS has gray areas (dynamic
+Edges record a **resolution state**, **confidence**, and **provenance** (`tree-sitter`,
+`ts-compiler`, `heuristic`, or `synthesized:…`), because real code has gray areas (dynamic
 `import()`, CommonJS, `any`, broken aliases, generated code).
 
 ## Resolution states
 
 | State | Meaning |
 | --- | --- |
-| `resolved` | The TypeScript checker pinned the target exactly. |
-| `external` | Resolves to a dependency / `.d.ts` outside the project (not indexed as a node). |
-| `unresolved` | A real reference the checker could not pin down. |
+| `resolved` | An enricher (e.g. TypeScript checker) or high-confidence heuristic pinned the target. |
+| `external` | Resolves outside the project; a **minimal external node** exists for the target. |
+| `unresolved` | A real reference that could not be pinned down. |
 | `ambiguous` | More than one plausible target. |
 
-Only **project files** become nodes; the type-checker still loads `node_modules`/`.d.ts` to resolve
-references toward them, marked `external`.
+**Project files** become full project nodes. References into dependencies still resolve: Astrograph
+creates a lightweight **external node** for each referenced dependency symbol (created on demand, never
+a full index of `node_modules`) and points the edge at it. So an edge's target is always either a real
+node id or `null` — traversals never special-case dependencies, and `astrograph callees` can show you
+`lodash.debounce`. External nodes are marked `isExternal` and are excluded from project-scoped results
+by default.
 
 ## Coverage & honesty
 
@@ -49,15 +55,28 @@ Every result ends with a banner:
 coverage 128/128 resolved · partial: no
 ```
 
-- **coverage** — resolved files over total in scope.
+- **coverage** — resolved files over total in scope (`pending → parsed → resolved`).
 - **partial** — whether some files are still indexing or pending a sync.
 - **pending files** — listed by name, so a tool (or agent) can read them directly.
 
-This is the core contract: Astrograph never presents partial, stale, unresolved, or low-confidence results
-as complete facts.
+This is the core contract: Astrograph never presents partial, stale, unresolved, or low-confidence
+results as complete facts.
+
+## Extraction pipeline
+
+1. **Pass A (tree-sitter)** — structural symbols per file (`parsed`).
+2. **Pass B (enricher)** — optional semantic edges; JS/TS uses the TypeScript Compiler (`resolved`).
+
+A **language backend** bundles a tree-sitter parser with an optional enricher. Two ship today:
+**TypeScript** (`.ts` `.tsx` `.js` `.jsx`, with the Compiler enricher) and **PHP** (`.php`, tree-sitter
+only). A language without an enricher still reaches `resolved` — Pass A is its whole pipeline — it just
+carries `tree-sitter` provenance instead of `ts-compiler`, which is exactly what the provenance field is
+for. Run `astrograph status` to see the active backends.
+
+Agents consume **symbols, edges, and code slices** — not raw ASTs.
 
 ## Incrementality
 
-Indexing is ~linear in repo size; sync is proportional to the change. Astrograph re-extracts only changed
-files (by content hash) plus their incoming referrers, so edges never dangle and inbound references stay
-correct.
+Indexing is ~linear in repo size; sync is proportional to the change. Astrograph re-extracts only
+changed files (by content hash) plus their incoming referrers, so edges never dangle and inbound
+references stay correct.

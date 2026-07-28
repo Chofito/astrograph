@@ -19,6 +19,7 @@
 | Bootstrap | **requires `astrograph init` first.** No `.astrograph/` → tools return a clear "run `astrograph init`" error (no implicit indexing on connect) |
 | Response format | **MCP-specific agent-tuned text formatters** (not the CLI's terminal formatters; share the structured `ToolResult`, differ in presentation) |
 | Honesty | external off by default (project-only); every response carries a **coverage + staleness banner**; `unresolved`/`ambiguous`/low-confidence surfaced in notes |
+| Languages | whatever the **language backend registry** covers — the MCP layer is language-agnostic and never branches on language. `astrograph_status` reports the registered backends so an agent can tell "not in the graph" from "no backend for that extension" |
 | Freshness | **watcher (background, debounced) + connect-time reconcile catch-up + on-demand sync guarded by a cheap staleness signal** (see §4) |
 | Installer | **`install`/`uninstall` for Claude Code + Cursor + Codex + opencode** (write/remove the MCP config + Astrograph guide; see §6) |
 | Lifecycle | **one project per server process**, lazy-open on first tool call; single-writer for all index mutations |
@@ -88,6 +89,10 @@ agent to:
   flow; `impact` before editing; `node`/`explore` for source.
 - **Trust results; check the coverage/staleness banner** after edits; if a file is
   flagged pending, `Read` it directly.
+- **Know the fidelity floor.** JS/TS edges come from the TypeScript Compiler enricher
+  (`provenance: 'ts-compiler'`); languages whose backend has no enricher give structural,
+  tree-sitter-provenance edges. Both are honest, but only the former implies type-level
+  certainty — don't present a `tree-sitter` edge as a type-checked fact.
 - If `.astrograph/` is missing, offer to run `astrograph init`.
 
 The MCP `initialize` response stays the runtime source of truth for active tool

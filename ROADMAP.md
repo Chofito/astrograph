@@ -1,9 +1,9 @@
 # Astrograph — Roadmap & Scope
 
-> Local-first code graph for JS/TS that supercharges AI agents (Claude Code, Cursor, etc.) with semantic code intelligence — through a fast **CLI** and an **MCP server + agent skills**, so agents answer architecture/flow questions without grep/Read loops.
+> **Local-first code graph** — tree-sitter for broad structural extraction + language-specific enrichers (JS/TS ships with TypeScript Compiler enricher for semantic depth) — exposed through CLI, MCP server, and agent skills. Helps humans and agents understand code fast.
 >
-> Inspired by [`codegraph`](../codegraph) (which lives next to this repo), but with our own technical decisions and a **deliberately narrow focus on JS/TS** to win on depth and accuracy.
-
+> Inspired by [`codegraph`](../codegraph) (which lives next to this repo), but built on **pluggable language backends**: tree-sitter as the structural base, with per-language enrichers for semantic depth. JS/TS is first-class with TS Compiler Enricher. Explicitly not "JS/TS only forever".
+>
 > 🌐 Languages: **English** (this file) · [Español](ROADMAP.es.md)
 
 This document is the project's **source of truth**. It's built in stages ("vibecoding"), and each stage is prompted separately using this roadmap as context.
@@ -12,7 +12,7 @@ This document is the project's **source of truth**. It's built in stages ("vibec
 
 ## 1. Vision and goals
 
-**Astrograph** indexes a JS/TS repository into a graph of symbols (functions, classes, types…) and relationships (contains, calls, imports, extends…), stored locally, and exposes it through two product surfaces:
+**Astrograph** indexes a code repository into a graph of symbols (functions, classes, types…) and relationships (contains, calls, imports, extends…), stored locally, and exposes it through two product surfaces:
 
 1. **CLI** — for humans and scripts (Stage 1, on top of the Core).
 2. **MCP server + agent skills** — for AI agents, which query the graph instead of running grep/Read (Stage 2).
@@ -23,12 +23,13 @@ Core + CLI + MCP/Skills are the first complete product version: **V1**. A **prom
 
 **For whom?**
 - **AI agents**: answer architecture/flow questions with fewer tokens and fewer tool calls (the graph already did the exploration work).
-- **Humans**: understand a new codebase, gauge impact before refactoring, and explore visually.
+- **Humans**: understand a new codebase, trace a flow end to end, and gauge impact before refactoring.
 
 **Design principles:**
 - **100% local.** Nothing leaves your machine. No API keys, no external services. SQLite only.
 - **Performance-friendly.** **~Linear complexity relative to repo size** for extraction; **incremental delta reindexing** as files change.
-- **JS/TS only at first** (`.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`). Architecture open to more languages later, but without sacrificing JS/TS depth now.
+- **Pluggable language backends.** **tree-sitter** is the structural foundation for broad language support. Per-language **enrichers** (e.g. TS Compiler for JS/TS) add semantic depth where it matters. JS/TS gets the Compiler enricher from day 1; other languages welcome as backends and enrichers land.
+- **JS/TS semantic depth first.** With the TypeScript Compiler enricher, JS/TS achieves exact import/call/type resolution; other languages use tree-sitter structural extraction. More enrichers can come later without weakening JS/TS.
 - **Single-app repos first.** V1 targets normal separated JS/TS app repos (Next.js, React Native/Expo, NestJS, Strapi). It uses the primary `tsconfig.json` / `jsconfig.json` where possible; formal monorepo, multi-`tsconfig`, and project references support moves to Stage 4 / v1.5.
 - **Runtime-decoupled.** Bun-specific bits live behind adapters; the core must not be wedded to Bun.
 
@@ -39,40 +40,42 @@ Core + CLI + MCP/Skills are the first complete product version: **V1**. A **prom
 | Topic | Decision | Why |
 |---|---|---|
 | Runtime + SQLite driver | **Bun + `bun:sqlite`** | Native, fast, supports FTS5/WAL; consistent with the monorepo `CLAUDE.md` |
-| Extraction engine | **TypeScript Compiler API** | Real type-checker → exact import/type/symbol resolution; no heuristic resolver |
-| Repo structure | **Monorepo with Bun workspaces** | `packages/core`, `packages/cli`, later `packages/mcp`, `apps/web` |
+| Extraction engine | **tree-sitter base + per-language enrichers** | Structural extraction (tree-sitter) broad, fast, deterministic across languages. TS Compiler enricher for JS/TS adds semantic depth (exact resolution, types, inheritance). Open registry for more backends/enrichers. |
+| Languages | **JS/TS first with enricher; registry open for more** | JS/TS ships with Compiler enricher (high fidelity). Other languages as tree-sitter backends. Future: enricher per language. |
+| Core dependencies | **tree-sitter** + **typescript (enricher only)** + **ignore** | tree-sitter grammars + TS Compiler enricher (when needed) for JS/TS. Bun-specific bits behind adapters. |
+| Repo structure | **Monorepo with Bun workspaces** | `packages/core`, `packages/cli`, later `packages/mcp`, `apps/site` |
 | Stage 1 scope | **Complete core/CLI for single-app repos** | Graph with `contains/imports/calls/extends/implements/references` + queries `search/context/callers/callees/impact/trace/node/files/status`; primary `tsconfig`/`jsconfig` support |
-| Languages | **JS/TS/JSX/TSX only** | Focus; architecture open to more later |
-| Core dependencies | **Bun built-ins + minimal libs** (`typescript`, `ignore`) | Bun-specific bits behind interfaces/adapters so we can migrate without rewriting the core |
 | CLI | **Hybrid**: classic args + **opentui** | Scriptable/pipe-able one-shot; opentui only for interactive views |
 | State | **Hybrid**: SQL + FS | Graph in `.astrograph/graph.db`; runtime/config in `.astrograph/` (config, lock, daemon) |
 | MCP (Stage 2) | **Official `@modelcontextprotocol/sdk`** | Less plumbing; focus on the tools |
-| Web (Stage 3) | **Usable visual MVP with three.js** (`react-force-graph-3d` + `@react-three/postprocessing`) + React/Tailwind/shadcn | V1 must be presentable as a product; advanced constellation polish waits for later |
+| Web (Stage 3) | **Promo/docs site (Fumadocs/Next.js)** | Static export to GitHub Pages. NOT the 3D constellation explorer (that's parked on a branch). Reuses `docs/*.md` as source material. |
 
 ### Storage
-`bun:sqlite` with **WAL + FTS5**. Schema inspired by codegraph (`nodes`, `edges`, `files`, `nodes_fts`, `project_metadata`, `schema_versions`), with one important difference: **we do not need codegraph's heuristic `unresolved_refs` second-pass pipeline**, because the TS Compiler API resolves most references directly. However, Astrograph still records honest resolution states (`external`, `unresolved`, `ambiguous`) plus edge `confidence`/`provenance`, because real JS/TS includes dynamic imports, CommonJS, `any`, broken aliases, generated code, and other gray areas.
+`bun:sqlite` with **WAL + FTS5**. Schema inspired by codegraph (`nodes`, `edges`, `files`, `nodes_fts`, `project_metadata`, `schema_versions`), with one important difference: **we do not need codegraph's heuristic `unresolved_refs` second-pass pipeline**, because semantic enrichers (TS Compiler for JS/TS) resolve most references directly. However, Astrograph still records honest resolution states (`external`, `unresolved`, `ambiguous`) plus edge `confidence`/`provenance`, because real code includes dynamic imports, CommonJS, `any`, broken aliases, generated code, and other gray areas.
 
 ### Extraction and incrementality
-- **TS Compiler API** via `ts.LanguageService` + `ts.DocumentRegistry`: caches per-file ASTs and re-typechecks only what's affected.
+- **Pass A (tree-sitter structural):** per-file AST walk via tree-sitter grammars. Fast, per-file, produces nodes (`state='parsed'`). All languages use this.
+- **Pass B (per-language enrichers):** e.g. TS Compiler API for JS/TS. Optional, enriches edges + type fidelity. Lazy: only files that need semantic depth trigger this pass.
 - **Primary project config first:** V1 loads the repo's main `tsconfig.json` or `jsconfig.json` when present, with a sane fallback for JS/TS repos that do not define one.
-- We extract symbols by walking each file's AST; we resolve types/imports/calls with the `TypeChecker` **only where needed (lazy)** to bound the cost.
-- **Delta detection:** per-file content hash (`Bun.hash`/wyhash) compared against the `files` table. Only changed files are re-extracted, unless project-level inputs changed (`tsconfig`/`jsconfig`, `package.json`, lockfile, `.gitignore`, `.astrograph/config.json`, TypeScript version), in which case affected coverage is marked stale.
+- We extract symbols with tree-sitter AST walk; we enrich types/imports/calls with the enricher (e.g. `TypeChecker`) **only where needed (lazy)** to bound the cost.
+- **Delta detection:** per-file content hash (`Bun.hash`/wyhash) compared against the `files` table. Only changed files are re-extracted, unless project-level inputs changed (`tsconfig`/`jsconfig`, `package.json`, lockfile, `.gitignore`, `.astrograph/config.json`, TypeScript/tree-sitter versions), in which case affected coverage is marked stale.
 - **File watcher** with debounce that auto-triggers `sync`.
 
 ### Decoupling (key)
-Everything Bun-dependent goes behind interfaces/adapters:
+Everything runtime-specific goes behind interfaces/adapters:
 - `StorageAdapter` — `bun:sqlite` impl. (shape `prepare/run/get/all/exec/transaction/pragma`, à la codegraph's `sqlite-adapter.ts`).
+- `LanguageBackend` / `Parser` / `Enricher` — pluggable architecture. Tree-sitter backend + per-language enricher (TS Compiler enricher ships first).
 - `FileSystem` / `Hasher` / `Glob` — `Bun.file` / `Bun.hash` / `Bun.Glob` impls.
 - `Watcher` — Bun watcher impl.
-- `Extractor` — TS Compiler API impl. (future per-language impls. would slot in here).
 
-The core **never imports `bun:*` directly**. Minimal external deps: `typescript` (parser, required) and `ignore` (.gitignore). Everything else (BFS/DFS/impact/trace traversal, formatters, FTS query parser) is ours.
+The core **never imports `bun:*` directly**. Minimal external deps: `tree-sitter` (parser, required), `typescript` (enricher, optional for JS/TS), and `ignore` (.gitignore). Everything else (BFS/DFS/impact/trace traversal, formatters, FTS query parser) is ours.
 
-### Why it satisfies "linear + deltas"
-- **Extraction** of each file is ~linear in its size (one AST walk).
+### Why it satisfies "linear + deltas + pluggable"
+- **Extraction** of each file is ~linear in its size (one tree-sitter walk).
 - **Full index** is the sum over files → linear in the project's total source code.
 - **Sync** only touches changed files (+ their incoming referrers) → cost proportional to the change, not the repo.
-- ⚠️ Honest caveat: the type-checker's **resolution** is lazy but can be superlinear in pathological cases (huge recursive types). Mitigations: lazy resolution, `DocumentRegistry` caching, `skipLibCheck`, batching, and metrics.
+- **Enrichers are pluggable** because parsing and enrichment are separable (Pass A, Pass B). Tree-sitter breadth + per-language depth means we don't sacrifice JS/TS fidelity as more languages land.
+- ⚠️ Honest caveat: enricher resolution (e.g. TS type-checker) is lazy but can be superlinear in pathological cases (huge recursive types). Mitigations: lazy enrichment, caching, `skipLibCheck`, batching, and metrics.
 
 ---
 
@@ -84,9 +87,11 @@ We adapt codegraph's types (see [`codegraph/src/types.ts`](../codegraph/src/type
 
 Each node: `id`, `kind`, `name`, `qualifiedName`, `filePath`, `language`, position (`startLine/endLine/startColumn/endColumn`), `docstring?`, `signature?`, `visibility?`, flags (`isExported/isAsync/isStatic/isAbstract`), `decorators?`, `typeParameters?`, `updatedAt`.
 
-**Edges** (`kind`): `contains`, `calls`, `imports`, `exports`, `extends`, `implements`, `references`, `type_of`, `returns`, `instantiates`, `overrides`. Each edge: `source`, `target`, `kind`, `metadata?`, `line?`, `column?`, `provenance?` (`ts-compiler` by default), `confidence?` (`high|medium|low`), `resolutionState?` (`resolved|external|unresolved|ambiguous`).
+**Edges** (`kind`): `contains`, `calls`, `imports`, `exports`, `extends`, `implements`, `references`, `type_of`, `returns`, `instantiates`, `overrides`, `decorates`. Each edge: `source`, `target`, `kind`, `metadata?`, `line?`, `column?`, `provenance?` (e.g. `tree-sitter` or `ts-compiler`), `confidence?` (`high|medium|low`), `resolutionState?` (`resolved|external|unresolved|ambiguous`).
 
-**Node `id`:** stable hash derived from `filePath`, `qualifiedName`, declaration kind, and a stable declaration locator (range/ordinal where needed). It must be **stable across reindexes** and robust enough for overloads, local symbols, and assigned anonymous functions (see §11).
+**Node `id`:** stable hash derived from `project`, `filePath`, `qualifiedName`, declaration kind, and a stable declaration locator (signature hash/ordinal where needed). It must be **stable across reindexes**, identical between Pass A and Pass B for the same declaration, and robust enough for overloads, local symbols, and assigned anonymous functions (see §11).
+
+**`language`** is a genuinely open string — whatever a registered backend reports — stored as free `TEXT`. Backends shipping today: `typescript` (typescript/tsx/javascript/jsx, with the TS Compiler enricher) and `php` (tree-sitter only). Node-level provenance lives in `metadata.provenance`; on edges it is a real column.
 
 **SQL schema:** based on [`codegraph/src/db/schema.sql`](../codegraph/src/db/schema.sql) — tables `nodes`, `edges`, `files`, virtual `nodes_fts` (FTS5 with sync triggers), `project_metadata`, `schema_versions`. Indexes: by `kind`, `name`, `qualified_name`, `file_path`, `(source, kind)`, `(target, kind)`, `lower(name)`.
 
@@ -98,7 +103,7 @@ Each node: `id`, `kind`, `name`, `qualifiedName`, `filePath`, `language`, positi
 
 ## 4. Stage 1 — Graph + CLI + tests (V1)
 
-Goal: a correct and fast JS/TS graph, queryable via CLI, with solid tests. V1 targets separated single-app repos first: Next.js, React Native/Expo, NestJS, Strapi, and similar JS/TS projects.
+Goal: a correct and fast graph for JS/TS and other tree-sitter languages, queryable via CLI, with solid tests. V1 targets separated single-app repos first: Next.js, React Native/Expo, NestJS, Strapi, and similar JS/TS projects.
 
 > **Sequencing recommendation (see §14):** start with a **vertical slice (1.0)** before going broad.
 
@@ -108,16 +113,16 @@ Goal: a correct and fast JS/TS graph, queryable via CLI, with solid tests. V1 ta
 ### 1.1 — Scaffolding
 Bun monorepo (`packages/core`, `packages/cli`), `tsconfig`, SQLite schema, `StorageAdapter` over `bun:sqlite`, `DatabaseConnection`/`QueryBuilder` layer.
 
-### 1.2 — JS/TS extraction
-Integrate the TS Compiler API; extract nodes/edges from a file. Respect the repo's primary `tsconfig.json` / `jsconfig.json` where possible. A **fixtures** folder (`packages/core/__fixtures__/`) covering: classes + inheritance, relative and alias imports (`tsconfig paths`), functions / arrow functions, re-exports / barrels, JSX/TSX (components), `async`, decorators, enums, namespaces, default exports, CommonJS. **Exact AST→graph mapping + resolution decision tree:** [docs/extraction.md](docs/extraction.md). **Canonical types:** [docs/contracts.md](docs/contracts.md).
+### 1.2 — JS/TS extraction (Pass A + B)
+Integrate tree-sitter and TS Compiler API; extract nodes/edges from a file. Respect the repo's primary `tsconfig.json` / `jsconfig.json` where possible. A **fixtures** folder (`packages/core/__fixtures__/`) covering: classes + inheritance, relative and alias imports (`tsconfig paths`), functions / arrow functions, re-exports / barrels, JSX/TSX (components), `async`, decorators, enums, namespaces, default exports, CommonJS. **Exact AST→graph mapping + resolution decision tree:** [docs/extraction/overview.md](docs/extraction/overview.md), [docs/extraction/tree-sitter.md](docs/extraction/tree-sitter.md), [docs/extraction/typescript.md](docs/extraction/typescript.md). **Canonical types:** [docs/contracts.md](docs/contracts.md).
 
 ### 1.3 — Resolution
-Imports and calls via the `TypeChecker`; path aliases and barrels (`index.ts`) resolved by TS natively. Mark refs into `node_modules`/`.d.ts` as **external** (no project nodes created). Track **unresolved** and **ambiguous** references explicitly, and attach `confidence`/`provenance` to edges where resolution is not fully certain.
+Imports and calls via tree-sitter (Pass A) and enrichers (Pass B, e.g. TS Compiler); path aliases and barrels (`index.ts`) resolved by enrichers natively. Mark refs into `node_modules`/`.d.ts` as **external** (no project nodes created). Track **unresolved** and **ambiguous** references explicitly, and attach `confidence`/`provenance` to edges where resolution is not fully certain.
 
 ### 1.4 — Full index + incremental delta sync
 `indexAll`, `sync` (added/modified/removed by content hash), file watcher with debounce. On file change: delete its nodes+edges, re-extract, **re-resolve incoming referrers**.
-Extraction is designed in **two separable levels** — nodes (`parsed`) decoupled from edges (`resolved`) — with a **single-writer model** and an **indexing queue** as an abstraction. In V1 the CLI drains it in a single pass, but these requirements leave the core ready for Stage 2's progressive indexing (see [docs/progressive-indexing.md](docs/progressive-indexing.md)).
-Project-level invalidation watches the main config inputs: `tsconfig.json`/`jsconfig.json`, `package.json`, lockfiles, `.gitignore`, `.astrograph/config.json`, and the TypeScript version used for extraction.
+Extraction is designed in **two separable levels** — nodes (`parsed` via Pass A) decoupled from edges (`resolved` via Pass B enrichers) — with a **single-writer model** and an **indexing queue** as an abstraction. In V1 the CLI drains it in a single pass, but these requirements leave the core ready for Stage 2's progressive indexing (see [docs/progressive-indexing.md](docs/progressive-indexing.md)).
+Project-level invalidation watches the main config inputs: `tsconfig.json`/`jsconfig.json`, `package.json`, lockfiles, `.gitignore`, `.astrograph/config.json`, and the TypeScript/tree-sitter versions used for extraction.
 
 ### 1.5 — Graph queries
 BFS/DFS traversal, `search` (FTS5), `callers`, `callees`, `impact`, `trace`, `context` (context builder), `node`, `files`, `status`. The context builder must support token budgets, ranking, bounded neighborhoods, and inclusion reasons so agents receive compact, explainable context rather than a raw graph dump.
@@ -162,7 +167,7 @@ MCP server (`packages/mcp`) on top of the **official `@modelcontextprotocol/sdk`
 
 ## 6. Stage 3 — Promotion & documentation website
 
-A public-facing **website to present and document** Astrograph — **not** the in-app graph explorer (that's parked; see §1 note and §13). It explains what Astrograph is, why the **TS-Compiler-API depth/accuracy** is the differentiator, and how to install and use it (CLI + MCP server + agent skills). **Full site design — stack, routes, static deploy, build order:** [docs/site.md](docs/site.md).
+A public-facing **website to present and document** Astrograph — **not** the in-app graph explorer (that's parked; see §1 note and §13). It explains what Astrograph is, why the **tree-sitter structural breadth + enricher semantic depth** is the differentiator, and how to install and use it (CLI + MCP server + agent skills). **Full site design — stack, routes, static deploy, build order:** [docs/site.md](docs/site.md).
 
 - **Two surfaces:** a flashy **landing page** (`/`) + **documentation** (`/docs/*`), one app, one deploy.
 - **Stack:** **Fumadocs** on Next.js, **fully static export** deployed to **GitHub Pages** (Orama search runs in the browser, no server). Bun as package manager/runner. Reuses the existing `docs/*.md` as source material. This standalone site is **decoupled from the `astrograph` binary** (the monorepo's Bun.serve/no-Next rule is scoped to the product core).
@@ -170,7 +175,7 @@ A public-facing **website to present and document** Astrograph — **not** the i
 > The integrated **3D "constellation" graph explorer** is **not** this stage. Its design is preserved in [docs/web.md](docs/web.md) (now a deferred/parked design on a feature branch).
 
 ### Acceptance criteria (Stage 3)
-- A visitor understands what Astrograph is, how it differs (depth/accuracy on JS/TS), and how to install + use the CLI, MCP server, and agent skills — all from the site.
+- A visitor understands what Astrograph is, how it differs (tree-sitter breadth + enricher depth), and how to install + use the CLI, MCP server, and agent skills — all from the site.
 - Install/usage instructions are accurate against the shipped CLI and installer.
 
 ---
@@ -180,7 +185,7 @@ A public-facing **website to present and document** Astrograph — **not** the i
 ```
 astrograph/
 ├── packages/
-│   ├── core/            # graph, DB (adapters), TS extraction, resolution, queries, traversal
+│   ├── core/            # graph, DB (adapters), extraction (tree-sitter + enrichers), resolution, queries, traversal
 │   │   └── __fixtures__/ # JS/TS test cases
 │   ├── cli/             # commands (classic args + isolated opentui)
 │   └── mcp/             # MCP server (official SDK)   [Stage 2]
@@ -189,9 +194,13 @@ astrograph/
 │   └── web/             # 3D explorer (PARKED on a feature branch)
 ├── docs/
 │   ├── contracts.md                                 # canonical TS types (source of truth)
-│   ├── extraction.md                                # TS Compiler API → graph mapping
+│   ├── extraction/
+│   │   ├── overview.md                              # Pass A/B, LanguageBackend, Parser, Enricher
+│   │   ├── tree-sitter.md                           # structural extraction, CST→nodes
+│   │   └── typescript.md                            # TS Compiler enricher, semantic depth
 │   ├── testing.md                                   # fixtures + golden + eval harness
 │   ├── cli.md                                       # CLI command catalog & design
+│   ├── install.md                                   # curl|sh installer, platforms, checksums
 │   ├── mcp.md                                        # MCP server design (Stage 2)
 │   ├── site.md                                        # promo + docs website design (Stage 3)
 │   ├── web.md                                         # 3D explorer design (PARKED — branch)
@@ -210,7 +219,7 @@ Per-project index directory: **`.astrograph/`** (mirroring `.codegraph/`) → `g
 
 ## 8. Non-goals (for now)
 
-Other languages · embeddings / vector semantic search · frameworks-aware routes · iOS/RN/Expo bridging · formal monorepo/multi-`tsconfig` support in V1 · multi-agent installers beyond the basics. (Several of these are in "future", §13.)
+Frameworks-aware routes · embeddings / vector semantic search · iOS/RN/Expo bridging · formal monorepo/multi-`tsconfig` support in V1 · multi-agent installers beyond the basics. (Several of these are in "future", §13.)
 
 ---
 
@@ -234,22 +243,22 @@ Other languages · embeddings / vector semantic search · frameworks-aware route
 
 ## 10. Key differentiator vs codegraph
 
-**The TS Compiler API is our advantage, not just a parser choice.** codegraph uses tree-sitter (structural) and therefore had to build a lot of *heuristic resolution* scaffolding: `path-aliases.ts`, `import-resolver.ts` (~42KB), `name-matcher.ts`, callback/framework synthesizers. With TS's real type-checker, much of that is **free and exact**: module resolution (incl. `@/...`, `exports` maps, `node_modules`, `.d.ts`), types, inheritance, overloads, re-exports/barrels. Expected result: **less resolution code and higher fidelity** on JS/TS.
+**Pluggable language backends with semantic enrichers**, not a single parser choice. codegraph uses tree-sitter everywhere and therefore had to build heuristic resolution scaffolding: `path-aliases.ts`, `import-resolver.ts` (~42KB), `name-matcher.ts`, callback/framework synthesizers. Astrograph uses **tree-sitter as the structural base** (breadth across languages) + **per-language enrichers** (semantic depth). For JS/TS, the TS Compiler enricher provides **exact module resolution, types, inheritance, overloads, re-exports/barrels** — much of which is **free and exact**. Expected result: **fewer heuristics, higher fidelity on JS/TS**, and a **clear path for more languages** (add their enricher, keep tree-sitter Pass A the same).
 
 | Dimension | codegraph | astrograph (V1) |
 |---|---|---|
-| Languages | 20+ | **JS/TS/JSX/TSX only** (focus) |
-| Parser | tree-sitter (wasm) | **TS Compiler API** |
-| Reference resolution | heuristic + `unresolved_refs` table | **real type-checker** + honest `external`/`unresolved`/`ambiguous` tracking |
-| Path aliases / module res. | hand-reimplemented (limited scope) | **native to TS** (exact) |
+| Languages | 20+ | **tree-sitter structural + per-language enrichers (JS/TS first)** |
+| Parser | tree-sitter (wasm) | **tree-sitter (Pass A) + enrichers (Pass B, e.g. TS Compiler)** |
+| Reference resolution | heuristic + `unresolved_refs` table | **tree-sitter + enricher** (TS Compiler for JS/TS) + honest `external`/`unresolved`/`ambiguous` tracking |
+| Path aliases / module res. | hand-reimplemented (limited scope) | **native to enricher** (exact for JS/TS via TS) |
 | Runtime / DB | Node + `node:sqlite` | **Bun + `bun:sqlite`** |
 | MCP | custom transport/daemon | **official SDK** |
 | Frameworks-aware routes | yes (14 frameworks) | **out of V1** (re-addable on top of exact resolution) |
-| iOS/RN/Expo bridging | yes | **N/A** (doesn't apply to pure JS/TS) |
+| iOS/RN/Expo native bridging | yes | **out of V1** — the native side (Swift/Kotlin/ObjC) needs its own backends; the JS/TS side is already covered |
 | Web UI | docs site (Astro) | **promo/docs site** (3D "constellation" explorer parked) |
-| Future multi-language | already done | requires a per-language extraction layer |
+| Architecture for multi-language | already done | **tree-sitter breadth + pluggable enrichers** |
 
-**Explicit tradeoff:** we trade *breadth* (languages, frameworks, bridging) for *depth and accuracy* on JS/TS. If we ever want multi-language, we'd go back to a tree-sitter-like model for those languages — which is why extraction sits behind an `Extractor` interface, with the TS impl. as the first one.
+**Key tradeoff:** we lead with **JS/TS semantic depth** (Compiler enricher) and **open language extensibility** (per-language enrichers). Other languages get tree-sitter Pass A instantly and better enrichers over time. If we ever want to add a language without an enricher yet, tree-sitter gives us something useful from day one.
 
 ---
 
@@ -258,9 +267,9 @@ Other languages · embeddings / vector semantic search · frameworks-aware route
 - **Primary `tsconfig` / `jsconfig` support.** V1 targets separated app repos, but should respect the main project config wherever possible. Formal multi-`tsconfig`, project references, and monorepo workspaces move to Stage 4 / v1.5.
 - **Node scope vs resolution scope.** Index **only project files** as nodes; let refs resolve into `node_modules`/`.d.ts` (marked "external") without creating nodes for them.
 - **Honest uncertainty.** Track `external`, `unresolved`, and `ambiguous` references, plus `confidence`/`provenance` on edges, so agents do not mistake weak or incomplete edges for facts.
-- **Stable node IDs** across reindexes/file moves where possible, for correct incremental sync and so the 3D constellation doesn't "jump" between reindexes. The ID policy must handle overloads, local symbols, and assigned anonymous functions better than `filePath::qualifiedName` alone.
+- **Stable node IDs** across reindexes/file moves where possible: incremental sync, edge healing, and any consumer holding a node id all depend on it — and in `complement` mode Pass A and Pass B must compute the **same** id for the same declaration, or the graph forks. The ID policy must handle overloads, local symbols, and assigned anonymous functions better than `filePath::qualifiedName` alone.
 - **Dangling edges in incremental sync.** On file change: delete nodes+edges, re-extract, and **re-resolve incoming referrers** (not just the changed file).
-- **Config invalidation.** Changing `tsconfig`/`jsconfig`, `package.json`, lockfiles, `.gitignore`, `.astrograph/config.json`, or TypeScript version can stale resolution even if source files are unchanged.
+- **Config invalidation.** Changing `tsconfig`/`jsconfig`, `package.json`, lockfiles, `.gitignore`, `.astrograph/config.json`, or TypeScript/tree-sitter versions can stale resolution even if source files are unchanged.
 - **Generated/vendored/minified files.** Exclude or down-rank (`.generated.ts`, `.gen.ts`, etc.).
 - **JS/TS cases to extract well:** default exports, re-exports/barrels (`export * from`), `import type`, dynamic `import()`, CommonJS `require`/`module.exports`, assigned arrow functions, decorators, namespaces, enums, JSX/TSX, HOCs.
 - **Context quality.** `context` is the agent-facing product surface: it needs ranking, token budgets, bounded neighborhoods, and inclusion reasons.
@@ -268,18 +277,18 @@ Other languages · embeddings / vector semantic search · frameworks-aware route
 - **Schema migrations from day 1.** `schema_versions` + versioned migrations.
 - **Core ready for progressive indexing.** Per-file coverage state, separable extraction (nodes vs edges), single writer, and indexing queue — even though streaming mode only "turns on" in S2. Detail: [docs/progressive-indexing.md](docs/progressive-indexing.md).
 - **Project config:** `include/exclude`, `.gitignore` (`ignore` lib), max file size, which kinds to index — in `.astrograph/config.json`.
-- **Honesty about "linear".** Extraction ~linear; type-checker resolution lazy but potentially superlinear in pathological cases. Document reality + mitigations.
+- **Honesty about "linear".** Extraction ~linear (tree-sitter + per-file); enricher resolution lazy but potentially superlinear in pathological cases. Document reality + mitigations.
 
 ---
 
 ## 12. Premortem (why it could fail and mitigation)
 
 - **#1 — Resolution quality on real app repos** (Next.js, React Native/Expo, NestJS, Strapi) worse than on fixtures → bad contexts → no better than `grep`. **Mitigation:** eval harness early (mirroring `codegraph/__tests__/evaluation/`); validate on real repos before declaring V1.
-- **#2 — TS Program memory/time on bigger repos** → slow cold index, not "linear". **Mitigation:** `LanguageService`/incremental, lazy resolution, `skipLibCheck`, batching and metrics. Monorepo/project-reference hardening waits for Stage 4 / v1.5.
+- **#2 — tree-sitter + enricher memory/time on bigger repos** → slow cold index, not "linear". **Mitigation:** `LanguageService`/incremental, lazy enrichment, `skipLibCheck`, batching and metrics. Monorepo/project-reference hardening waits for Stage 4 / v1.5.
 - **#3 — Incremental sync correctness** (dangling edges, stale incoming refs). **Mitigation:** dedicated delta-cycle test; re-resolve referrers.
 - **#4 — Agents over-trust partial graph data.** **Mitigation:** carry `external`/`unresolved`/`ambiguous`, freshness, coverage, and confidence through CLI/MCP responses.
 - **#5 — Over-scoping the "complete" S1** delays validation. **Mitigation:** vertical slice first (§14).
-- **#6 — Bleeding edge** (opentui, advanced three.js polish, new Bun APIs) eats time with no core value. **Mitigation:** keep Stage 3 to a usable visual MVP; push advanced clustering/live effects to Stage 4 / v1.5 and Stage 5 / v2.
+- **#6 — Bleeding edge** (opentui, advanced tree-sitter/enricher polish, new Bun APIs) eats time with no core value. **Mitigation:** keep Stage 3 to a clear static site; push interactive/visual extras to Stage 4 / v1.5 and Stage 5 / v2.
 - **#7 — Real value shows up in S2 (MCP).** A CLI-only V1 may seem "unimpressive". **Mitigation:** be clear that S1 validates **graph quality**; don't over-invest in CLI polish before that.
 
 ---
@@ -303,7 +312,7 @@ Other languages · embeddings / vector semantic search · frameworks-aware route
 - **`astrograph why <A> <B>`:** narrated explanation of the path (a friendly alias of `trace`).
 
 **Further out — platform bets:**
-- **Pluggable language extractors.** Decouple the TS Compiler API behind the existing `Extractor` interface (§10) so other languages plug in (e.g. tree-sitter-based backends) **without sacrificing JS/TS depth**. This is the path to multi-language.
+- **Pluggable language enrichers.** Decouple enrichers (TS Compiler API, others) so more languages plug in **without sacrificing JS/TS depth**. This is the path to multi-language done right.
 - **Non-code knowledge sources.** Index documents/knowledge — **PDFs, Confluence, wikis, etc.** — into a compatible graph, exposed through the same MCP/skill surface, so agents query docs the way they query code.
 
 **Parked — integrated 3D "constellation" explorer** (moved to a feature branch; design in [docs/web.md](docs/web.md)). If/when revived, it brings:

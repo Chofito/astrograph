@@ -1,5 +1,7 @@
 # Contrato de tools (superficie hacia el agente)
 
+> ⚠️ **DESACTUALIZADO — docs/tools.md (inglés) es la fuente de verdad.** Este documento no refleja la arquitectura actual (tree-sitter Pass A + enrichers por lenguaje, backends de lenguaje en `status`, el sitio estático de la Etapa 3 que **no** consume estos resultados). Consulta [tools.md](tools.md) para el contrato vigente.
+
 > 🌐 Idiomas: **Español** (este archivo) · [English](tools.md)
 
 > Documento de diseño. Define el **contrato de tools agnóstico del transporte** que Astrograph expone a sus consumidores. El contrato (nombre, inputs, **resultado estructurado**) vive en `packages/core`; **MCP** (Etapa 2), la **CLI** (Etapa 1) y la **Web UI** (Etapa 3) son formatters finos sobre los mismos resultados estructurados. Ver [ROADMAP §5](../ROADMAP.es.md#5-stage-2--mcp-support).

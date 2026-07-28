@@ -94,7 +94,8 @@ CREATE TABLE nodes (
   name          TEXT NOT NULL,
   qualified_name TEXT NOT NULL,
   file_path     TEXT NOT NULL,
-  language      TEXT NOT NULL,           -- typescript|tsx|javascript|jsx
+  language      TEXT NOT NULL,           -- free TEXT, truly open: whatever a registered backend reports.
+                                         -- Shipping today: typescript, tsx, javascript, jsx (TS backend), php (PHP backend)
   -- position (1-indexed lines, 0-indexed cols) — slicing & token budgeting
   start_line    INTEGER NOT NULL,
   end_line      INTEGER NOT NULL,
@@ -115,7 +116,12 @@ CREATE TABLE nodes (
   -- structured extras
   decorators      TEXT,                  -- JSON array
   type_parameters TEXT,                  -- JSON array
-  metadata        TEXT,                  -- JSON object — the escape hatch (§9)
+  metadata        TEXT,                  -- JSON object — the escape hatch (§9).
+                                         -- Node-level provenance lives here as metadata.provenance
+                                         -- ('tree-sitter' | 'ts-compiler' | 'heuristic' | 'synthesized:<ch>').
+                                         -- Deliberately NOT a column: nodes are identity, and no tool
+                                         -- filters or ranks by it — so multi-backend extraction needs
+                                         -- zero schema change. (On edges, provenance IS a column — §4.2.)
   updated_at    INTEGER NOT NULL
 );
 ```
@@ -130,7 +136,7 @@ CREATE TABLE edges (
   kind        TEXT NOT NULL,             -- open enum: contains|calls|imports|extends|…
   resolution_state TEXT NOT NULL DEFAULT 'resolved',  -- resolved|external|unresolved|ambiguous
   confidence  TEXT NOT NULL DEFAULT 'high',           -- high|medium|low
-  provenance  TEXT NOT NULL DEFAULT 'ts-compiler',    -- ts-compiler|heuristic|synthesized:<channel>
+  provenance  TEXT NOT NULL DEFAULT 'tree-sitter',    -- tree-sitter (Pass A), ts-compiler (Pass B), heuristic, synthesized:<channel>
   line        INTEGER,
   col         INTEGER,
   metadata    TEXT,                       -- JSON (e.g. candidates[] for ambiguous)
@@ -196,7 +202,7 @@ Every edge carries `resolution_state`:
 
 | State | `target` | `target_name` | Meaning |
 |---|---|---|---|
-| `resolved` | node id | — | TypeChecker found exactly one project symbol |
+| `resolved` | node id | — | Exactly one project symbol was identified, by the best authority the file's backend has (§6.1) |
 | `external` | external node id (§5) | pkg/symbol | resolves into `node_modules`/`.d.ts` |
 | `ambiguous` | best-candidate id | name | multiple candidates; `metadata.candidates=[ids]` |
 | `unresolved` | **NULL** | the reference text | dynamic `import()`, `any`, broken alias, not-yet-parsed target |
@@ -205,11 +211,27 @@ Every edge carries `resolution_state`:
 
 **Why fold instead of a side table:** re-resolution becomes "update rows in `edges`", and tools never join a second table to learn an edge's trustworthiness.
 
+### 6.1 What `resolved` means per backend (language-agnostic)
+
+`resolved` is **not** "the TypeScript checker agreed". It is a *state of the pipeline*, and the
+authority behind it depends on the file's [language backend](contracts.md#5-adapter-interfaces--the-seams--core-depends-only-on-these):
+
+| Backend shape | Who resolves | What `resolved` asserts | Typical `provenance` / `confidence` |
+|---|---|---|---|
+| Parser **+ enricher** (`complement`/`replace`) — e.g. TypeScript | the enricher (`ts.TypeChecker`) | exactly one project symbol, semantically | `ts-compiler` / `high` |
+| Parser **only** (`mode: 'none'`) — e.g. PHP | tree-sitter Pass A + in-file/structural matching | exactly one candidate *that Pass A can see*; cross-file refs it cannot pin stay `unresolved` | `tree-sitter` / `medium`–`high` |
+
+So an enricher-less language **does** reach `resolved`: Pass A is the whole pipeline for it, and a file
+is `resolved` once every pass its backend runs has run (§7). The honesty is preserved by `provenance`
+and `confidence`, not by withholding the state — a `tree-sitter`-provenance edge tells the consumer
+exactly how much semantic weight to put on it. Reading `resolved` as "type-checked" would make every
+enricher-less language permanently, and falsely, look unfinished.
+
 ---
 
 ## 7. Coverage & progressive indexing
 
-`files.state` is the per-file LOD: `pending → parsed → resolved`. The result envelope's `meta.coverage` is a single grouped query over the touched files:
+`files.state` is the per-file LOD: `pending → parsed → resolved`. A file is `resolved` once **every pass its backend runs** has run — for an enricher-less backend that is Pass A alone (§6.1), so coverage is comparable across languages and never stalls at `parsed` just because a language has no enricher. The result envelope's `meta.coverage` is a single grouped query over the touched files:
 
 ```sql
 SELECT state, COUNT(*) FROM files WHERE path IN (:scope) GROUP BY state;
@@ -225,7 +247,7 @@ Edge-level coverage (e.g. "nodes done, calls pending") is a Stage 4/5 refinement
 ## 8. Project scope & config invalidation
 
 - **`project` column on `nodes`/`files`/edges-by-join** (default `'root'`) is pre-added now so the Stage 4 monorepo work (per-`tsconfig`) is a *data* change, not a *schema* migration. V1 writes `'root'` everywhere.
-- **Config invalidation:** `project_metadata.configHash` = hash of `tsconfig.json`/`jsconfig.json` + `package.json` + lockfile + `.gitignore` + `.astrograph/config.json` + TS version. On `sync`, if it changed, mark affected coverage stale even when source files didn't change (ROADMAP §11). This catches "you upgraded TS / changed paths" cases that pure content hashing misses.
+- **Config invalidation:** `project_metadata.configHash` = hash of `tsconfig.json`/`jsconfig.json` + `package.json` + lockfile + `.gitignore` + `.astrograph/config.json` + TypeScript version + tree-sitter grammar versions. On `sync`, if it changed, mark affected coverage stale even when source files didn't change (ROADMAP §11). This catches "you upgraded TS / changed grammar / changed paths" cases that pure content hashing misses.
 
 ---
 
@@ -242,7 +264,8 @@ How each kind of growth lands **without breaking the schema**:
 | A new **tool** | compose existing reads; the matrix §3 already covers most | usually **No** |
 | A **synthesized edge** (framework routes, future heuristics) | `provenance='synthesized:<channel>'`, `confidence` accordingly | **No** |
 | **Monorepo / multi-`tsconfig`** | populate `project` with per-project keys; add per-project coverage | **No** schema change (column exists) |
-| A new **language** (post-V1) | new `Extractor` impl. emits the same nodes/edges contract | **No** |
+| A new **language** | register a `LanguageBackend` (tree-sitter `Parser` + optional `Enricher`); it emits the same nodes/edges contract. Already how TypeScript and PHP ship. | **No** |
+| A new **enricher for an existing language** | add `enricher` to that backend, flip its `mode`; files re-resolve on the next `configHash` change | **No** |
 | **Embeddings** (Stage 5, optional) | new `node_vectors` table keyed by `nodes.id` (sqlite-vec/extension), never touches core tables | additive table |
 
 Guardrail: the JSON `metadata` hatch is for the **long tail**, not a dumping ground. If a tool needs to *filter or rank* by something, it gets promoted to a column. Reads stay index-backed (§0 corollary).

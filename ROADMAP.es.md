@@ -1,5 +1,7 @@
 # Astrograph — Roadmap & Alcance
 
+> ⚠️ **STALE — English ROADMAP.md is the source of truth.** This document is outdated and must not be trusted for Stage 3 / extraction / install decisions. Please refer to [ROADMAP.md](ROADMAP.md) (English) for the current technical architecture and roadmap.
+
 > Grafo de código local-first para JS/TS que potencia agentes de IA (Claude Code, Cursor, etc.) con inteligencia semántica del código — y que, además, te deja **ver la "constelación" de tu código** en 3D.
 >
 > Inspirado en [`codegraph`](../codegraph) (que vive junto a este repo), pero con nuestras propias decisiones técnicas y un foco **deliberadamente estrecho en JS/TS** para ganar en profundidad y exactitud.

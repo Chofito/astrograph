@@ -9,10 +9,13 @@ Every command is one-shot, scriptable, and pipeable. Run `astrograph <command> -
 
 | Command | What it does |
 | --- | --- |
-| `astrograph init` | Create `.astrograph/` and run the first full index. |
+| `astrograph init` | Create `.astrograph/` and run the first full index. Add `-d` to keep it fresh in the daemon. |
+| `astrograph index` | Rebuild or refresh the whole graph. |
 | `astrograph sync` | Reconcile the graph with on-disk changes (content-hash diff). |
-| `astrograph status` | Index health: counts, coverage, backend, freshness. |
+| `astrograph status` | Index health: counts, coverage, storage backend, **active language backends**, freshness. |
 | `astrograph stop` | Stop a running background watcher/daemon. |
+| `astrograph uninit` | Remove `.astrograph/` from a project. |
+| `astrograph unlock` | Clear a stale lock left by an interrupted run. |
 
 ## Querying the graph
 
@@ -89,3 +92,8 @@ See **[MCP & skills](/docs/mcp)** for host-by-host setup.
 
 Every query reports a coverage banner — `coverage R/T resolved · partial: yes/no` — and flags `external`,
 `unresolved`, and `ambiguous` references. Partial or stale results are never presented as complete facts.
+
+`astrograph status` also lists the **language backends** in play — which parser claims which extensions,
+and whether a language gets an enricher (JS/TS: the TypeScript Compiler) or tree-sitter structure only.
+If a file you expected is missing from the graph, start there: no backend claiming its extension means it
+was never indexed.
