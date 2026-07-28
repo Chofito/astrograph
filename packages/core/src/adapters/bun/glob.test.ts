@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { BunGlobScanner } from "./glob";
 
@@ -71,6 +71,45 @@ describe("BunGlobScanner", () => {
 		}
 
 		expect(files).toEqual(["src/a.ts"]);
+	});
+
+	test("finds .php files when constructed with the php extension", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(root, "src/a.ts", "export const a = 1;");
+		await writeProjectFile(
+			root,
+			"src/Greeter.php",
+			"<?php\nclass Greeter {}\n",
+		);
+
+		const scanner = new BunGlobScanner({ extensions: [".ts", ".php"] });
+		const files: string[] = [];
+		for await (const relPath of scanner.scan(root, {})) {
+			files.push(relPath);
+		}
+
+		expect(files).toEqual(["src/Greeter.php", "src/a.ts"]);
+	});
+
+	test("honors the extension list it was constructed with, ignoring extensions outside it", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(root, "src/a.php", "<?php\n");
+		await writeProjectFile(root, "src/b.ts", "export const b = 1;");
+		await writeProjectFile(root, "src/c.jsx", "export const c = 1;");
+
+		const phpOnly = new BunGlobScanner({ extensions: [".php"] });
+		const phpFiles: string[] = [];
+		for await (const relPath of phpOnly.scan(root, {})) {
+			phpFiles.push(relPath);
+		}
+		expect(phpFiles).toEqual(["src/a.php"]);
+
+		const tsOnly = new BunGlobScanner({ extensions: [".ts"] });
+		const tsFiles: string[] = [];
+		for await (const relPath of tsOnly.scan(root, {})) {
+			tsFiles.push(relPath);
+		}
+		expect(tsFiles).toEqual(["src/b.ts"]);
 	});
 });
 

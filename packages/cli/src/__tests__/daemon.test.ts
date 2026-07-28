@@ -1,16 +1,15 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { mkdir, rm } from "node:fs/promises";
-import { mkdtemp } from "node:fs/promises";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import {
-	getDaemonMetadataPath,
-	getDaemonLogPath,
-	readDaemonMetadata,
-	writeDaemonMetadata,
-	removeDaemonMetadata,
-	isPidAlive,
-	isDaemonRunning,
 	type DaemonMetadata,
+	getDaemonLogPath,
+	getDaemonMetadataPath,
+	isDaemonRunning,
+	isPidAlive,
+	readDaemonMetadata,
+	removeDaemonMetadata,
+	writeDaemonMetadata,
 } from "../commands/daemon-utils";
 
 describe("daemon-utils", () => {

@@ -1,5 +1,6 @@
-import ts from "typescript";
 import { describe, expect, test } from "bun:test";
+import ts from "typescript";
+import type { Edge } from "../../../types";
 import {
 	compareEdges,
 	compareStr,
@@ -7,7 +8,6 @@ import {
 	isOverloadSet,
 	pickDeclaration,
 } from "./utils";
-import type { Edge } from "../../types";
 
 function sourceFile(source: string, name = "t.ts"): ts.SourceFile {
 	return ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true);

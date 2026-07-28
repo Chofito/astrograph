@@ -1,6 +1,6 @@
-import { TsExtractor } from "../src/extraction/extractor";
+import { TsExtractor } from "../src/extraction/typescript/extractor";
 import { nodeIdSet } from "../src/testing/graph-assertions";
-import { normalize, type NormalizedGraph } from "../src/testing/normalize";
+import { type NormalizedGraph, normalize } from "../src/testing/normalize";
 import type { Edge, ExtractionError, Hasher, Node } from "../src/types";
 
 export const FIXTURES_ROOT = import.meta.dir;
@@ -45,7 +45,17 @@ export async function readFixtureSource(fixturePath: string): Promise<string> {
 	return Bun.file(fixturePathJoin(FIXTURES_ROOT, relPath)).text();
 }
 
-async function listFixtureSourceFiles(fixturePath: string): Promise<string[]> {
+/** Read a fixture file by its path relative to `FIXTURES_ROOT`, e.g. the
+ * paths returned by `listFixtureSourceFiles`. */
+export async function readFixtureFileSource(relPath: string): Promise<string> {
+	return Bun.file(fixturePathJoin(FIXTURES_ROOT, relPath)).text();
+}
+
+/** Exposed so tests can drive Pass A (tree-sitter) over the same file list
+ * used to build the enricher's (Pass B) node view for a fixture. */
+export async function listFixtureSourceFiles(
+	fixturePath: string,
+): Promise<string[]> {
 	const dir = fixturePathJoin(FIXTURES_ROOT, fixturePath);
 	const glob = new Bun.Glob("**/*.{ts,tsx,js,jsx,mjs,cjs}");
 	const files: string[] = [];

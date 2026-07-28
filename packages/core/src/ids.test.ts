@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { makeNodeId, type MakeNodeIdInput } from "./ids";
+import { type MakeNodeIdInput, makeNodeId } from "./ids";
 import type { Hasher } from "./types";
 
 const hasher: Hasher = {

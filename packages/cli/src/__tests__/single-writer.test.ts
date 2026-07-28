@@ -1,11 +1,10 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { mkdtemp } from "node:fs/promises";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { runCli } from "../cli";
 import {
-	writeDaemonMetadata,
 	type DaemonMetadata,
+	writeDaemonMetadata,
 } from "../commands/daemon-utils";
 
 describe("single-writer detection", () => {

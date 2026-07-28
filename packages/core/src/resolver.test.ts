@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, mkdir, rm, unlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { openProject } from "./adapters/bun/project";
-import { compareEdges } from "./extraction/resolver/utils";
+import { compareEdges } from "./extraction/typescript/resolver/utils";
 import {
 	assertGraphIntegrity,
 	assertNoDanglingResolved,

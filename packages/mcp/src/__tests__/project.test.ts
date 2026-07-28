@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import type { Astrograph, AstrographCore, Watcher } from "@astrograph/core";
-import { MissingIndexError, ProjectSession, findProjectRoot } from "../project";
+import { findProjectRoot, MissingIndexError, ProjectSession } from "../project";
 
 describe("MCP project session", () => {
 	test("finds the nearest .astrograph directory", async () => {
@@ -196,6 +196,7 @@ function fakeGraph(overrides: Partial<AstrographCore> = {}): AstrographCore {
 		indexAll: async () => {},
 		sync: async () => ({ added: [], modified: [], removed: [] }),
 		syncFiles: async () => ({ added: [], modified: [], removed: [] }),
+		indexableExtensions: () => [".ts", ".tsx", ".js", ".jsx"],
 		close: () => {},
 		...overrides,
 	};

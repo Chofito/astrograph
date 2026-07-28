@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { TsExtractor } from "../src/extraction/extractor";
+import { TsExtractor } from "../src/extraction/typescript/extractor";
 import {
 	assertDeterministicNormalizedAsync,
 	assertGraphIntegrity,

@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { parse as parseToml } from "smol-toml";
 import { parse as parseJsonc } from "jsonc-parser";
+import { parse as parseToml } from "smol-toml";
 import { runCli } from "../cli";
 import { runInstallCore } from "../commands/install";
 import { runUninstallCore } from "../commands/uninstall";

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
-	FreshnessManager,
 	type AstrographCore,
+	FreshnessManager,
 	type ToolResult,
 	type WatchEvent,
 } from "@astrograph/core";
@@ -208,6 +208,7 @@ function fakeGraph(overrides: Partial<AstrographCore> = {}): AstrographCore {
 		indexAll: async () => {},
 		sync: async () => ({ added: [], modified: [], removed: [] }),
 		syncFiles: async () => ({ added: [], modified: [], removed: [] }),
+		indexableExtensions: () => [".ts", ".tsx", ".js", ".jsx"],
 		close: () => {},
 		...overrides,
 	};

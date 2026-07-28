@@ -331,6 +331,7 @@ function fakeGraph(): AstrographCore {
 		indexAll: async () => {},
 		sync: async () => ({ added: [], modified: [], removed: [] }),
 		syncFiles: async () => ({ added: [], modified: [], removed: [] }),
+		indexableExtensions: () => [".ts", ".tsx", ".js", ".jsx"],
 		close: () => {},
 	};
 }

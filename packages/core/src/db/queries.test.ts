@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { openSqliteStorage } from "../adapters/bun/sqlite";
+import type { Edge, FileRecord, Node, StorageAdapter } from "../types";
 import { runMigrations } from "./migrations";
 import { QueryBuilder } from "./queries";
-import type { Edge, FileRecord, Node, StorageAdapter } from "../types";
 
 let openDbs: StorageAdapter[] = [];
 

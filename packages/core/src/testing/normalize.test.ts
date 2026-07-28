@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { normalize } from "./normalize";
 import type { Edge, Node } from "../types";
+import { normalize } from "./normalize";
 
 describe("normalize", () => {
 	test("drops volatile fields, strips absolute roots, and sorts deterministically", () => {
