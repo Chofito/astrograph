@@ -84,7 +84,11 @@ export class TreeSitterParser implements Parser {
 		this.project = opts.project ?? "root";
 	}
 
-	extractNodes(filePath: string, source: string): PassAResult {
+	extractNodes(
+		filePath: string,
+		source: string,
+		opts?: { tree?: Tree },
+	): PassAResult {
 		const errors: ExtractionError[] = [];
 		const language = languageFromPath(filePath) ?? "unknown";
 		const tsLang = treeSitterLangFromPath(filePath);
@@ -126,49 +130,58 @@ export class TreeSitterParser implements Parser {
 			});
 		}
 
-		const parser = createParserFor(tsLang);
-		if (!parser) {
-			return fileOnly({
-				message: `tree-sitter grammar not loaded for ${tsLang}`,
-				filePath,
-				severity: "warning",
-				code: "TREE_SITTER_GRAMMAR_MISSING",
-			});
-		}
+		const reusedTree = opts?.tree;
+		let parser: ReturnType<typeof createParserFor> | undefined;
+		let tree: Tree | null = reusedTree ?? null;
+		let ownsTree = false;
 
-		let tree: Tree | null;
-		try {
-			tree = parser.parse(source);
-		} catch (error) {
-			parser.delete();
-			return fileOnly({
-				message: error instanceof Error ? error.message : String(error),
-				filePath,
-				severity: "error",
-				code: "TREE_SITTER_PARSE_ERROR",
-			});
-		}
+		if (reusedTree === undefined) {
+			parser = createParserFor(tsLang);
+			if (!parser) {
+				return fileOnly({
+					message: `tree-sitter grammar not loaded for ${tsLang}`,
+					filePath,
+					severity: "warning",
+					code: "TREE_SITTER_GRAMMAR_MISSING",
+				});
+			}
 
-		if (!tree) {
-			parser.delete();
-			return fileOnly({
-				message: "tree-sitter returned null tree",
-				filePath,
-				severity: "error",
-				code: "TREE_SITTER_PARSE_ERROR",
-			});
+			try {
+				tree = parser.parse(source);
+			} catch (error) {
+				parser.delete();
+				return fileOnly({
+					message: error instanceof Error ? error.message : String(error),
+					filePath,
+					severity: "error",
+					code: "TREE_SITTER_PARSE_ERROR",
+				});
+			}
+
+			if (!tree) {
+				parser.delete();
+				return fileOnly({
+					message: "tree-sitter returned null tree",
+					filePath,
+					severity: "error",
+					code: "TREE_SITTER_PARSE_ERROR",
+				});
+			}
+			ownsTree = true;
 		}
 
 		const collected: { candidate: Candidate; parentIndex: number }[] = [];
 		try {
 			if (tsLang === "php") {
-				collectPhp(tree.rootNode, [], collected, -1);
+				collectPhp(tree!.rootNode, [], collected, -1);
 			} else {
-				collectJsTs(tree.rootNode, [], collected, -1, language);
+				collectJsTs(tree!.rootNode, [], collected, -1, language);
 			}
 		} finally {
-			tree.delete?.();
-			parser.delete();
+			if (ownsTree) {
+				tree?.delete?.();
+				parser?.delete();
+			}
 		}
 
 		// Drop every candidate whose (qualifiedName, kind) is not unique in the

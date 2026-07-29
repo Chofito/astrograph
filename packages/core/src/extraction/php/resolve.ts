@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import type { Node as TsNode } from "web-tree-sitter";
 import type {
 	Edge,
@@ -8,7 +7,7 @@ import type {
 	Node,
 	NodeKind,
 } from "../../types";
-import { createParserFor } from "../tree-sitter/grammars";
+import type { PhpAstCache } from "./ast-cache";
 import {
 	collectUseDeclaration,
 	isPhpBuiltinType,
@@ -24,9 +23,10 @@ import {
 export type PhpFqnIndex = Map<string, string>;
 
 export interface PhpResolveContext {
-	rootPath: string;
 	fileNames: string[];
 	loadNodesForFile: (filePath: string) => Node[];
+	/** Shared parse cache — one Tree per file for index + resolution. */
+	astCache: PhpAstCache;
 }
 
 /**
@@ -35,30 +35,22 @@ export interface PhpResolveContext {
  */
 export function buildPhpFqnIndex(ctx: PhpResolveContext): PhpFqnIndex {
 	const index: PhpFqnIndex = new Map();
-	const parser = createParserFor("php");
-	if (!parser) return index;
 
 	for (const relPath of ctx.fileNames) {
-		const source = readSource(ctx.rootPath, relPath);
-		if (source === undefined) continue;
+		const entry = ctx.astCache.get(relPath);
+		if (entry === undefined) continue;
 		const nodes = ctx.loadNodesForFile(relPath);
-		const tree = parser.parse(source);
-		if (tree === null) continue;
-		try {
-			forEachPhpScope(tree.rootNode, (scope) => {
-				for (const decl of scope.declarations) {
-					const name = namedChildOfType(decl, "name")?.text;
-					if (name === undefined) continue;
-					const fqn = phpFqnJoin(scope.namespaceName, name);
-					const kind =
-						decl.type === "interface_declaration" ? "interface" : "class";
-					const id = findPassANodeId(nodes, kind, name, decl);
-					if (id !== undefined) index.set(fqn, id);
-				}
-			});
-		} finally {
-			tree.delete();
-		}
+		forEachPhpScope(entry.tree.rootNode, (scope) => {
+			for (const decl of scope.declarations) {
+				const name = namedChildOfType(decl, "name")?.text;
+				if (name === undefined) continue;
+				const fqn = phpFqnJoin(scope.namespaceName, name);
+				const kind =
+					decl.type === "interface_declaration" ? "interface" : "class";
+				const id = findPassANodeId(nodes, kind, name, decl);
+				if (id !== undefined) index.set(fqn, id);
+			}
+		});
 	}
 	return index;
 }
@@ -67,71 +59,62 @@ export function buildPhpFqnIndex(ctx: PhpResolveContext): PhpFqnIndex {
  * Resolve PHP edges for one file: heritage, imports, and type-position
  * dependencies. Re-uses Pass A `contains` edges so the indexer's edge-replace
  * step does not drop structural edges.
+ *
+ * `root` must be the root node of the cached Tree for this file (caller owns
+ * Tree lifetime via {@link PhpAstCache}).
  */
 export function resolvePhpHeritage(
 	_relPath: string,
-	source: string,
 	passA: { nodes: Node[]; edges: Edge[]; errors: ExtractionError[] },
 	fqnIndex: PhpFqnIndex,
+	root: TsNode,
 ): EdgeResolutionResult {
 	const edges: Edge[] = [...passA.edges];
 	const errors: ExtractionError[] = [...passA.errors];
-	const parser = createParserFor("php");
-	if (!parser) {
-		return { edges, errors, externalNodes: [] };
-	}
-
 	const fileNode = passA.nodes.find((node) => node.kind === "file");
-	const tree = parser.parse(source);
-	if (tree === null) {
-		return { edges, errors, externalNodes: [] };
-	}
-	try {
-		forEachPhpScope(tree.rootNode, (scope) => {
-			if (fileNode !== undefined) {
-				emitImportEdges(
-					scope,
-					fileNode.id,
-					scope.aliases,
-					scope.namespaceName,
-					fqnIndex,
-					edges,
-				);
-			}
 
-			for (const decl of scope.declarations) {
-				emitHeritageForDeclaration(
-					decl,
-					passA.nodes,
-					scope.aliases,
-					scope.namespaceName,
-					fqnIndex,
-					edges,
-				);
-				emitTypeEdgesForTypeDeclaration(
-					decl,
-					passA.nodes,
-					scope.aliases,
-					scope.namespaceName,
-					fqnIndex,
-					edges,
-				);
-			}
+	forEachPhpScope(root, (scope) => {
+		if (fileNode !== undefined) {
+			emitImportEdges(
+				scope,
+				fileNode.id,
+				scope.aliases,
+				scope.namespaceName,
+				fqnIndex,
+				edges,
+			);
+		}
 
-			for (const fn of scope.functions) {
-				emitTypeEdgesForFunction(
-					fn,
-					passA.nodes,
-					scope.aliases,
-					scope.namespaceName,
-					fqnIndex,
-					edges,
-				);
-			}
-		});
-	} finally {
-		tree.delete();
-	}
+		for (const decl of scope.declarations) {
+			emitHeritageForDeclaration(
+				decl,
+				passA.nodes,
+				scope.aliases,
+				scope.namespaceName,
+				fqnIndex,
+				edges,
+			);
+			emitTypeEdgesForTypeDeclaration(
+				decl,
+				passA.nodes,
+				scope.aliases,
+				scope.namespaceName,
+				fqnIndex,
+				edges,
+			);
+		}
+
+		for (const fn of scope.functions) {
+			emitTypeEdgesForFunction(
+				fn,
+				passA.nodes,
+				scope.aliases,
+				scope.namespaceName,
+				fqnIndex,
+				edges,
+			);
+		}
+	});
 
 	edges.sort(compareEdges);
 	return { edges, errors, externalNodes: [] };
@@ -595,14 +578,6 @@ function findPassANodeId(
 			node.range.startColumn === startColumn,
 	);
 	return match?.id;
-}
-
-function readSource(rootPath: string, relPath: string): string | undefined {
-	try {
-		return readFileSync(`${rootPath}/${relPath}`, "utf8");
-	} catch {
-		return undefined;
-	}
 }
 
 function compareEdges(a: Edge, b: Edge): number {

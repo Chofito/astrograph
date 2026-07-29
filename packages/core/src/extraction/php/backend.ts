@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import type {
 	BackendCapabilities,
 	EdgeResolutionResult,
@@ -14,6 +13,7 @@ import type {
 } from "../../types";
 import { TREE_SITTER_WASMS_VERSION } from "../tree-sitter/grammars";
 import { TreeSitterParser } from "../tree-sitter/parser";
+import { PhpAstCache } from "./ast-cache";
 import {
 	buildPhpFqnIndex,
 	type PhpFqnIndex,
@@ -51,6 +51,12 @@ const ENRICHED_CAPABILITIES: BackendCapabilities = {
  * `returns` from `use` aliases and the current namespace only. Never bare-name
  * search. Pass A does not emit leaf `import` nodes; `use` becomes `imports`
  * edges from the file node instead.
+ *
+ * Parse cost with the enricher on: each file is parsed once into
+ * {@link PhpAstCache} during Pass A (using the source the indexer already
+ * read). FQN-index build, contains re-extract, and heritage all reuse that
+ * Tree. Trees are released on every `loadProject`. Files that skip Pass A in
+ * a sync still parse once on first enricher touch (disk fallback).
  */
 export class PhpLanguageBackend implements LanguageBackend {
 	readonly id = "php";
@@ -60,17 +66,24 @@ export class PhpLanguageBackend implements LanguageBackend {
 	readonly enricher: Enricher | undefined;
 	readonly capabilities: BackendCapabilities;
 
-	private rootPath = "";
+	private readonly treeSitter: TreeSitterParser;
+	private readonly astCache = new PhpAstCache();
 	private fileNames: string[] = [];
 	private loadNodesForFile: (filePath: string) => Node[] = () => [];
 	private fqnIndex: PhpFqnIndex | null = null;
 
 	constructor(opts: PhpBackendOptions) {
-		this.parser = new TreeSitterParser(opts);
+		this.treeSitter = new TreeSitterParser(opts);
 		if (opts.enricher === false) {
+			this.parser = this.treeSitter;
 			this.enricher = undefined;
 			this.capabilities = PASS_A_ONLY_CAPABILITIES;
 		} else {
+			// Indexer calls backend.parser — wrap so Pass A fills the shared cache.
+			this.parser = {
+				extractNodes: (filePath, source) =>
+					this.extractNodesCached(filePath, source),
+			};
 			this.enricher = {
 				mode: "complement" satisfies EnricherMode,
 				loadProject: (o) => this.loadProject(o),
@@ -90,12 +103,19 @@ export class PhpLanguageBackend implements LanguageBackend {
 		return keys;
 	}
 
-	extractNodes(filePath: string, source: string): PassAResult {
-		return this.parser.extractNodes(filePath, source);
+	private extractNodesCached(filePath: string, source: string): PassAResult {
+		const entry = this.astCache.get(filePath, source);
+		if (entry === undefined) {
+			return this.treeSitter.extractNodes(filePath, source);
+		}
+		return this.treeSitter.extractNodes(filePath, entry.source, {
+			tree: entry.tree,
+		});
 	}
 
 	private loadProject(opts: LoadProjectOptions): void {
-		this.rootPath = opts.rootPath;
+		this.astCache.clear();
+		this.astCache.setRootPath(opts.rootPath);
 		this.fileNames = opts.fileNames ?? [];
 		this.loadNodesForFile = opts.loadNodesForFile ?? (() => []);
 		this.fqnIndex = null;
@@ -104,35 +124,31 @@ export class PhpLanguageBackend implements LanguageBackend {
 	private resolveEdges(filePath: string): EdgeResolutionResult {
 		this.ensureFqnIndex();
 
-		const source = this.readSource(filePath);
-		if (source === undefined) {
+		const entry = this.astCache.get(filePath);
+		if (entry === undefined) {
 			return { edges: [], errors: [], externalNodes: [] };
 		}
 
-		const passA = this.parser.extractNodes(filePath, source);
+		// Reuse the cached Tree so contains re-extract does not re-parse.
+		const passA = this.treeSitter.extractNodes(filePath, entry.source, {
+			tree: entry.tree,
+		});
 		return resolvePhpHeritage(
 			filePath,
-			source,
 			passA,
 			this.fqnIndex ?? new Map(),
+			entry.tree.rootNode,
 		);
 	}
 
 	private ensureFqnIndex(): void {
 		if (this.fqnIndex !== null) return;
+		// Uses trees already cached by Pass A; disk-parses only uncached files.
 		this.fqnIndex = buildPhpFqnIndex({
-			rootPath: this.rootPath,
 			fileNames: this.fileNames,
 			loadNodesForFile: (path) => this.loadNodesForFile(path),
+			astCache: this.astCache,
 		});
-	}
-
-	private readSource(relPath: string): string | undefined {
-		try {
-			return readFileSync(`${this.rootPath}/${relPath}`, "utf8");
-		} catch {
-			return undefined;
-		}
 	}
 }
 
