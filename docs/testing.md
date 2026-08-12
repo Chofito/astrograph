@@ -39,21 +39,14 @@ Small, single-purpose source files, each pinned by a golden snapshot. Every JS/T
 - [x] `exports/`
 - [x] `overloads/`
 - [x] `imports/barrel/`
-- [x] `imports/commonjs/` — golden present; `require` modeled as `calls`/`external` only (no `imports`/`exports` edges yet)
+- [x] `imports/commonjs/` — `require` / `module.exports` emit `imports` / `exports` (not only `calls` to `require`)
 - [x] `imports/type-only/` — golden present; `metadata.typeOnly` not emitted yet
 - [x] `imports/dynamic-literal/` — golden present; `import()` call stays `unresolved`, member `references` resolve
 - [x] `resolution/ambiguous/`
-- [ ] `inheritance/`
-- [ ] `imports/relative/`
-- [ ] `imports/alias/`
-- [ ] `imports/dynamic/` (non-literal unresolved; integration test only today)
-- [ ] `resolution/external/`
-- [ ] `resolution/unresolved/`
-- [ ] `perf/`
-- [ ] `php/basic/` — PHP backend (Pass A + name enricher): classes, functions, methods, namespaces. `use` becomes `imports` edges (no leaf `import` nodes).
 - [x] `php/heritage/` — extends/implements via alias/FQN resolution (plain/aliased/grouped `use`, same-namespace, absolute `\`, missing → `external`)
 - [x] `php/types/` — `type_of` / `returns` from parameters, property promotion, typed properties, return types; scalars skipped; `imports` edges from `use`
-- [ ] `mixed/` — a repo fragment with `.ts` **and** `.php` side by side. Asserts extension routing, per-language coverage counts, and that `status.filesByLanguage` / `status.backends` report both.
+- [x] `php/calls/` — `calls` / `instantiates` four buckets (resolved, external incomplete chain, in-project missing, unknown receiver)
+- Parked post-v1.0 (not a ship blocker): `inheritance/`, `imports/relative/`, `imports/alias/`, `imports/dynamic/` (non-literal), `resolution/external/`, `resolution/unresolved/`, `perf/`, `php/basic/` (covered by e2e + heritage/types), `mixed/`
 
 ```
 __fixtures__/
@@ -62,7 +55,7 @@ __fixtures__/
 ├── imports/
 │   ├── relative/          # ./x, ../y
 │   ├── alias/             # @/lib/x  (with a tsconfig paths fixture)
-│   ├── barrel/            # index.ts re-exports; export * from
+│   ├── barrel/            # named re-export + export * from
 │   ├── type-only/         # import type
 │   ├── dynamic/           # import('./x') literal + non-literal
 │   └── commonjs/          # require / module.exports
@@ -75,9 +68,9 @@ __fixtures__/
 │   ├── unresolved/        # dynamic non-literal, any-typed call
 │   └── ambiguous/         # merged declaration / union
 ├── php/
-│   └── basic/             # enricher-less backend: classes, functions, `use` imports
 │   ├── heritage/          # extends/implements + imports edges (no import nodes)
-│   └── types/             # type_of / returns from DI-style type positions
+│   ├── types/             # type_of / returns from DI-style type positions
+│   └── calls/             # calls / instantiates four-bucket lookup
 ├── mixed/                 # .ts + .php in one tree — routing, per-language coverage
 └── perf/                  # a generated 1k-symbol file for budget tests
 ```

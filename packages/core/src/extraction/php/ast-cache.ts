@@ -8,30 +8,32 @@ export interface PhpAstEntry {
 }
 
 /**
- * Per-project PHP parse cache: one WASM Parser, one Tree (+ source) per file.
+ * PHP parse helper: at most one live Tree at a time.
  *
- * Trees are owned here and released in {@link clear}, which the backend calls
- * from `loadProject` so every re-index / sync invalidates them. Callers must
- * not `tree.delete()` themselves.
+ * Call {@link parse} then {@link release} (or `try/finally`) so Magento-scale
+ * indexes stay O(1) WASM trees instead of retaining every file for the pass.
  */
 export class PhpAstCache {
 	private rootPath = "";
 	private parser: WasmParser | undefined;
-	private readonly entries = new Map<string, PhpAstEntry>();
+	private livePath: string | undefined;
+	private live: PhpAstEntry | undefined;
 
 	setRootPath(rootPath: string): void {
 		this.rootPath = rootPath;
 	}
 
+	/** Number of trees currently retained (0 or 1). */
+	get size(): number {
+		return this.live === undefined ? 0 : 1;
+	}
+
 	/**
-	 * Drop every cached Tree. Safe to call repeatedly. Keeps the Parser so the
-	 * next project can reuse it without reloading the grammar.
+	 * Drop the live Tree. Safe to call repeatedly. Keeps the Parser so the
+	 * next file can reuse it without reloading the grammar.
 	 */
 	clear(): void {
-		for (const entry of this.entries.values()) {
-			entry.tree.delete();
-		}
-		this.entries.clear();
+		this.releaseLive();
 	}
 
 	/** Test / shutdown helper — also frees the Parser. */
@@ -42,12 +44,12 @@ export class PhpAstCache {
 	}
 
 	/**
-	 * Return a cached parse, or parse once. Prefer `source` when the caller
-	 * already has file contents so we never re-read from disk.
+	 * Parse `relPath`. Releases any previously live tree first so peak RAM
+	 * stays one Tree + source.
 	 */
-	get(relPath: string, source?: string): PhpAstEntry | undefined {
-		const hit = this.entries.get(relPath);
-		if (hit !== undefined) return hit;
+	parse(relPath: string, source?: string): PhpAstEntry | undefined {
+		if (this.livePath === relPath && this.live !== undefined) return this.live;
+		this.releaseLive();
 
 		const text = source ?? readSource(this.rootPath, relPath);
 		if (text === undefined) return undefined;
@@ -64,8 +66,25 @@ export class PhpAstCache {
 		if (tree === null) return undefined;
 
 		const entry: PhpAstEntry = { source: text, tree };
-		this.entries.set(relPath, entry);
+		this.livePath = relPath;
+		this.live = entry;
 		return entry;
+	}
+
+	/** @deprecated Use {@link parse}; kept so older call sites compile during the cut. */
+	get(relPath: string, source?: string): PhpAstEntry | undefined {
+		return this.parse(relPath, source);
+	}
+
+	release(relPath: string): void {
+		if (this.livePath !== relPath) return;
+		this.releaseLive();
+	}
+
+	private releaseLive(): void {
+		this.live?.tree.delete();
+		this.live = undefined;
+		this.livePath = undefined;
 	}
 
 	private ensureParser(): WasmParser | undefined {

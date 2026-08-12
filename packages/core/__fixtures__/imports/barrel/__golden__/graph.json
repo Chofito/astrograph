@@ -69,6 +69,51 @@
       "isTest": false
     },
     {
+      "id": "6747830739400946724",
+      "project": "fixture",
+      "kind": "file",
+      "name": "extra.ts",
+      "qualifiedName": "imports/barrel/extra.ts",
+      "filePath": "imports/barrel/extra.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 4,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "14955267186075182876",
+      "project": "fixture",
+      "kind": "function",
+      "name": "extraFn",
+      "qualifiedName": "imports/barrel/extra.ts::extraFn",
+      "filePath": "imports/barrel/extra.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function extraFn(): string",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
       "id": "6841902987925375213",
       "project": "fixture",
       "kind": "export",
@@ -101,11 +146,34 @@
       "language": "typescript",
       "range": {
         "startLine": 1,
-        "endLine": 2,
+        "endLine": 3,
         "startColumn": 0,
         "endColumn": 0
       },
       "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "8069318035330044816",
+      "project": "fixture",
+      "kind": "export",
+      "name": "re-export(./extra)",
+      "qualifiedName": "imports/barrel/index.ts::export(re-export(./extra))",
+      "filePath": "imports/barrel/index.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 2,
+        "endLine": 2,
+        "startColumn": 0,
+        "endColumn": 24
+      },
+      "signature": "export * from \"./extra\";",
+      "isExported": true,
       "isAsync": false,
       "isStatic": false,
       "isAbstract": false,
@@ -171,6 +239,16 @@
       "col": 0
     },
     {
+      "source": "14955267186075182876",
+      "target": "14955267186075182876",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
       "source": "16392265623011376301",
       "target": "17403254963487046799",
       "kind": "contains",
@@ -223,6 +301,16 @@
       "col": 9
     },
     {
+      "source": "6747830739400946724",
+      "target": "14955267186075182876",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
       "source": "6841902987925375213",
       "target": "12500860164931521284",
       "targetName": "originFn",
@@ -232,6 +320,17 @@
       "provenance": "ts-compiler",
       "line": 1,
       "col": 9
+    },
+    {
+      "source": "8069318035330044816",
+      "target": "14955267186075182876",
+      "targetName": "extraFn",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "medium",
+      "provenance": "ts-compiler",
+      "line": 2,
+      "col": 14
     }
   ]
 }

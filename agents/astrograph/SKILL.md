@@ -1,6 +1,6 @@
 ---
 name: astrograph
-description: Use Astrograph's local code graph before grep/read loops. Covers JS/TS (semantic, via the TypeScript Compiler enricher) and PHP (structural); other languages need a backend first. Prefer for architecture/call flow, dependency, impact, and symbol lookup questions.
+description: Use Astrograph's local code graph before grep/read loops. Covers JS/TS (TypeScript Compiler enricher) and PHP (name-resolution enricher); other languages need a backend first. Prefer for architecture/call flow, dependency, impact, and symbol lookup questions.
 ---
 
 # Astrograph
@@ -28,7 +28,7 @@ Astrograph indexes a file only if a **language backend** claims its extension. W
 | Files | Coverage | Edge provenance |
 |---|---|---|
 | `.ts` `.tsx` `.js` `.jsx` `.mjs` `.cjs` | structural **+ semantic** — exact import/call/type resolution via the TypeScript Compiler enricher | `ts-compiler` |
-| `.php` | structural — symbols, containment, syntactic references | `tree-sitter` |
+| `.php` | structural **+ name resolution** — heritage, `use` imports, types, calls/`new` (honest `external`/`unresolved`) | `tree-sitter` |
 
 **Anything else is not in the graph.** Python, Go, Rust, Java and friends have no backend yet, so
 `astrograph` will not find their symbols — use `rg` and direct reads for those files. This is the

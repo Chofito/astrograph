@@ -792,6 +792,11 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
 							});
 						}
 					}
+				} else if (
+					node.exportClause === undefined &&
+					node.moduleSpecifier !== undefined
+				) {
+					emitExportStar(node, sourceId, node.moduleSpecifier);
 				}
 				return;
 			}
@@ -852,6 +857,10 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
 		function visit(node: ts.Node): void {
 			if (ts.isCallExpression(node)) {
 				if (hasAncestor(node, ts.isDecorator)) return;
+				if (isRequireCall(node)) {
+					ts.forEachChild(node, visit);
+					return;
+				}
 
 				const sourceId = getSourceId(node);
 				if (sourceId) {
@@ -1334,10 +1343,225 @@ export function resolveEdgesForFile(opts: ResolverOptions): ResolverResult {
 		return BUILTIN_TYPE_REFERENCES.has(name);
 	}
 
+	function isRequireCall(node: ts.CallExpression): boolean {
+		return (
+			ts.isIdentifier(node.expression) && node.expression.text === "require"
+		);
+	}
+
+	function isModuleExportsLeft(node: ts.Expression): boolean {
+		if (!ts.isPropertyAccessExpression(node)) return false;
+		if (node.name.text !== "exports") return false;
+		return (
+			ts.isIdentifier(node.expression) && node.expression.text === "module"
+		);
+	}
+
+	function emitExportStar(
+		decl: ts.ExportDeclaration,
+		sourceId: string,
+		moduleSpecifier: ts.Expression,
+	): void {
+		void decl;
+		const moduleSym = checker.getSymbolAtLocation(moduleSpecifier);
+		if (!moduleSym) return;
+		let target = moduleSym;
+		if ((target.flags & ts.SymbolFlags.Alias) !== 0) {
+			target = checker.getAliasedSymbol(target);
+		}
+		const exported = checker.getExportsOfModule(target);
+		const pos = sourceFile.getLineAndCharacterOfPosition(
+			moduleSpecifier.getStart(sourceFile),
+		);
+		for (const exp of exported) {
+			const resolved = resolveSymbol(exp, moduleSpecifier);
+			emitEdge({
+				source: sourceId,
+				target: resolved.target,
+				targetName: resolved.targetName ?? exp.getName(),
+				kind: "exports",
+				resolutionState: resolved.resolutionState,
+				confidence: resolved.confidence,
+				provenance: "ts-compiler",
+				line: pos.line + 1,
+				col: pos.character,
+				metadata: resolved.metadata,
+			});
+		}
+	}
+
+	function resolveSpecifierToFileId(specifier: string): string | undefined {
+		if (!(specifier.startsWith("./") || specifier.startsWith("../"))) {
+			return undefined;
+		}
+		const slash = filePath.lastIndexOf("/");
+		const dir = slash === -1 ? "" : filePath.slice(0, slash);
+		const joined = `${dir}/${specifier}`;
+		const stack: string[] = [];
+		for (const part of joined.split("/")) {
+			if (part === "" || part === ".") continue;
+			if (part === "..") stack.pop();
+			else stack.push(part);
+		}
+		const base = stack.join("/");
+		const candidates = [
+			base,
+			`${base}.js`,
+			`${base}.ts`,
+			`${base}.jsx`,
+			`${base}.tsx`,
+			`${base}.mjs`,
+			`${base}.cjs`,
+			`${base}/index.js`,
+			`${base}/index.ts`,
+		];
+		for (const candidate of candidates) {
+			const file = getNodesForFile(candidate).find(
+				(node) => node.kind === "file",
+			);
+			if (file !== undefined) return file.id;
+		}
+		return undefined;
+	}
+
+	function emitCommonJsEdges(): void {
+		function visit(node: ts.Node): void {
+			if (ts.isCallExpression(node) && isRequireCall(node)) {
+				const arg = node.arguments[0];
+				const fileNode = nodesByFile
+					.get(filePath)
+					?.find((candidate) => candidate.kind === "file");
+				const sourceId = getSourceId(node) ?? fileNode?.id;
+				if (
+					sourceId &&
+					arg &&
+					(ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg))
+				) {
+					markCoveredReference(node.expression);
+					const loc = arg;
+					const specifier = arg.text;
+					const sym = checker.getSymbolAtLocation(loc);
+					const pos = sourceFile.getLineAndCharacterOfPosition(
+						loc.getStart(sourceFile),
+					);
+					const resolved =
+						sym === undefined ? undefined : resolveSymbol(sym, loc);
+					const fallbackId =
+						resolved?.target == null
+							? resolveSpecifierToFileId(specifier)
+							: undefined;
+					emitEdge({
+						source: sourceId,
+						target: resolved?.target ?? fallbackId ?? null,
+						targetName: specifier,
+						kind: "imports",
+						resolutionState:
+							resolved?.target != null
+								? resolved.resolutionState
+								: fallbackId !== undefined
+									? "resolved"
+									: (resolved?.resolutionState ?? "unresolved"),
+						confidence:
+							resolved?.target != null
+								? resolved.confidence
+								: fallbackId !== undefined
+									? "high"
+									: "low",
+						provenance: resolved?.target != null ? "ts-compiler" : "heuristic",
+						line: pos.line + 1,
+						col: pos.character,
+						metadata: resolved?.metadata,
+					});
+				}
+			}
+
+			if (
+				ts.isImportEqualsDeclaration(node) &&
+				node.moduleReference &&
+				ts.isExternalModuleReference(node.moduleReference) &&
+				node.moduleReference.expression &&
+				ts.isStringLiteral(node.moduleReference.expression)
+			) {
+				const fileNode = nodesByFile
+					.get(filePath)
+					?.find((candidate) => candidate.kind === "file");
+				const sourceId =
+					getSourceIdForNode(node) ?? getSourceId(node) ?? fileNode?.id;
+				const loc = node.moduleReference.expression;
+				if (sourceId) {
+					const sym = checker.getSymbolAtLocation(node.name);
+					const pos = sourceFile.getLineAndCharacterOfPosition(
+						loc.getStart(sourceFile),
+					);
+					if (sym) {
+						const resolved = resolveSymbol(sym, node.name);
+						emitEdge({
+							source: sourceId,
+							target: resolved.target,
+							targetName: resolved.targetName ?? loc.text,
+							kind: "imports",
+							resolutionState: resolved.resolutionState,
+							confidence: resolved.confidence,
+							provenance: "ts-compiler",
+							line: pos.line + 1,
+							col: pos.character,
+							metadata: resolved.metadata,
+						});
+					}
+				}
+			}
+
+			if (
+				ts.isBinaryExpression(node) &&
+				node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+				isModuleExportsLeft(node.left)
+			) {
+				const fileNode = nodesByFile
+					.get(filePath)
+					?.find((candidate) => candidate.kind === "file");
+				const sourceId = fileNode?.id ?? getSourceIdForNode(node);
+				if (sourceId && ts.isObjectLiteralExpression(node.right)) {
+					const pos = sourceFile.getLineAndCharacterOfPosition(
+						node.left.getStart(sourceFile),
+					);
+					for (const prop of node.right.properties) {
+						if (
+							!ts.isMethodDeclaration(prop) &&
+							!ts.isPropertyAssignment(prop) &&
+							!ts.isShorthandPropertyAssignment(prop)
+						) {
+							continue;
+						}
+						if (prop.name === undefined) continue;
+						const sym = checker.getSymbolAtLocation(prop.name);
+						if (!sym) continue;
+						const resolved = resolveSymbol(sym, prop.name);
+						emitEdge({
+							source: sourceId,
+							target: resolved.target,
+							targetName: resolved.targetName,
+							kind: "exports",
+							resolutionState: resolved.resolutionState,
+							confidence: resolved.confidence,
+							provenance: "ts-compiler",
+							line: pos.line + 1,
+							col: pos.character,
+							metadata: resolved.metadata,
+						});
+					}
+				}
+			}
+
+			ts.forEachChild(node, visit);
+		}
+		visit(sourceFile);
+	}
+
 	try {
 		emitContainsEdges();
 		emitImportEdges();
 		emitExportEdges();
+		emitCommonJsEdges();
 		emitCallAndInstantiationEdges();
 		emitHeritageEdges();
 		emitTypeAndReturnEdges();

@@ -17,8 +17,8 @@ Agents are steered (via the MCP `initialize` instructions) to prefer `context` f
 checking the coverage banner before trusting a result.
 
 The tools are **language-agnostic**: they answer over whatever the language backends indexed. JS/TS edges
-carry `ts-compiler` provenance (resolved by the TypeScript Compiler enricher); a language whose backend
-has no enricher yet gives structural, `tree-sitter`-provenance edges. `astrograph_status` reports the
+carry `ts-compiler` provenance; PHP edges from the name enricher carry `tree-sitter` provenance with
+honest `external` / `unresolved` states. `astrograph_status` reports the
 active backends, so an agent can tell "not in the graph" from "no backend for that file type".
 
 ## Install into a host

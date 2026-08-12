@@ -87,7 +87,12 @@ export class TsExtractor implements Extractor {
 
 		const indexedFiles = normalizeIndexedFiles(opts.fileNames, this.rootPath);
 		const indexedFileNames = indexedFiles.map((f) => this.toAbsolute(f));
-		const fileNames = uniqueStrings([...configFileNames, ...indexedFileNames]);
+		// Prefer the glob-scanned set so createProgram does not pull the entire
+		// tsconfig graph (tests, generated, unused packages) into RAM.
+		const fileNames =
+			indexedFileNames.length > 0
+				? uniqueStrings(indexedFileNames)
+				: uniqueStrings(configFileNames);
 
 		this.program = ts.createProgram({
 			rootNames: fileNames,

@@ -140,7 +140,7 @@ describe("PHP backend: end-to-end via openProject", () => {
 		}
 	});
 
-	test("callers on a PHP symbol states that the php backend produces no call edges", async () => {
+	test("callers on a PHP method with no call sites returns empty without a capability warning", async () => {
 		const root = await makeTempProject();
 		await writeProjectFile(root, "src/Greeter.php", PHP_SOURCE);
 
@@ -153,23 +153,27 @@ describe("PHP backend: end-to-end via openProject", () => {
 
 			const callers = await graph.callers({ symbol: "greet" });
 			expect(callers.data).toEqual([]);
-			expect(callers.meta.notes).toContain(
+			expect(callers.meta.notes ?? []).not.toContain(
 				"php backend produces no call edges",
 			);
-			expect(callers.meta.partial).toBe(true);
+			expect(callers.meta.partial).toBe(false);
 
 			const callees = await graph.callees({ symbol: "greet" });
 			expect(callees.data).toEqual([]);
-			expect(callees.meta.notes).toContain(
+			expect(callees.meta.notes ?? []).not.toContain(
 				"php backend produces no call edges",
 			);
 
 			const impact = await graph.impact({ symbol: "greet" });
 			expect(impact.data).toEqual([]);
+			expect(impact.meta.notes ?? []).not.toContain(
+				"php backend produces no call edges",
+			);
+			// Impact also walks `references`, which PHP does not emit.
 			expect(
 				impact.meta.notes?.some((note) =>
-					note.startsWith("php backend produces no"),
-				),
+					note.includes("produces no references"),
+				) ?? false,
 			).toBe(true);
 		} finally {
 			graph.close();

@@ -68,8 +68,8 @@ results as complete facts.
 2. **Pass B (enricher)** — optional semantic edges; JS/TS uses the TypeScript Compiler (`resolved`).
 
 A **language backend** bundles a tree-sitter parser with an optional enricher. Two ship today:
-**TypeScript** (`.ts` `.tsx` `.js` `.jsx`, with the Compiler enricher) and **PHP** (`.php`, tree-sitter
-only). A language without an enricher still reaches `resolved` — Pass A is its whole pipeline — it just
+**TypeScript** (`.ts` `.tsx` `.js` `.jsx`, with the Compiler enricher) and **PHP** (`.php`, name-resolution
+enricher for heritage, types, and calls). A language without an enricher still reaches `resolved` — Pass A is its whole pipeline — it just
 carries `tree-sitter` provenance instead of `ts-compiler`, which is exactly what the provenance field is
 for. Run `astrograph status` to see the active backends.
 

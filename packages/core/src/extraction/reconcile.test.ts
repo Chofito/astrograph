@@ -47,7 +47,7 @@ describe("reconcileNodes", () => {
 		expect(plan.stats).toEqual({ matched: 1, added: 1, dropped: 1 });
 		expect(plan.update.map((n) => n.id)).toEqual(["a"]);
 		expect(plan.insert.map((n) => n.id)).toEqual(["c"]);
-		expect(plan.delete).toEqual(["b"]);
+		expect(plan.delete).toEqual([]);
 	});
 
 	test("matched nodes keep their id and take the enricher's content", () => {
@@ -61,7 +61,7 @@ describe("reconcileNodes", () => {
 		expect(plan.update[0]!.name).toBe("enriched-name");
 	});
 
-	test("an enricher returning nothing drops every Pass A node with one warning each", () => {
+	test("an enricher returning nothing warns per Pass A node but does not delete them", () => {
 		const a = makeNode("a", {
 			kind: "class",
 			qualifiedName: "file.ts::A",
@@ -74,7 +74,7 @@ describe("reconcileNodes", () => {
 		expect(plan.stats).toEqual({ matched: 0, added: 0, dropped: 2 });
 		expect(plan.update).toEqual([]);
 		expect(plan.insert).toEqual([]);
-		expect(plan.delete.sort()).toEqual(["a", "b"]);
+		expect(plan.delete).toEqual([]);
 		expect(plan.errors).toHaveLength(2);
 		for (const error of plan.errors) {
 			expect(error.code).toBe("PASS_A_NODE_DROPPED");

@@ -110,6 +110,8 @@ describe("createDefaultRegistry", () => {
 			"imports",
 			"type_of",
 			"returns",
+			"calls",
+			"instantiates",
 		]);
 	});
 });

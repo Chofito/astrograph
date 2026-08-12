@@ -1112,6 +1112,59 @@ describe("Pass B: edge resolution", () => {
 		}
 	});
 
+	test("require and module.exports emit imports/exports edges", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"src/utils.js",
+			`
+      module.exports = {
+        greet(name) { return name; }
+      };
+    `,
+		);
+		await writeProjectFile(
+			root,
+			"src/main.js",
+			`
+      const utils = require("./utils");
+      module.exports = {
+        run() { return utils.greet("world"); }
+      };
+    `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await indexer.indexAll();
+			const mainFile = indexer.queries
+				.getNodesByFile("src/main.js")
+				.find((node) => node.kind === "file");
+			expect(mainFile).toBeDefined();
+			const imports = indexer.queries
+				.getEdgesBySource(mainFile!.id)
+				.filter((edge) => edge.kind === "imports");
+			expect(imports.length).toBeGreaterThan(0);
+			const utilsFile = indexer.queries
+				.getNodesByFile("src/utils.js")
+				.find((node) => node.kind === "file");
+			const exportsFromUtils = indexer.queries
+				.getAllEdges()
+				.filter(
+					(edge) =>
+						edge.kind === "exports" &&
+						utilsFile !== undefined &&
+						edge.source === utilsFile.id,
+				);
+			expect(exportsFromUtils.length).toBeGreaterThan(0);
+		} finally {
+			indexer.close();
+		}
+	});
+
 	test("function and namespace merge resolves as ambiguous with candidate metadata", async () => {
 		const root = await makeTempProject();
 		await writeProjectFile(

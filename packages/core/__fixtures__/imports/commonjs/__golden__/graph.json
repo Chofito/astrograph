@@ -70,15 +70,15 @@
   ],
   "edges": [
     {
-      "source": "16397354570863598393",
+      "source": "10145308813272699877",
       "target": null,
-      "targetName": "require",
-      "kind": "calls",
-      "resolutionState": "external",
-      "confidence": "high",
+      "targetName": "greet",
+      "kind": "exports",
+      "resolutionState": "unresolved",
+      "confidence": "low",
       "provenance": "ts-compiler",
       "line": 1,
-      "col": 14
+      "col": 0
     },
     {
       "source": "16397354570863598393",
@@ -89,6 +89,28 @@
       "provenance": "ts-compiler",
       "line": 1,
       "col": 0
+    },
+    {
+      "source": "16397354570863598393",
+      "target": null,
+      "targetName": "run",
+      "kind": "exports",
+      "resolutionState": "unresolved",
+      "confidence": "low",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "16397354570863598393",
+      "target": "10145308813272699877",
+      "targetName": "./utils",
+      "kind": "imports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "heuristic",
+      "line": 1,
+      "col": 22
     }
   ]
 }

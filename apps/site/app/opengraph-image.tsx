@@ -10,7 +10,7 @@ export default function OgImage() {
 	return new ImageResponse(
 		<DefaultImage
 			title={appName}
-			description="Local-first code graph for JS/TS — built for humans and AI agents."
+			description="Local-first code graph — tree-sitter plus language enrichers, built for humans and AI agents."
 			site={appName}
 		/>,
 		size,

@@ -9,14 +9,14 @@ import type {
 	LoadProjectOptions,
 	Node,
 	Parser,
-	PassAResult,
 } from "../../types";
 import { TREE_SITTER_WASMS_VERSION } from "../tree-sitter/grammars";
 import { TreeSitterParser } from "../tree-sitter/parser";
 import { PhpAstCache } from "./ast-cache";
 import {
-	buildPhpFqnIndex,
-	type PhpFqnIndex,
+	buildPhpNameIndex,
+	emptyPhpNameIndex,
+	type PhpNameIndex,
 	resolvePhpHeritage,
 } from "./resolve";
 
@@ -40,23 +40,17 @@ const ENRICHED_CAPABILITIES: BackendCapabilities = {
 		"imports",
 		"type_of",
 		"returns",
+		"calls",
+		"instantiates",
 	],
 };
 
 /**
  * PHP backend: tree-sitter Pass A + optional name-resolution enricher.
  *
- * The enricher is not a type checker — it builds a project-wide FQN → node id
- * index and resolves `extends` / `implements` / `imports` / `type_of` /
- * `returns` from `use` aliases and the current namespace only. Never bare-name
- * search. Pass A does not emit leaf `import` nodes; `use` becomes `imports`
- * edges from the file node instead.
- *
- * Parse cost with the enricher on: each file is parsed once into
- * {@link PhpAstCache} during Pass A (using the source the indexer already
- * read). FQN-index build, contains re-extract, and heritage all reuse that
- * Tree. Trees are released on every `loadProject`. Files that skip Pass A in
- * a sync still parse once on first enricher touch (disk fallback).
+ * Trees are not retained across files. Pass A parses and frees. The enricher
+ * rebuilds a name index (one Tree at a time) then re-parses each file for
+ * edges. Peak RAM is O(1 tree) + O(FQN/method maps).
  */
 export class PhpLanguageBackend implements LanguageBackend {
 	readonly id = "php";
@@ -70,20 +64,15 @@ export class PhpLanguageBackend implements LanguageBackend {
 	private readonly astCache = new PhpAstCache();
 	private fileNames: string[] = [];
 	private loadNodesForFile: (filePath: string) => Node[] = () => [];
-	private fqnIndex: PhpFqnIndex | null = null;
+	private nameIndex: PhpNameIndex | null = null;
 
 	constructor(opts: PhpBackendOptions) {
 		this.treeSitter = new TreeSitterParser(opts);
+		this.parser = this.treeSitter;
 		if (opts.enricher === false) {
-			this.parser = this.treeSitter;
 			this.enricher = undefined;
 			this.capabilities = PASS_A_ONLY_CAPABILITIES;
 		} else {
-			// Indexer calls backend.parser — wrap so Pass A fills the shared cache.
-			this.parser = {
-				extractNodes: (filePath, source) =>
-					this.extractNodesCached(filePath, source),
-			};
 			this.enricher = {
 				mode: "complement" satisfies EnricherMode,
 				loadProject: (o) => this.loadProject(o),
@@ -98,19 +87,9 @@ export class PhpLanguageBackend implements LanguageBackend {
 			"parser:tree-sitter-wasms": TREE_SITTER_WASMS_VERSION,
 		};
 		if (this.enricher !== undefined) {
-			keys["enricher:php-names"] = "2";
+			keys["enricher:php-names"] = "3";
 		}
 		return keys;
-	}
-
-	private extractNodesCached(filePath: string, source: string): PassAResult {
-		const entry = this.astCache.get(filePath, source);
-		if (entry === undefined) {
-			return this.treeSitter.extractNodes(filePath, source);
-		}
-		return this.treeSitter.extractNodes(filePath, entry.source, {
-			tree: entry.tree,
-		});
 	}
 
 	private loadProject(opts: LoadProjectOptions): void {
@@ -118,33 +97,34 @@ export class PhpLanguageBackend implements LanguageBackend {
 		this.astCache.setRootPath(opts.rootPath);
 		this.fileNames = opts.fileNames ?? [];
 		this.loadNodesForFile = opts.loadNodesForFile ?? (() => []);
-		this.fqnIndex = null;
+		this.nameIndex = null;
 	}
 
 	private resolveEdges(filePath: string): EdgeResolutionResult {
-		this.ensureFqnIndex();
+		this.ensureNameIndex();
 
-		const entry = this.astCache.get(filePath);
+		const entry = this.astCache.parse(filePath);
 		if (entry === undefined) {
 			return { edges: [], errors: [], externalNodes: [] };
 		}
-
-		// Reuse the cached Tree so contains re-extract does not re-parse.
-		const passA = this.treeSitter.extractNodes(filePath, entry.source, {
-			tree: entry.tree,
-		});
-		return resolvePhpHeritage(
-			filePath,
-			passA,
-			this.fqnIndex ?? new Map(),
-			entry.tree.rootNode,
-		);
+		try {
+			const passA = this.treeSitter.extractNodes(filePath, entry.source, {
+				tree: entry.tree,
+			});
+			return resolvePhpHeritage(
+				filePath,
+				passA,
+				this.nameIndex ?? emptyPhpNameIndex(),
+				entry.tree.rootNode,
+			);
+		} finally {
+			this.astCache.release(filePath);
+		}
 	}
 
-	private ensureFqnIndex(): void {
-		if (this.fqnIndex !== null) return;
-		// Uses trees already cached by Pass A; disk-parses only uncached files.
-		this.fqnIndex = buildPhpFqnIndex({
+	private ensureNameIndex(): void {
+		if (this.nameIndex !== null) return;
+		this.nameIndex = buildPhpNameIndex({
 			fileNames: this.fileNames,
 			loadNodesForFile: (path) => this.loadNodesForFile(path),
 			astCache: this.astCache,

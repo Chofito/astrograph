@@ -180,7 +180,7 @@ All 10 are deterministic and offline — none calls a model. ✅
 
 These only get added if they clear the same two bars (utility + offline viability). Tracked under ROADMAP §13 (Stage 4 / v1.5, Stage 5 / v2):
 
-- `astrograph_coverage` — explicit index-debt view (stale/partial/ambiguous zones). *Viable offline.*
+- `astrograph_coverage` — **not implemented.** Explicit index-debt view (stale/partial/ambiguous zones). Parked after v1.0.
 - `astrograph_diff` — what changed in the graph between commit A and B / a PR's impact. *Viable offline (needs git read).*
 - `astrograph_explain_context` — why each symbol was included in a context payload. *Viable offline (introspection).*
 - Architecture-rule checks (forbidden deps, cycles, layers). *Viable offline.*

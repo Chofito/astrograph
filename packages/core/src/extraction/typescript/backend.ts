@@ -46,10 +46,9 @@ const ENRICHED_CAPABILITIES: BackendCapabilities = {
  * JS/TS backend: tree-sitter Pass A (structural) + TypeScript Compiler Pass B.
  *
  * Pass A emits a conservative subset of the compiler's node set with
- * byte-identical ids; Pass B contributes its authoritative node view plus the
- * resolved edges, and the indexer reconciles the two by id. Before resolving
- * any file, all project files are TS-extracted into memory so cross-file id
- * lookups never see stale Pass A rows from the DB.
+ * byte-identical ids; Pass B may insert enricher-only nodes and resolved
+ * edges. Cross-file id lookups use Pass A rows from SQLite via
+ * `loadNodesForFile` — the compiler must not dump every file's nodes into RAM.
  */
 export class TypescriptLanguageBackend
 	implements ProjectExtractor, LanguageBackend
@@ -72,8 +71,6 @@ export class TypescriptLanguageBackend
 	readonly capabilities: BackendCapabilities;
 
 	private readonly tsExtractor: TsExtractor;
-	private projectFiles: string[] = [];
-	private nodesWarmed = false;
 
 	constructor(opts: TypescriptBackendOptions) {
 		this.parser = new TreeSitterParser(opts);
@@ -100,13 +97,7 @@ export class TypescriptLanguageBackend
 	}
 
 	loadProject(opts: LoadProjectOptions): void {
-		this.projectFiles = opts.fileNames ?? [];
-		this.nodesWarmed = false;
-		this.tsExtractor.loadProject({
-			...opts,
-			// Prefer in-memory TS nodes after warm-up; avoid DB tree-sitter ids.
-			loadNodesForFile: () => [],
-		});
+		this.tsExtractor.loadProject(opts);
 	}
 
 	/** Pass A — tree-sitter structural nodes and `contains` edges. */
@@ -114,10 +105,8 @@ export class TypescriptLanguageBackend
 		return this.parser.extractNodes(filePath, source);
 	}
 
-	/** Pass B — the compiler's node view plus resolved edges. */
+	/** Pass B — compiler nodes (inserts allowed) plus resolved edges. */
 	resolveEdges(filePath: string): EdgeResolutionResult {
-		this.warmAllTsNodes();
-
 		const source = this.tsExtractor.getSourceText(filePath);
 		if (source === undefined) {
 			return { edges: [], errors: [], externalNodes: [] };
@@ -132,15 +121,5 @@ export class TypescriptLanguageBackend
 			externalNodes: resolved.externalNodes,
 			nodes: extracted.nodes,
 		};
-	}
-
-	private warmAllTsNodes(): void {
-		if (this.nodesWarmed) return;
-		for (const filePath of this.projectFiles) {
-			const source = this.tsExtractor.getSourceText(filePath);
-			if (source === undefined) continue;
-			this.tsExtractor.extractNodes(filePath, source);
-		}
-		this.nodesWarmed = true;
 	}
 }

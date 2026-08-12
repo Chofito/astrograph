@@ -37,11 +37,23 @@ export function buildAliasTable(container: TsNode): Map<string, string> {
 	return aliases;
 }
 
+/** True when this `use` imports a class/namespace, not `use function` / `use const`. */
+export function isClassUseDeclaration(node: TsNode): boolean {
+	const kind = namedChildOfType(node, "namespace_use_kind");
+	if (kind !== undefined) {
+		const text = kind.text.toLowerCase();
+		return text !== "function" && text !== "const";
+	}
+	const head = node.text.slice(0, 24).toLowerCase().replace(/\s+/g, " ");
+	return !head.startsWith("use function") && !head.startsWith("use const");
+}
+
 /** Merge one `namespace_use_declaration` into an alias table. */
 export function collectUseDeclaration(
 	node: TsNode,
 	aliases: Map<string, string>,
 ): void {
+	if (!isClassUseDeclaration(node)) return;
 	const group = namedChildOfType(node, "namespace_use_group");
 	if (group) {
 		const prefixNode =

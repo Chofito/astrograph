@@ -37,7 +37,7 @@ Astrograph uses a **modular extraction pipeline**:
   **TypeScript Compiler** enricher (exact module resolution, aliases, inheritance, re-exports).
 
 Two backends ship today: **JS/TS** (`.ts` `.tsx` `.js` `.jsx`) with the Compiler enricher, and **PHP**
-(`.php`) with tree-sitter only. A language without an enricher still gets a real, queryable graph — its
+(`.php`) with a name-resolution enricher (heritage, types, calls). A language without an enricher still gets a real, queryable graph — its
 edges are marked `tree-sitter` rather than `ts-compiler`, so you can see exactly how much they prove.
 A file type no backend claims is not indexed; `astrograph status` tells you which are active.
 

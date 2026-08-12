@@ -8,6 +8,7 @@ import type {
 	NodeKind,
 } from "../../types";
 import type { PhpAstCache } from "./ast-cache";
+import { emitCallAndInstantiateEdges } from "./calls";
 import {
 	collectUseDeclaration,
 	isPhpBuiltinType,
@@ -22,53 +23,143 @@ import {
 
 export type PhpFqnIndex = Map<string, string>;
 
+/** Project-wide PHP names collected while trees are live, then trees are dropped. */
+export interface PhpNameIndex {
+	fqn: PhpFqnIndex;
+	/** type node id → method name → method node id */
+	methods: Map<string, Map<string, string>>;
+	/** type node id → parent FQNs (resolved via use/namespace, not yet existence) */
+	extendsOf: Map<string, string[]>;
+	implementsOf: Map<string, string[]>;
+	traitUse: Set<string>;
+}
+
+export function emptyPhpNameIndex(): PhpNameIndex {
+	return {
+		fqn: new Map(),
+		methods: new Map(),
+		extendsOf: new Map(),
+		implementsOf: new Map(),
+		traitUse: new Set(),
+	};
+}
+
 export interface PhpResolveContext {
 	fileNames: string[];
 	loadNodesForFile: (filePath: string) => Node[];
-	/** Shared parse cache — one Tree per file for index + resolution. */
+	/** Parse helper — one live Tree; {@link buildPhpNameIndex} releases each file. */
 	astCache: PhpAstCache;
 }
 
 /**
- * Project-wide FQN → node id. Built from Pass A nodes + AST namespace scope.
- * Node ids are never recomputed — we match the Pass A row by kind/name/range.
+ * Project-wide FQN → node id, plus method/extends tables for call resolution.
+ * Parses each file, contributes, then releases the Tree.
  */
-export function buildPhpFqnIndex(ctx: PhpResolveContext): PhpFqnIndex {
-	const index: PhpFqnIndex = new Map();
+export function buildPhpNameIndex(ctx: PhpResolveContext): PhpNameIndex {
+	const index = emptyPhpNameIndex();
 
 	for (const relPath of ctx.fileNames) {
-		const entry = ctx.astCache.get(relPath);
+		const entry = ctx.astCache.parse(relPath);
 		if (entry === undefined) continue;
-		const nodes = ctx.loadNodesForFile(relPath);
-		forEachPhpScope(entry.tree.rootNode, (scope) => {
-			for (const decl of scope.declarations) {
-				const name = namedChildOfType(decl, "name")?.text;
-				if (name === undefined) continue;
-				const fqn = phpFqnJoin(scope.namespaceName, name);
-				const kind =
-					decl.type === "interface_declaration" ? "interface" : "class";
-				const id = findPassANodeId(nodes, kind, name, decl);
-				if (id !== undefined) index.set(fqn, id);
-			}
-		});
+		try {
+			contributePhpNameIndex(
+				index,
+				entry.tree.rootNode,
+				ctx.loadNodesForFile(relPath),
+			);
+		} finally {
+			ctx.astCache.release(relPath);
+		}
 	}
 	return index;
 }
 
+export function contributePhpNameIndex(
+	index: PhpNameIndex,
+	root: TsNode,
+	nodes: Node[],
+): void {
+	forEachPhpScope(root, (scope) => {
+		for (const decl of scope.declarations) {
+			const name = namedChildOfType(decl, "name")?.text;
+			if (name === undefined) continue;
+			const kind =
+				decl.type === "interface_declaration" ? "interface" : "class";
+			const id = findPassANodeId(nodes, kind, name, decl);
+			if (id === undefined) continue;
+			const fqn = phpFqnJoin(scope.namespaceName, name);
+			index.fqn.set(fqn, id);
+
+			const methods = new Map<string, string>();
+			const body = decl.childForFieldName("body");
+			if (body) {
+				for (let i = 0; i < body.namedChildCount; i++) {
+					const member = body.namedChild(i);
+					if (!member) continue;
+					if (member.type === "use_declaration") {
+						index.traitUse.add(id);
+					}
+					if (member.type !== "method_declaration") continue;
+					const methodName = namedChildOfType(member, "name")?.text;
+					if (methodName === undefined) continue;
+					const methodId = findPassANodeId(nodes, "method", methodName, member);
+					if (methodId !== undefined) methods.set(methodName, methodId);
+				}
+			}
+			index.methods.set(id, methods);
+
+			const base = namedChildOfType(decl, "base_clause");
+			if (base) {
+				const parents: string[] = [];
+				for (const typeName of namedChildrenOfTypes(
+					base,
+					TYPE_NAME_NODE_TYPES,
+				)) {
+					const parentFqn = resolveTypeReference(
+						typeName.text,
+						scope.aliases,
+						scope.namespaceName,
+					);
+					if (parentFqn) parents.push(parentFqn);
+				}
+				index.extendsOf.set(id, parents);
+			}
+
+			const iface = namedChildOfType(decl, "class_interface_clause");
+			if (iface) {
+				const ifaces: string[] = [];
+				for (const typeName of namedChildrenOfTypes(
+					iface,
+					TYPE_NAME_NODE_TYPES,
+				)) {
+					const ifaceFqn = resolveTypeReference(
+						typeName.text,
+						scope.aliases,
+						scope.namespaceName,
+					);
+					if (ifaceFqn) ifaces.push(ifaceFqn);
+				}
+				index.implementsOf.set(id, ifaces);
+			}
+		}
+	});
+}
+
 /**
- * Resolve PHP edges for one file: heritage, imports, and type-position
- * dependencies. Re-uses Pass A `contains` edges so the indexer's edge-replace
- * step does not drop structural edges.
+ * Resolve PHP edges for one file: heritage, imports, type-position
+ * dependencies, then calls/instantiates. Re-uses Pass A `contains` edges so
+ * the indexer's edge-replace step does not drop structural edges.
  *
- * `root` must be the root node of the cached Tree for this file (caller owns
- * Tree lifetime via {@link PhpAstCache}).
+ * `root` must be the root node of the live Tree for this file (caller releases
+ * it after this returns).
  */
 export function resolvePhpHeritage(
 	_relPath: string,
 	passA: { nodes: Node[]; edges: Edge[]; errors: ExtractionError[] },
-	fqnIndex: PhpFqnIndex,
+	nameIndex: PhpNameIndex,
 	root: TsNode,
 ): EdgeResolutionResult {
+	const fqnIndex = nameIndex.fqn;
 	const edges: Edge[] = [...passA.edges];
 	const errors: ExtractionError[] = [...passA.errors];
 	const fileNode = passA.nodes.find((node) => node.kind === "file");
@@ -102,6 +193,16 @@ export function resolvePhpHeritage(
 				fqnIndex,
 				edges,
 			);
+			emitCallAndInstantiateEdges({
+				decl,
+				nodes: passA.nodes,
+				fileNodeId: fileNode?.id,
+				aliases: scope.aliases,
+				currentNamespace: scope.namespaceName,
+				nameIndex,
+				edges,
+				errors,
+			});
 		}
 
 		for (const fn of scope.functions) {
@@ -113,6 +214,16 @@ export function resolvePhpHeritage(
 				fqnIndex,
 				edges,
 			);
+			emitCallAndInstantiateEdges({
+				decl: fn,
+				nodes: passA.nodes,
+				fileNodeId: fileNode?.id,
+				aliases: scope.aliases,
+				currentNamespace: scope.namespaceName,
+				nameIndex,
+				edges,
+				errors,
+			});
 		}
 	});
 
@@ -562,7 +673,7 @@ function resolvedEdge(input: {
 	};
 }
 
-function findPassANodeId(
+export function findPassANodeId(
 	nodes: Node[],
 	kind: NodeKind,
 	name: string,

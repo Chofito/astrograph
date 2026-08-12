@@ -18,6 +18,7 @@
 		"typecheck:eval": "tsc --noEmit -p tsconfig.eval.json",
 		"test": "bun test",
 		"eval": "bun eval/runner.ts",
+		"bench": "bun bench/rss.ts",
 		"build": "bun build packages/cli/src/bin/astrograph.ts --compile --outfile dist/astrograph",
 		"build:all": "for t in darwin-arm64 darwin-x64 linux-x64 linux-arm64; do echo \"building $t\" && bun build packages/cli/src/bin/astrograph.ts --compile --target=bun-$t --outfile dist/astrograph-$t || exit 1; done",
 		"release:checksums": "cd dist && if command -v sha256sum >/dev/null 2>&1; then sha256sum astrograph-* > SHA256SUMS; else shasum -a 256 astrograph-* > SHA256SUMS; fi && cat SHA256SUMS",

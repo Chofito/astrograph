@@ -454,9 +454,12 @@ export class Indexer {
 
 			const file = this.queries.getFile(relPath);
 			if (file) {
+				const kept = this.queries
+					.getNodesByFile(relPath)
+					.filter((node) => !node.isExternal);
 				this.queries.upsertFile({
 					...file,
-					nodeCount: enriched.filter((n) => n.filePath === relPath).length,
+					nodeCount: kept.length,
 					state: "parsed",
 					errors: mergeErrors(file.errors, plan.errors),
 				});
@@ -494,7 +497,11 @@ export class Indexer {
 
 			const file = this.queries.getFile(relPath);
 			if (file) {
-				this.queries.upsertFile({ ...file, state: "resolved" });
+				this.queries.upsertFile({
+					...file,
+					state: "resolved",
+					errors: mergeErrors(file.errors, result.errors),
+				});
 			}
 		});
 

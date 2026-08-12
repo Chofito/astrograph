@@ -241,7 +241,7 @@ behavior.
 - A file may open and close PHP mode repeatedly; only `php`-mode regions carry declarations, the rest is inline HTML text.
 - `namespace` declarations feed `qualifiedName`. Pass A does **not** emit leaf `import` nodes for `use` (they were dead ends — contained, but with no outbound edge). The enricher emits followable `imports` edges from the file node to the resolved FQN instead, with the same strict resolution states as heritage (`resolved` / `external` / `unresolved`).
 - Visibility modifiers (`public`/`protected`/`private`) map directly to `Node.visibility`; there is no inference to do.
-- The enricher also resolves `extends` / `implements` and type-position edges (`type_of` on params/properties, `returns` on callables) via the alias→FQN table — never bare-name search.
+- The enricher also resolves `extends` / `implements`, type-position edges (`type_of` on params/properties, `returns` on callables), and `calls` / `instantiates` (four-bucket lookup) via the alias→FQN table — never bare-name search.
 
 ---
 

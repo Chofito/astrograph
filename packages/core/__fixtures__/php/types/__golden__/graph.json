@@ -459,6 +459,17 @@
     {
       "source": "5375130757150388964",
       "target": null,
+      "targetName": "RuntimeException",
+      "kind": "instantiates",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 38,
+      "col": 14
+    },
+    {
+      "source": "5375130757150388964",
+      "target": null,
       "targetName": "Vendor\\Missing\\Factory",
       "kind": "returns",
       "resolutionState": "external",

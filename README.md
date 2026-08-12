@@ -29,14 +29,14 @@ It knows about:
 * unresolved and ambiguous edges, reported honestly instead of hidden
 * coverage states so every answer can say whether it is complete or partial
 
-**JS/TS has semantic depth:** the TypeScript Compiler enricher (Pass B) provides exact import/type/call resolution. **Languages without an enricher get tree-sitter structural extraction**, which is a real, queryable graph — just structural rather than type-resolved.
+**JS/TS has semantic depth:** the TypeScript Compiler enricher (Pass B) provides exact import/type/call resolution. **PHP has a name-resolution enricher** (FQN + `use` aliases) for heritage, type positions, calls, and `new`. Other languages get tree-sitter structural extraction until an enricher lands.
 
 Language backends shipping today:
 
 | Backend | Files | Pass B enricher |
 |---|---|---|
 | `typescript` | `.ts` `.tsx` `.js` `.jsx` `.mjs` `.cjs` | TypeScript Compiler (semantic depth) |
-| `php` | `.php` | none — tree-sitter only |
+| `php` | `.php` | name resolution (heritage, types, calls) |
 
 `astrograph status` lists the active backends. Adding a language means registering another backend, not changing the core.
 
@@ -69,7 +69,7 @@ in use. Stage 3 (promo/docs site) is live and being filled in.
 ```text
 Core storage              done
 JS and TS extraction      done (tree-sitter + TS Compiler enricher)
-PHP extraction            done (tree-sitter only, no enricher)
+PHP extraction            done (tree-sitter + name enricher: heritage, types, calls)
 Edge resolution           done
 Read tools                done
 CLI                       done, in polish
@@ -79,7 +79,7 @@ Promo/docs site           active (Stage 3)
 3D explorer               parked
 ```
 
-See [ROADMAP.md](ROADMAP.md) for the full staged plan and [docs/contracts.md](docs/contracts.md) for the canonical types.
+See [ROADMAP.md](ROADMAP.md) for the v1.0 stabilization plan and [docs/contracts.md](docs/contracts.md) for the canonical types.
 
 ## Quick Start
 
@@ -326,7 +326,7 @@ External, unresolved, ambiguous, stale, and partial results are first class stat
 
 ### Pluggable language backends
 
-Astrograph uses **tree-sitter** for structural extraction and **per-language enrichers** (like the TS Compiler for JS/TS) for semantic depth. A backend is a parser plus an optional enricher: JS/TS is first-class with the Compiler enricher, PHP ships parser-only, and a new language is a new backend registration. Files from an enricher-less backend still reach full coverage — their edges just carry `tree-sitter` provenance instead of `ts-compiler`, so you always know how much an edge is worth.
+Astrograph uses **tree-sitter** for structural extraction and **per-language enrichers** (like the TS Compiler for JS/TS) for semantic depth. A backend is a parser plus an optional enricher: JS/TS ships the Compiler enricher, PHP ships a name-resolution enricher (heritage, types, calls/`new`), and a new language is a new backend registration. Files from an enricher-less backend still reach full coverage — their edges just carry `tree-sitter` provenance instead of `ts-compiler`, so you always know how much an edge is worth.
 
 ## Project Layout
 

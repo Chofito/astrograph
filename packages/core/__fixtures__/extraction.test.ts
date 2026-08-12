@@ -123,15 +123,21 @@ describe("extraction: fixture invariants", () => {
 		).toBe(true);
 	});
 
-	test("imports/commonjs records require as external calls (imports/exports not yet modeled)", async () => {
+	test("imports/commonjs records require/module.exports as imports/exports", async () => {
 		const graph = graphFromFixture(await extractFixture("imports/commonjs"));
-		const requireCalls = graph.edges.filter(
-			(edge) =>
-				edge.kind === "calls" &&
-				edge.targetName === "require" &&
-				edge.resolutionState === "external",
-		);
-		expect(requireCalls.length).toBeGreaterThan(0);
+		expect(
+			graph.edges.some(
+				(edge) =>
+					edge.kind === "imports" &&
+					(edge.targetName === "./utils" || edge.target !== null),
+			),
+		).toBe(true);
+		expect(graph.edges.some((edge) => edge.kind === "exports")).toBe(true);
+		expect(
+			graph.edges.some(
+				(edge) => edge.kind === "calls" && edge.targetName === "require",
+			),
+		).toBe(false);
 	});
 });
 

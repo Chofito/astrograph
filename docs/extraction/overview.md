@@ -174,9 +174,10 @@ Per file: route by extension via the registry → `parser.extractNodes(filePath,
 
 Progressive indexing queries can work on `parsed` files (get symbols, rough structure) and boost to `resolved` on demand.
 
-`resolved` is **language-agnostic**: for an enricher-less backend (`mode: 'none'`, e.g. PHP) Pass A *is*
-the whole pipeline, so its files reach `resolved` too. The difference in fidelity is carried by edge
-`provenance`/`confidence`, not by parking those languages at `parsed` forever. Normative definition:
+`resolved` is **language-agnostic**: for an enricher-less backend (`mode: 'none'`, or
+`backends.<id>.enricher: false`) Pass A *is* the whole pipeline, so its files reach `resolved` too.
+The difference in fidelity is carried by edge `provenance`/`confidence`, not by parking those
+languages at `parsed` forever. Normative definition:
 [graph-model §6.1](../graph-model.md#61-what-resolved-means-per-backend-language-agnostic).
 
 ---
@@ -189,11 +190,9 @@ extension. What actually ships:
 | Backend `id` | Languages | Extensions | Enricher | Mode |
 |---|---|---|---|---|
 | `typescript` | typescript, tsx, javascript, jsx | `.ts` `.tsx` `.js` `.jsx` `.mjs` `.cjs` | TS Compiler (Pass B) | **`complement`** |
-| `php` | php | `.php` | — | **`none`** (tree-sitter only) |
+| `php` | php | `.php` | name resolution (FQN + `use`) | **`complement`** |
 
-PHP is a **real backend, not a placeholder**: its files are indexed, reach `resolved`, and answer the
-same tools — with `tree-sitter` provenance instead of `ts-compiler`. It is the reference shape for
-"language without an enricher".
+PHP ships a **name-resolution enricher** (not a type checker): heritage, `use` → `imports`, `type_of` / `returns`, and `calls` / `instantiates` with honest `external` / `unresolved` buckets. Pass A still owns the node set.
 
 Adding a language = register another `LanguageBackend`. Whether it also gets an enricher is a separate,
 later decision — the graph is useful the moment Pass A exists.

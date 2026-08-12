@@ -1,0 +1,1356 @@
+{
+  "nodes": [
+    {
+      "id": "5448243888531176627",
+      "project": "root",
+      "kind": "file",
+      "name": "Child.php",
+      "qualifiedName": "Child.php",
+      "filePath": "Child.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 13,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "7585100611049731493",
+      "project": "root",
+      "kind": "namespace",
+      "name": "App",
+      "qualifiedName": "Child.php::App",
+      "filePath": "Child.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 14
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "12014845101789156051",
+      "project": "root",
+      "kind": "class",
+      "name": "Child",
+      "qualifiedName": "Child.php::Child",
+      "filePath": "Child.php",
+      "language": "php",
+      "range": {
+        "startLine": 5,
+        "endLine": 12,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "1073104651997073726",
+      "project": "root",
+      "kind": "method",
+      "name": "go",
+      "qualifiedName": "Child.php::Child.go",
+      "filePath": "Child.php",
+      "language": "php",
+      "range": {
+        "startLine": 7,
+        "endLine": 11,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "13377592683254228520",
+      "project": "root",
+      "kind": "file",
+      "name": "Contract.php",
+      "qualifiedName": "Contract.php",
+      "filePath": "Contract.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 9,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "2660534470892388305",
+      "project": "root",
+      "kind": "namespace",
+      "name": "App",
+      "qualifiedName": "Contract.php::App",
+      "filePath": "Contract.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 14
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "17036663871000401703",
+      "project": "root",
+      "kind": "interface",
+      "name": "Contract",
+      "qualifiedName": "Contract.php::Contract",
+      "filePath": "Contract.php",
+      "language": "php",
+      "range": {
+        "startLine": 5,
+        "endLine": 8,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "11130750983636472662",
+      "project": "root",
+      "kind": "method",
+      "name": "ping",
+      "qualifiedName": "Contract.php::Contract.ping",
+      "filePath": "Contract.php",
+      "language": "php",
+      "range": {
+        "startLine": 7,
+        "endLine": 7,
+        "startColumn": 4,
+        "endColumn": 33
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "13398809267206535412",
+      "project": "root",
+      "kind": "file",
+      "name": "Dep.php",
+      "qualifiedName": "Dep.php",
+      "filePath": "Dep.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 15,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "15315406963238158517",
+      "project": "root",
+      "kind": "namespace",
+      "name": "App",
+      "qualifiedName": "Dep.php::App",
+      "filePath": "Dep.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 14
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "17339990305425034699",
+      "project": "root",
+      "kind": "class",
+      "name": "Dep",
+      "qualifiedName": "Dep.php::Dep",
+      "filePath": "Dep.php",
+      "language": "php",
+      "range": {
+        "startLine": 5,
+        "endLine": 14,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "5404388736107862696",
+      "project": "root",
+      "kind": "method",
+      "name": "run",
+      "qualifiedName": "Dep.php::Dep.run",
+      "filePath": "Dep.php",
+      "language": "php",
+      "range": {
+        "startLine": 7,
+        "endLine": 9,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "11338169456123776357",
+      "project": "root",
+      "kind": "method",
+      "name": "__construct",
+      "qualifiedName": "Dep.php::Dep.__construct",
+      "filePath": "Dep.php",
+      "language": "php",
+      "range": {
+        "startLine": 11,
+        "endLine": 13,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "16367319367063797559",
+      "project": "root",
+      "kind": "file",
+      "name": "Dynamic.php",
+      "qualifiedName": "Dynamic.php",
+      "filePath": "Dynamic.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 12,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "10950962087510047033",
+      "project": "root",
+      "kind": "namespace",
+      "name": "App",
+      "qualifiedName": "Dynamic.php::App",
+      "filePath": "Dynamic.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 14
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "11048448762098223147",
+      "project": "root",
+      "kind": "class",
+      "name": "Dynamic",
+      "qualifiedName": "Dynamic.php::Dynamic",
+      "filePath": "Dynamic.php",
+      "language": "php",
+      "range": {
+        "startLine": 5,
+        "endLine": 11,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "3554832944393720403",
+      "project": "root",
+      "kind": "method",
+      "name": "wild",
+      "qualifiedName": "Dynamic.php::Dynamic.wild",
+      "filePath": "Dynamic.php",
+      "language": "php",
+      "range": {
+        "startLine": 7,
+        "endLine": 10,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "17603212692659952722",
+      "project": "root",
+      "kind": "file",
+      "name": "MissingCall.php",
+      "qualifiedName": "MissingCall.php",
+      "filePath": "MissingCall.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 12,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "17966382955377251141",
+      "project": "root",
+      "kind": "namespace",
+      "name": "App",
+      "qualifiedName": "MissingCall.php::App",
+      "filePath": "MissingCall.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 14
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "10856406845678622308",
+      "project": "root",
+      "kind": "class",
+      "name": "MissingCall",
+      "qualifiedName": "MissingCall.php::MissingCall",
+      "filePath": "MissingCall.php",
+      "language": "php",
+      "range": {
+        "startLine": 5,
+        "endLine": 11,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "9105924675440234534",
+      "project": "root",
+      "kind": "method",
+      "name": "nope",
+      "qualifiedName": "MissingCall.php::MissingCall.nope",
+      "filePath": "MissingCall.php",
+      "language": "php",
+      "range": {
+        "startLine": 7,
+        "endLine": 10,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "6440631525534188705",
+      "project": "root",
+      "kind": "file",
+      "name": "ParentService.php",
+      "qualifiedName": "ParentService.php",
+      "filePath": "ParentService.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 11,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "8361733170256729516",
+      "project": "root",
+      "kind": "namespace",
+      "name": "App",
+      "qualifiedName": "ParentService.php::App",
+      "filePath": "ParentService.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 14
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "18435331309091683548",
+      "project": "root",
+      "kind": "class",
+      "name": "ParentService",
+      "qualifiedName": "ParentService.php::ParentService",
+      "filePath": "ParentService.php",
+      "language": "php",
+      "range": {
+        "startLine": 5,
+        "endLine": 10,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "14189002776166140960",
+      "project": "root",
+      "kind": "method",
+      "name": "inherited",
+      "qualifiedName": "ParentService.php::ParentService.inherited",
+      "filePath": "ParentService.php",
+      "language": "php",
+      "range": {
+        "startLine": 7,
+        "endLine": 9,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "10715655692654694091",
+      "project": "root",
+      "kind": "file",
+      "name": "VendorLeaf.php",
+      "qualifiedName": "VendorLeaf.php",
+      "filePath": "VendorLeaf.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 12,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "3557359989057927766",
+      "project": "root",
+      "kind": "namespace",
+      "name": "App",
+      "qualifiedName": "VendorLeaf.php::App",
+      "filePath": "VendorLeaf.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 14
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "16236676107339653101",
+      "project": "root",
+      "kind": "class",
+      "name": "VendorLeaf",
+      "qualifiedName": "VendorLeaf.php::VendorLeaf",
+      "filePath": "VendorLeaf.php",
+      "language": "php",
+      "range": {
+        "startLine": 5,
+        "endLine": 11,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "11460157365268060406",
+      "project": "root",
+      "kind": "method",
+      "name": "loadRow",
+      "qualifiedName": "VendorLeaf.php::VendorLeaf.loadRow",
+      "filePath": "VendorLeaf.php",
+      "language": "php",
+      "range": {
+        "startLine": 7,
+        "endLine": 10,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "17586617539129937305",
+      "project": "root",
+      "kind": "file",
+      "name": "Worker.php",
+      "qualifiedName": "Worker.php",
+      "filePath": "Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 32,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "4034163904452230674",
+      "project": "root",
+      "kind": "namespace",
+      "name": "App",
+      "qualifiedName": "Worker.php::App",
+      "filePath": "Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 14
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "114968150941465059",
+      "project": "root",
+      "kind": "class",
+      "name": "Worker",
+      "qualifiedName": "Worker.php::Worker",
+      "filePath": "Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 5,
+        "endLine": 31,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "14233610028912070649",
+      "project": "root",
+      "kind": "property",
+      "name": "$typed",
+      "qualifiedName": "Worker.php::Worker.$typed",
+      "filePath": "Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 7,
+        "endLine": 7,
+        "startColumn": 16,
+        "endColumn": 22
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "12008836406244267055",
+      "project": "root",
+      "kind": "method",
+      "name": "__construct",
+      "qualifiedName": "Worker.php::Worker.__construct",
+      "filePath": "Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 9,
+        "endLine": 16,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "14481234369753627531",
+      "project": "root",
+      "kind": "method",
+      "name": "bucketOne",
+      "qualifiedName": "Worker.php::Worker.bucketOne",
+      "filePath": "Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 18,
+        "endLine": 26,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "15195079071312262622",
+      "project": "root",
+      "kind": "method",
+      "name": "staticOk",
+      "qualifiedName": "Worker.php::Worker.staticOk",
+      "filePath": "Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 28,
+        "endLine": 30,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": true,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "10715655692654694091",
+      "target": "16236676107339653101",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "10715655692654694091",
+      "target": "3557359989057927766",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "1073104651997073726",
+      "target": "14189002776166140960",
+      "targetName": "inherited",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 9,
+      "col": 8
+    },
+    {
+      "source": "1073104651997073726",
+      "target": "14189002776166140960",
+      "targetName": "inherited",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 10,
+      "col": 8
+    },
+    {
+      "source": "10856406845678622308",
+      "target": "9105924675440234534",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7
+    },
+    {
+      "source": "10856406845678622308",
+      "target": "18435331309091683548",
+      "targetName": "ParentService",
+      "kind": "extends",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5,
+      "col": 26
+    },
+    {
+      "source": "11048448762098223147",
+      "target": "3554832944393720403",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7
+    },
+    {
+      "source": "11460157365268060406",
+      "target": null,
+      "targetName": "App\\VendorLeaf::getData",
+      "kind": "calls",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 9,
+      "col": 8
+    },
+    {
+      "source": "114968150941465059",
+      "target": "12008836406244267055",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 9
+    },
+    {
+      "source": "114968150941465059",
+      "target": "14233610028912070649",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7
+    },
+    {
+      "source": "114968150941465059",
+      "target": "14481234369753627531",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 18
+    },
+    {
+      "source": "114968150941465059",
+      "target": "15195079071312262622",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 28
+    },
+    {
+      "source": "12008836406244267055",
+      "target": "17036663871000401703",
+      "targetName": "Contract",
+      "kind": "type_of",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 12,
+      "col": 25
+    },
+    {
+      "source": "12008836406244267055",
+      "target": "17339990305425034699",
+      "targetName": "Dep",
+      "kind": "type_of",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 10,
+      "col": 25
+    },
+    {
+      "source": "12008836406244267055",
+      "target": "17339990305425034699",
+      "targetName": "Dep",
+      "kind": "type_of",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 11,
+      "col": 8
+    },
+    {
+      "source": "12014845101789156051",
+      "target": "1073104651997073726",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7
+    },
+    {
+      "source": "12014845101789156051",
+      "target": "18435331309091683548",
+      "targetName": "ParentService",
+      "kind": "extends",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5,
+      "col": 20
+    },
+    {
+      "source": "13377592683254228520",
+      "target": "17036663871000401703",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "13377592683254228520",
+      "target": "2660534470892388305",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "13398809267206535412",
+      "target": "15315406963238158517",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "13398809267206535412",
+      "target": "17339990305425034699",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "14233610028912070649",
+      "target": "17339990305425034699",
+      "targetName": "Dep",
+      "kind": "type_of",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7,
+      "col": 12
+    },
+    {
+      "source": "14481234369753627531",
+      "target": "11130750983636472662",
+      "targetName": "ping",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 23,
+      "col": 8
+    },
+    {
+      "source": "14481234369753627531",
+      "target": "15195079071312262622",
+      "targetName": "staticOk",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 24,
+      "col": 8
+    },
+    {
+      "source": "14481234369753627531",
+      "target": "5404388736107862696",
+      "targetName": "run",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 20,
+      "col": 8
+    },
+    {
+      "source": "14481234369753627531",
+      "target": "5404388736107862696",
+      "targetName": "run",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 21,
+      "col": 8
+    },
+    {
+      "source": "14481234369753627531",
+      "target": "5404388736107862696",
+      "targetName": "run",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 22,
+      "col": 8
+    },
+    {
+      "source": "14481234369753627531",
+      "target": "11338169456123776357",
+      "targetName": "Dep",
+      "kind": "instantiates",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 25,
+      "col": 8
+    },
+    {
+      "source": "16236676107339653101",
+      "target": "11460157365268060406",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7
+    },
+    {
+      "source": "16236676107339653101",
+      "target": null,
+      "targetName": "Magento\\Framework\\Model\\AbstractModel",
+      "kind": "extends",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5,
+      "col": 25
+    },
+    {
+      "source": "16367319367063797559",
+      "target": "10950962087510047033",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "16367319367063797559",
+      "target": "11048448762098223147",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "17036663871000401703",
+      "target": "11130750983636472662",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7
+    },
+    {
+      "source": "17339990305425034699",
+      "target": "11338169456123776357",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 11
+    },
+    {
+      "source": "17339990305425034699",
+      "target": "5404388736107862696",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7
+    },
+    {
+      "source": "17586617539129937305",
+      "target": "114968150941465059",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "17586617539129937305",
+      "target": "4034163904452230674",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "17603212692659952722",
+      "target": "10856406845678622308",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "17603212692659952722",
+      "target": "17966382955377251141",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "18435331309091683548",
+      "target": "14189002776166140960",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7
+    },
+    {
+      "source": "3554832944393720403",
+      "target": null,
+      "targetName": "foo",
+      "kind": "calls",
+      "resolutionState": "unresolved",
+      "confidence": "low",
+      "provenance": "tree-sitter",
+      "line": 9,
+      "col": 8
+    },
+    {
+      "source": "5448243888531176627",
+      "target": "12014845101789156051",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "5448243888531176627",
+      "target": "7585100611049731493",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "6440631525534188705",
+      "target": "18435331309091683548",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "6440631525534188705",
+      "target": "8361733170256729516",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "9105924675440234534",
+      "target": null,
+      "targetName": "App\\MissingCall::doesNotExist",
+      "kind": "calls",
+      "resolutionState": "unresolved",
+      "confidence": "low",
+      "provenance": "tree-sitter",
+      "line": 9,
+      "col": 8
+    }
+  ]
+}
