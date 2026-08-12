@@ -1,3 +1,4 @@
+/** Stable persisted categories for graph nodes across all language backends. */
 export type NodeKind =
 	| "file"
 	| "module"
@@ -18,6 +19,7 @@ export type NodeKind =
 	| "export"
 	| "component";
 
+/** Stable relationship vocabulary shared by extraction, storage, and queries. */
 export type EdgeKind =
 	| "contains"
 	| "calls"
@@ -32,23 +34,30 @@ export type EdgeKind =
 	| "overrides"
 	| "decorates";
 
+/** Backend-defined language identifier; the registry, not this union, is authoritative. */
 export type Language = string;
+/** Language identifiers shipped by the default registry at the documented baseline. */
 export type KnownLanguage = "typescript" | "tsx" | "javascript" | "jsx" | "php";
 
+/** Whether an edge target is proven, outside the project, unknown, or non-unique. */
 export type ResolutionState =
 	| "resolved"
 	| "external"
 	| "unresolved"
 	| "ambiguous";
+/** Qualitative strength of the evidence supporting an extracted relation. */
 export type Confidence = "high" | "medium" | "low";
+/** Extraction engine or transformation responsible for a persisted fact. */
 export type Provenance =
 	| "tree-sitter"
 	| "ts-compiler"
 	| "heuristic"
 	| `synthesized:${string}`;
+/** Per-file progress through structural parsing and semantic resolution. */
 export type CoverageState = "pending" | "parsed" | "resolved";
 export type Visibility = "public" | "private" | "protected" | "internal";
 
+/** Source span with one-based lines and zero-based extractor columns. */
 export interface Range {
 	startLine: number;
 	endLine: number;
@@ -56,6 +65,7 @@ export interface Range {
 	endColumn: number;
 }
 
+/** Canonical persisted symbol or structural entity in the project graph. */
 export interface Node {
 	id: string;
 	project: string;
@@ -81,6 +91,7 @@ export interface Node {
 	updatedAt: number;
 }
 
+/** Persisted directed relation whose target may intentionally remain unresolved. */
 export interface Edge {
 	id?: number;
 	source: string;
@@ -95,6 +106,7 @@ export interface Edge {
 	metadata?: Record<string, unknown>;
 }
 
+/** Stored indexing state and content identity for one project-relative file. */
 export interface FileRecord {
 	path: string;
 	project: string;
@@ -108,6 +120,7 @@ export interface FileRecord {
 	errors?: ExtractionError[];
 }
 
+/** Non-fatal or fatal extraction evidence attached to a file record. */
 export interface ExtractionError {
 	message: string;
 	filePath?: string;
@@ -117,6 +130,7 @@ export interface ExtractionError {
 	code?: string;
 }
 
+/** Bounded node projection returned by public graph tools. */
 export interface NodeRef {
 	id: string;
 	name: string;
@@ -127,6 +141,7 @@ export interface NodeRef {
 	signature?: string;
 }
 
+/** Bounded edge projection returned by public graph tools. */
 export interface EdgeRef {
 	source: string;
 	target: string | null;
@@ -155,6 +170,7 @@ export interface SqliteStatement {
 	all(...params: unknown[]): unknown[];
 }
 
+/** Minimal SQLite-like port required by migrations, persistence, and queries. */
 export interface StorageAdapter {
 	prepare(sql: string): SqliteStatement;
 	exec(sql: string): void;
@@ -164,6 +180,7 @@ export interface StorageAdapter {
 	readonly open: boolean;
 }
 
+/** Read-only filesystem port used by indexing and source-code projections. */
 export interface FileSystem {
 	readText(path: string): Promise<string>;
 	exists(path: string): Promise<boolean>;
@@ -174,6 +191,7 @@ export interface Hasher {
 	hash(content: string | Uint8Array): string;
 }
 
+/** Project scanner port; concrete adapters must return project-relative candidates. */
 export interface GlobScanner {
 	scan(
 		root: string,
@@ -181,7 +199,9 @@ export interface GlobScanner {
 	): AsyncIterable<string>;
 }
 
+/** Normalized source lifecycle event consumed by incremental synchronization. */
 export type WatchEvent = { type: "add" | "change" | "unlink"; path: string };
+/** Recursive filesystem watch port whose returned handle owns the subscription. */
 export interface Watcher {
 	watch(
 		paths: string[],
@@ -190,6 +210,7 @@ export interface Watcher {
 	): { close(): void };
 }
 
+/** Project-wide inputs supplied to a semantic enricher before per-file resolution. */
 export interface LoadProjectOptions {
 	rootPath: string;
 	tsconfigPath?: string;
@@ -204,6 +225,7 @@ export interface PassAResult {
 	errors: ExtractionError[];
 }
 
+/** Language parser responsible for Pass A structural output. */
 export interface Parser {
 	extractNodes(filePath: string, source: string): PassAResult;
 }
@@ -216,12 +238,14 @@ export interface Parser {
  */
 export type EnricherMode = "complement" | "replace" | "none";
 
+/** Optional backend-specific semantic pass layered according to {@link EnricherMode}. */
 export interface Enricher {
 	readonly mode: EnricherMode;
 	loadProject?(opts: LoadProjectOptions): void;
 	resolveEdges(filePath: string): EdgeResolutionResult;
 }
 
+/** Semantic pass output, including honest external targets and extraction evidence. */
 export interface EdgeResolutionResult {
 	edges: Edge[];
 	errors: ExtractionError[];
@@ -239,6 +263,7 @@ export interface BackendCapabilities {
 	edgeKinds: EdgeKind[];
 }
 
+/** Complete registry unit for routing a language through parsing and enrichment. */
 export interface LanguageBackend {
 	id: string;
 	languages: Language[];
@@ -262,18 +287,21 @@ export interface Extractor {
 
 export interface ProjectExtractor extends Extractor, EdgeResolver {}
 
+/** Project-level file counts used to describe query completeness. */
 export interface Coverage {
 	total: number;
 	resolved: number;
 	parsed: number;
 	pending: number;
 }
+/** Trust envelope returned with every graph-tool payload. */
 export interface ToolMeta {
 	coverage: Coverage;
 	partial: boolean;
 	pendingFiles?: string[];
 	notes?: string[];
 }
+/** Public tool response: data is never separated from its coverage evidence. */
 export interface ToolResult<T> {
 	data: T;
 	meta: ToolMeta;
@@ -427,6 +455,7 @@ export interface StatusOutput {
 	backends?: BackendStatus[];
 }
 
+/** Language-agnostic facade shared by CLI, MCP, evaluation, and embedders. */
 export interface AstrographCore {
 	search(i: SearchInput): Promise<ToolResult<SearchOutput>>;
 	context(i: ContextInput): Promise<ToolResult<ContextOutput>>;
@@ -455,6 +484,7 @@ export interface AstrographCore {
 	close(): void;
 }
 
+/** Progress event emitted by a full index operation. */
 export interface IndexProgress {
 	phase: "scan" | "parse" | "resolve" | "done";
 	current: number;
@@ -462,6 +492,7 @@ export interface IndexProgress {
 	file?: string;
 }
 
+/** Persisted project configuration that affects scanning, backends, and freshness. */
 export interface AstrographConfig {
 	include?: string[];
 	exclude?: string[];

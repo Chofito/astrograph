@@ -27,7 +27,7 @@ Astrograph indexes a file only if a **language backend** claims its extension. W
 
 | Files | Coverage | Edge provenance |
 |---|---|---|
-| `.ts` `.tsx` `.js` `.jsx` `.mjs` `.cjs` | structural **+ semantic** — exact import/call/type resolution via the TypeScript Compiler enricher | `ts-compiler` |
+| `.ts` `.tsx` `.mts` `.cts` `.js` `.jsx` `.mjs` `.cjs` | structural **+ semantic** — compiler-backed import/call/type resolution with explicit unresolved/ambiguous states | `ts-compiler` |
 | `.php` | structural **+ name resolution** — heritage, `use` imports, types, calls/`new` (honest `external`/`unresolved`) | `tree-sitter` |
 
 **Anything else is not in the graph.** Python, Go, Rust, Java and friends have no backend yet, so

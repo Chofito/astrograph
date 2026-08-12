@@ -70,6 +70,7 @@ const COMMANDS: Record<string, CommandHandler> = {
 	uninstall: runUninstall,
 };
 
+/** Dispatch one CLI invocation and translate all failures into a process result. */
 export async function runCli(
 	argv: string[],
 	ctx: CliContext = { cwd: process.cwd() },

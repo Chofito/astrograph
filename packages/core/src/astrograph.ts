@@ -34,6 +34,11 @@ export interface AstrographOptions {
 	graphQueries: GraphQueries;
 }
 
+/**
+ * Process-local facade over one project's indexer and read-query service.
+ *
+ * The owner must call {@link close}; this closes storage through the indexer.
+ */
 export class Astrograph implements AstrographCore {
 	readonly queries: QueryBuilder;
 

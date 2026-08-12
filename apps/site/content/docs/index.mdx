@@ -34,15 +34,16 @@ Astrograph uses a **modular extraction pipeline**:
 
 - **Pass A — tree-sitter** for fast structural symbols, in every language that has a backend.
 - **Pass B — language enrichers** for semantic depth where available. JS/TS ships with the
-  **TypeScript Compiler** enricher (exact module resolution, aliases, inheritance, re-exports).
+  **TypeScript Compiler** enricher (compiler-backed module resolution, aliases, inheritance, and re-exports, while retaining unresolved or ambiguous evidence).
 
-Two backends ship today: **JS/TS** (`.ts` `.tsx` `.js` `.jsx`) with the Compiler enricher, and **PHP**
+Two backends ship today: **JS/TS** (`.ts` `.tsx` `.mts` `.cts` `.js` `.jsx` `.mjs` `.cjs`) with the Compiler enricher, and **PHP**
 (`.php`) with a name-resolution enricher (heritage, types, calls). A language without an enricher still gets a real, queryable graph — its
 edges are marked `tree-sitter` rather than `ts-compiler`, so you can see exactly how much they prove.
 A file type no backend claims is not indexed; `astrograph status` tells you which are active.
 
-When a relationship is `external`, `unresolved`, `ambiguous`, `stale`, or `partial`, Astrograph
-**says so** instead of hiding it. Humans and agents always know what the graph can actually prove.
+The result contract has explicit `external`, `unresolved`, `ambiguous`, and `partial` states instead of
+forcing every relation into a resolved target. Current global-query honesty gaps remain documented and
+should be considered before turning an empty result into an absence claim.
 
 ## Explore the docs
 

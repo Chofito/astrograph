@@ -38,7 +38,8 @@ astrograph init
 ```
 
 This creates a local `.astrograph/` directory (the SQLite graph, config, and watcher metadata) and
-runs the first full index. Re-running stays incremental — only changed files are re-extracted.
+runs the first full index. Later syncs use hashes and affected-file processing; configuration changes
+or backend-wide indexes can intentionally widen the work beyond the directly changed file.
 
 ## Run your first queries
 

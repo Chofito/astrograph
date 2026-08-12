@@ -29,6 +29,7 @@ export interface ProjectSessionOptions {
 	watch?: boolean;
 }
 
+/** Raised when no pre-existing `.astrograph/` directory can be found upward. */
 export class MissingIndexError extends Error {
 	constructor(startPath: string) {
 		super(
@@ -38,6 +39,10 @@ export class MissingIndexError extends Error {
 	}
 }
 
+/**
+ * Lazy single-project MCP session with optional watcher-owned freshness.
+ * The session deliberately refuses to initialize an index implicitly.
+ */
 export class ProjectSession {
 	private readonly cwd: string;
 	private readonly path: string | undefined;
@@ -124,6 +129,7 @@ export class ProjectSession {
 	}
 }
 
+/** Find the nearest ancestor containing an Astrograph index directory. */
 export function findProjectRoot(startPath: string): string | undefined {
 	let current = normalizeStart(startPath);
 	while (true) {

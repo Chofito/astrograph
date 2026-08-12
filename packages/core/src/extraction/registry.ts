@@ -14,6 +14,7 @@ import {
 } from "./tree-sitter/grammars";
 import { TypescriptLanguageBackend } from "./typescript/backend";
 
+/** Authoritative mapping from file extensions to configured language backends. */
 export class LanguageRegistry {
 	private readonly backends: Map<string, LanguageBackend> = new Map();
 	private readonly extensionToBackend: Map<string, LanguageBackend> = new Map();
@@ -106,6 +107,7 @@ export interface CreateRegistryOptions {
 	config?: AstrographConfig;
 }
 
+/** Build the shipped registry after applying per-backend configuration overrides. */
 export function createDefaultRegistry(
 	opts: CreateRegistryOptions,
 ): LanguageRegistry {

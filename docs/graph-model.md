@@ -2,7 +2,7 @@
 
 > 🌐 Languages: **English** (this file) · _ES mirror pending (see backlog)_
 
-> Design document. The full data model behind Astrograph's graph: tables, columns, IDs, indexes, resolution states, coverage, incremental sync, and the extensibility playbook. It is **derived from the 10 tools** ([docs/tools.md](tools.md)), **enriched for future tools**, and **built to extend without painful migrations**. Expands [ROADMAP §3](../ROADMAP.md#3-graph-model-data-contract).
+> Supporting design document. It mixes implemented schema with forward-looking design. For the frozen baseline and deviations, use [Storage and graph model](architecture/storage-and-graph-model.md); where this file differs, the architecture document wins. Expands [ROADMAP §3](../ROADMAP.md#3-graph-model-short).
 
 ---
 
@@ -214,12 +214,13 @@ Every edge carries `resolution_state`:
 ### 6.1 What `resolved` means per backend (language-agnostic)
 
 `resolved` is **not** "the TypeScript checker agreed". It is a *state of the pipeline*, and the
-authority behind it depends on the file's [language backend](contracts.md#5-adapter-interfaces--the-seams--core-depends-only-on-these):
+authority behind it depends on the file's [language backend](contracts.md#5-adapter-interfaces-the-seams--core-depends-only-on-these):
 
 | Backend shape | Who resolves | What `resolved` asserts | Typical `provenance` / `confidence` |
 |---|---|---|---|
 | Parser **+ enricher** (`complement`/`replace`) — e.g. TypeScript | the enricher (`ts.TypeChecker`) | exactly one project symbol, semantically | `ts-compiler` / `high` |
-| Parser **only** (`mode: 'none'`) — e.g. PHP | tree-sitter Pass A + in-file/structural matching | exactly one candidate *that Pass A can see*; cross-file refs it cannot pin stay `unresolved` | `tree-sitter` / `medium`–`high` |
+| Parser **only** (`mode: 'none'`) — e.g. an enricher-disabled backend | tree-sitter Pass A | only structural `contains` edges at the current baseline | `tree-sitter` / `high` |
+| PHP complement enricher | tree-sitter Pass A + PHP namespace/FQN and method lookup | project heritage/types/calls when proven; otherwise external or unresolved evidence | `tree-sitter` or `heuristic` / confidence by resolution bucket |
 
 So an enricher-less language **does** reach `resolved`: Pass A is the whole pipeline for it, and a file
 is `resolved` once every pass its backend runs has run (§7). The honesty is preserved by `provenance`
@@ -326,5 +327,5 @@ Deliberately **omitted**: source-only / target-only edge indexes (the composites
 ## 13. References
 - Tool contract this serves: [docs/tools.md](tools.md).
 - Progressive coverage model: [docs/progressive-indexing.md](progressive-indexing.md).
-- Roadmap data contract & critical aspects: [ROADMAP §3](../ROADMAP.md#3-graph-model-data-contract), [§11](../ROADMAP.md#11-critical-aspects-not-to-overlook-in-v1).
+- Roadmap data contract and future scope: [ROADMAP §3](../ROADMAP.md#3-graph-model-short), [§11](../ROADMAP.md#11-after-v10-stage-4--v15-stage-5--v2).
 - codegraph for contrast: [`src/db/schema.sql`](../../codegraph/src/db/schema.sql), [`src/db/queries.ts`](../../codegraph/src/db/queries.ts), [`src/db/migrations.ts`](../../codegraph/src/db/migrations.ts), [`src/types.ts`](../../codegraph/src/types.ts).

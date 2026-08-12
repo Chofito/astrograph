@@ -1,6 +1,6 @@
 # TypeScript Compiler enricher (Pass B)
 
-> Design document. The concrete mapping from the **TypeScript Compiler API** to Astrograph's refined graph edges. This is **Pass B enrichment** for JS/TS, adding semantic depth (type resolution, exact calls, imports) on top of tree-sitter's structural Pass A. Implements the `Enricher` interface in [docs/contracts.md](../contracts.md).
+> Supporting design document for **TypeScript Compiler API** enrichment. It includes target behavior and historical test expectations; use canonical [TypeScript enricher](../architecture/extraction/typescript-enricher.md) for the frozen AS-IS boundary. Compiler-backed resolution can remain ambiguous or unresolved and is not described as universally exact.
 >
 > For **Pass A** (tree-sitter structural), see [docs/extraction/tree-sitter.md](tree-sitter.md). For **architecture overview**, see [docs/extraction/overview.md](overview.md).
 >
@@ -11,7 +11,7 @@
 ## 0. Non-negotiables (Pass B)
 
 - **Determinism.** Same source + same TS version ⇒ identical refined edges. No timestamps; sort outputs.
-- **Enriches, not replaces.** Refines Pass A edges with exact symbols, confidence, resolution states. Creates external nodes for `node_modules`/`.d.ts` symbols only when needed.
+- **Enriches, not replaces.** Adds compiler-backed symbols and edges with explicit confidence and resolution states. Creates external nodes for `node_modules`/`.d.ts` symbols only when needed.
 - **Project nodes only.** Project files are indexed as nodes; external code stays external.
 - **Lazy resolution.** Enricher runs on demand (progressive indexing) or once per full index. Resolves cross-file imports, calls, type relationships via `TypeChecker`.
 - **V1 scope.** Primary `tsconfig.json`/`jsconfig.json` only. Multi-`tsconfig`, project references → Stage 4.
@@ -81,7 +81,7 @@ The `target` id computed in **Pass B must byte-match** the id **Pass A** assigne
 
 ### 3.1 `imports`
 
-Enhanced from Pass A syntactic import edges.
+Semantic import edges produced by Pass B; current Pass A emits no import edges.
 
 ```
 for each import_statement in source:
@@ -112,7 +112,7 @@ for each import_statement in source:
 
 ### 3.2 `calls`
 
-Refined from Pass A syntactic `calls`.
+Semantic call edges produced by Pass B; current Pass A emits no call edges.
 
 ```
 for each call_expression in source:
@@ -156,7 +156,7 @@ for each class_declaration in source:
 
 ### 3.4 `exports`
 
-Enhanced from Pass A syntactic exports.
+Semantic export edges produced by Pass B; current Pass A emits no export edges.
 
 ```
 for each export_statement in source:
@@ -289,7 +289,7 @@ flags, and `updatedAt` — because storage rejects a partial node and goldens co
 
 Every edge carries:
 - **`provenance`**: `'ts-compiler'` (Pass B from this enricher)
-- **`confidence`**: `'high'` (resolved via exact checker), `'medium'` (any-typed or ambiguous), `'low'` (unresolved fallback)
+- **`confidence`**: `'high'` (resolved through compiler-backed evidence), `'medium'` (any-typed or ambiguous), `'low'` (unresolved fallback)
 
 This tells agents/clients which edges to trust.
 

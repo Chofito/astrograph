@@ -275,8 +275,10 @@ passes can disagree, so the rule is exact:
 - Node-level provenance is recorded in `Node.metadata.provenance`; edge-level provenance is the real
   `edges.provenance` column. **Neither requires a SQL schema change.**
 
-`none` mode (PHP today) skips all of the above: Pass A's nodes and edges are the final answer for that
-file, and the file still reaches `resolved` (graph-model §6).
+PHP currently uses `complement` mode but contributes semantic edges only, so Pass A remains the
+authoritative PHP node set and no PHP node reconciliation occurs. `none` mode is the behavior of any
+backend whose enricher is absent or disabled: Pass A is the final answer and the file still reaches
+`resolved` (graph-model §6).
 
 ## 6. Tool I/O (the 10 — see docs/tools.md for behavior)
 
@@ -387,7 +389,7 @@ export interface AstrographCore {
 
 ## 8. `context` ranking contract (deterministic)
 
-`context` is the product surface and the eval target, so its ranking is **specified, not vibes** — golden tests pin it (docs/testing.md). Score each candidate node and keep the top `maxSymbols` within `tokenBudget`:
+`context` is the product surface and the eval target, so its ranking is **specified, not vibes**. The formula below is normative target behavior; current golden coverage does not yet pin the complete pipeline (see [testing and evaluation](architecture/operations/testing-and-evaluation.md) and `DEV-014`). Score each candidate node and keep the top `maxSymbols` within `tokenBudget`:
 
 ```
 score = w_fts * bm25_norm           // FTS relevance to the task string
@@ -408,8 +410,8 @@ export interface AstrographConfig {
                                // backend claims (LanguageBackend.extensions)
   exclude?: string[];          // added to .gitignore-derived ignores
   maxFileSizeBytes?: number;   // default 2_000_000; larger files skipped (recorded)
-  kinds?: NodeKind[];          // optional allow-list of kinds to index
-  watchDebounceMs?: number;    // default 2000, clamp [100, 60000]
+  kinds?: NodeKind[];          // declared at baseline but not applied; do not rely on it (DEV-006)
+  watchDebounceMs?: number;    // current default 300 ms; runtime validation/clamping is not implemented
   tsconfigPath?: string;       // override primary config discovery (TypeScript backend only)
   /** Per-backend switches, keyed by LanguageBackend.id ('typescript', 'php', …). */
   backends?: Record<string, {

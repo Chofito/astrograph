@@ -1,6 +1,6 @@
 # tree-sitter structural extraction (Pass A)
 
-> Design document. The concrete mapping from **tree-sitter CST → Astrograph graph nodes and structural edges**. This is **Pass A** (structural extraction, all languages). For semantic enrichment, see [docs/extraction/typescript.md](typescript.md) (TS Compiler Pass B).
+> Supporting target design. Current Pass A has explicit JS/TS/PHP mappings, only runs for registered backend extensions, and emits structural nodes plus `contains`. Sections 3.2–3.5 and Python examples are future sketches, not implemented baseline behavior. See canonical [Tree-sitter Pass A](../architecture/extraction/tree-sitter-pass-a.md).
 >
 > Implements the `Parser` interface in [docs/contracts.md](../contracts.md). Produces nodes (`state='parsed'`) and structural edges of [docs/graph-model.md](../graph-model.md).
 >
@@ -11,21 +11,21 @@
 ## 0. Non-negotiables (Pass A)
 
 - **Determinism.** Same source + same tree-sitter grammar version ⇒ identical nodes and structural edges. No timestamps in IDs; sort outputs.
-- **Per-file, no cross-file resolution.** Each file is parsed independently. Edges only within/immediately around the file (syntactic imports, no symbol resolution).
+- **Per-file, no cross-file resolution.** Each file is parsed independently; the current parser emits only `contains` edges.
 - **Project nodes only.** Files under `node_modules` / `.d.ts` never become project nodes in Pass A; they're handled by Pass B enrichers or marked external.
-- **All tree-sitter languages.** The logic applies generically to any tree-sitter-supported language. Language-specific naming conventions (e.g. `__init__.py` for Python) are handled separately.
+- **Registered mappings only.** A grammar is insufficient by itself: a backend must claim the extension and the parser must map that language's CST declarations.
 
 ---
 
 ## 1. tree-sitter setup
 
-1. **Load grammar.** Per-language tree-sitter grammar (e.g. `tree-sitter-javascript`, `tree-sitter-python`).
+1. **Load grammar.** Per-language Tree-sitter WASM grammar (JavaScript/TypeScript/TSX/PHP at baseline).
 2. **Create parser.** `new Parser(); parser.setLanguage(language)`.
 3. **Parse source.** `tree = parser.parse(sourceString)`.
 4. **Walk CST.** Root is `tree.rootNode`; traverse with `.child(i)`, `.namedChildren`, etc.
 
 **Properties:**
-- Fast, works for all languages
+- Fast and reusable across implemented language mappings
 - Tolerant of incomplete/broken code (best-effort parse)
 - Preserves exact position (`node.startIndex` → line/column via source map)
 - Deterministic: same source → same tree
@@ -78,7 +78,7 @@ for each node in tree:
 | `import_statement` / `import_clause` | `import` | also drives `imports` edges |
 | `export_statement` / `export_clause` | `export` | also drives `exports` edges |
 
-**Python** (via tree-sitter-python):
+**Illustrative future Python mapping** (not shipped):
 
 | CST node type | NodeKind | Notes |
 |---|---|---|
@@ -122,6 +122,8 @@ Extract modifiers from the CST:
 ---
 
 ## 3. Structural edges (Pass A)
+
+Only §3.1 `contains` is AS-IS. Sections 3.2–3.5 capture older target ideas; imports, exports, references, and calls currently come from enrichers.
 
 ### 3.1 `contains`
 
@@ -223,7 +225,8 @@ there is no global extension table. What ships:
 | Extension | Backend | Grammar |
 |---|---|---|
 | `.js` `.jsx` `.mjs` `.cjs` | `typescript` | tree-sitter-javascript |
-| `.ts` `.tsx` | `typescript` | tree-sitter-typescript / -tsx |
+| `.ts` `.mts` `.cts` | `typescript` | tree-sitter-typescript |
+| `.tsx` | `typescript` | tree-sitter-tsx |
 | `.php` | `php` | tree-sitter-php |
 
 An extension no backend claims is **not indexed at all** — it is not a fallback-parsed file. Adding
@@ -251,7 +254,7 @@ Pass A takes a file to **`parsed`**. Edges it emits are structural only; semanti
 
 For progressive indexing:
 - A file at `state='parsed'` has all its nodes extracted (symbols exist).
-- Edges are syntactic (`contains`, attempted `imports`/`exports`/`calls`/`references`), all with `provenance: 'tree-sitter'`.
+- Edges are structural `contains`, with `provenance: 'tree-sitter'`.
 - Clients can use parsed nodes for basic search, explore, structure questions.
 - If the backend has an enricher, Pass B then refines edges and the file becomes `resolved`.
 - **If it doesn't** (`mode: 'none'`), the file goes straight to `resolved` after Pass A — Pass A *is* the pipeline for that language. It does not sit at `parsed` forever. See [graph-model §6.1](../graph-model.md#61-what-resolved-means-per-backend-language-agnostic).
@@ -259,7 +262,7 @@ For progressive indexing:
 In `complement` mode Pass A must emit a **conservative subset** whose node ids are byte-identical to the
 enricher's, and emit **nothing** where it cannot guarantee that (overloads, ambiguous `component` vs
 `function`). The rule and its rationale live in [overview.md](overview.md#complement-reconciliation-the-rule-that-keeps-ids-stable);
-a Pass-A-only node is a bug, and [docs/testing.md §2.2](../testing.md#22-pass-a--pass-b-id-parity-golden-the-seam-test) is the test that catches it.
+a Pass-A-only node is a bug. Existing parity coverage is narrower than the full registry/indexer/SQLite route; see `DEV-014` in [deviations](../architecture/deviations.md).
 
 ---
 

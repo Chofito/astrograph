@@ -6,6 +6,7 @@ export interface SymbolLookupResult {
 	candidates: Node[];
 }
 
+/** Resolve a user-facing symbol query to one deterministic candidate plus alternatives. */
 export function resolveSymbol(
 	queries: QueryBuilder,
 	symbol: string,

@@ -124,9 +124,10 @@ export default function HomePage() {
 					<h2 id="why-heading">Breadth everywhere, depth where it counts.</h2>
 					<p className="astro-why-sub">
 						tree-sitter parses every supported language into one structural
-						graph; language enrichers (the TypeScript Compiler for JS/TS) resolve
-						it exactly. One question, one command — the graph already did the
-						exploration, so these are real answers, not text matches.
+						graph; language enrichers (the TypeScript Compiler for JS/TS) add
+						compiler-backed evidence. One question, one command — the graph
+						already did the exploration, so these are real answers, not text
+						matches.
 					</p>
 				</div>
 

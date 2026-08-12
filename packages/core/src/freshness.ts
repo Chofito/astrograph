@@ -23,6 +23,10 @@ export interface FreshnessManagerOptions {
 	onSyncError?: (events: WatchEvent[], error: unknown) => void;
 }
 
+/**
+ * Filters watch events and serializes bounded delta syncs before graph reads.
+ * Call {@link close} to stop the watcher and cancel its pending debounce timer.
+ */
 export class FreshnessManager {
 	private readonly root: string;
 	private readonly graph: AstrographCore;

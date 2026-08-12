@@ -209,7 +209,7 @@ astrograph install
 
 This sets up the MCP server configuration and agent guide. It does **not** install
 the binary — that is the `curl … | sh` step above. See
-[docs/cli.md](cli.md#agent-setup-mcp-install) for details.
+[docs/cli.md](cli.md#agent-setup) for details.
 
 ---
 

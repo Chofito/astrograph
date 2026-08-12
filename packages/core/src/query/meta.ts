@@ -8,6 +8,7 @@ export interface BuildMetaOptions {
 	notes?: string[];
 }
 
+/** Build the query trust envelope from stored coverage and backend capabilities. */
 export function buildMeta(
 	queries: QueryBuilder,
 	options: BuildMetaOptions = {},

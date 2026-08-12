@@ -27,6 +27,7 @@ export interface AstrographMcpServer {
 
 export type McpTextResult = CallToolResult;
 
+/** Create the stdio-agnostic MCP server and its lazy single-project session. */
 export function createAstrographMcpServer(
 	options: ServeMcpOptions = {},
 ): AstrographMcpServer {
@@ -63,6 +64,7 @@ export function createAstrographMcpServer(
 	return { server, session };
 }
 
+/** Connect Astrograph to MCP stdio and install process-signal cleanup handlers. */
 export async function serveMcp(options: ServeMcpOptions = {}): Promise<void> {
 	// The MCP server runs headless as a host-spawned subprocess: no banner, no logs,
 	// no TUI, no colors. It speaks only the protocol over stdio; tools surface any

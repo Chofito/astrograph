@@ -46,6 +46,11 @@ export interface GraphQueriesOptions {
 	backends?: BackendStatus[];
 }
 
+/**
+ * Implements the public read tools over persisted graph facts.
+ * Every method returns a {@link ToolResult} so coverage and partiality travel
+ * with the payload instead of being inferred by a transport.
+ */
 export class GraphQueries {
 	private readonly queries: QueryBuilder;
 	private readonly slicer: CodeBlockSlicer;

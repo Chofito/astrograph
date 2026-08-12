@@ -61,7 +61,7 @@ apps/site/
 
 A custom marketing page; suggested sections:
 1. **Hero** — one-liner ("Local-first code graph — tree-sitter structure plus language enrichers (TypeScript Compiler for JS/TS) — that supercharges AI agents"), animated tagline, primary CTA → Docs / install, secondary → GitHub.
-2. **The differentiator** — tree-sitter breadth + enricher depth: structural extraction for any language with a backend (JS/TS and PHP today), TS Compiler semantic enricher for JS/TS (exact resolution, not heuristics), honest coverage, fewer agent tokens/tool-calls.
+2. **The differentiator** — tree-sitter breadth + enricher depth: structural extraction for any language with a backend (JS/TS and PHP today), compiler-backed semantic enrichment for JS/TS with explicit unresolved/ambiguous states, honest coverage, fewer agent tokens/tool-calls.
 3. **Surfaces** — CLI · MCP server · agent skills (with a short snippet each).
 4. **How it works** — index → query (search/context/impact/trace) → fresh via watcher.
 5. **Get started** — the landing shows **`astrograph init`** (the one-command index) and links to the docs Install page. **Reconciled with what shipped:** the `curl | sh` snippet is *not* on the landing; it lives on `/docs/install` (`content/docs/install.mdx`, served from `public/install.sh`) together with per-host MCP install commands (Claude Code, Cursor, Codex, opencode). Keep it that way — the landing CTA stays a single command; installation detail stays in the docs.

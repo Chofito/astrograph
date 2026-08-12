@@ -1,6 +1,6 @@
 # Extraction architecture overview
 
-> Design document. The extraction pipeline uses a **two-pass architecture**: Pass A (tree-sitter structural extraction, all languages) + Pass B (language-specific enrichers, e.g. TS Compiler for JS/TS). This separability enables progressive indexing and pluggable backends.
+> Supporting target design. At baseline, Pass A runs only for files claimed by the registered JS/TS or PHP backends and emits nodes plus `contains`; enrichers supply semantic edges. Progressive/on-demand enrichment and enricher layering described below are future design, not current behavior. See the canonical [backend contract](../architecture/extraction/backend-contract.md) and [indexing pipeline](../architecture/indexing-pipeline.md).
 >
 > 🌐 Languages: **English** (this file)
 
@@ -12,11 +12,11 @@
 
 Per-file AST walk via **tree-sitter grammars**. Produces:
 - **Nodes** with positions and basic attributes (`name`, `kind`, `visibility`, etc.)
-- **Edges** for structural relationships (`contains`, some syntactic `calls`/`imports`)
+- **Edges** for the structural `contains` relationship at the current baseline
 - **State:** `parsed` — nodes exist; edges are best-effort structural only
 
 **Properties:**
-- Fast, deterministic, works for all tree-sitter languages
+- Fast, deterministic, and reusable for languages with an implemented mapping and registered backend
 - No cross-file resolution; no type information
 - Handles syntax correctly even for incomplete/broken code (!)
 - Scales linearly per-file
@@ -25,18 +25,18 @@ Per-file AST walk via **tree-sitter grammars**. Produces:
 
 ### Pass B: language-specific enrichers
 
-**Optional**, per-language, runs on demand or on full index.
+**Optional**, per-language. The current indexer runs it for every routed file during full and delta indexing; demand scheduling is a future design.
 
 **Example — TS Compiler enricher:**
 - Input: nodes + edges from Pass A
-- Process: uses `ts.TypeChecker` for exact module resolution, type inference, call resolution
+- Process: uses `ts.TypeChecker` for compiler-backed module, type, and call resolution
 - Output: refines/confirms edges with semantic certainty, adds `type_of`/`returns` edges, populates external symbols
 - **State:** `resolved` — edges have passed semantic enrichment
 
 **Key design:**
 - Pass B can run on a subset of files (only those needing semantic depth)
 - Enrichers are **independent plugins** behind the `Enricher` interface
-- Multiple enrichers can layer (e.g., a "call tracer" enricher on top of the TS enricher)
+- The current contract accepts at most one enricher per backend; multi-enricher layering is only a future possibility
 - No enricher breaks the core graph; they only refine confidence/provenance
 
 ---
@@ -149,7 +149,7 @@ Optional Pass B, **per file**, driven by a project loaded once via `loadProject`
 1. Pass A emits only what it can id **identically** to the enricher — `hash(project · filePath · kind · qualifiedName · locator)`, byte for byte — plus its `contains` edges (`provenance: 'tree-sitter'`).
 2. Where it cannot guarantee that, Pass A emits **nothing** and lets the enricher supply the node. Known cases: **function overloads** (locator is a signature hash only the enricher computes) and **ambiguous `component` vs `function`** for JSX.
 3. Pass B reconciles **by node id**: matched nodes are enriched **in place** (so ids never churn as a file moves `parsed → resolved`), enricher-only nodes are added.
-4. A **Pass-A-only node** — one Pass A emitted that Pass B does not know — is a **bug**. It is counted and reported, never silently kept or dropped. (Golden-tested: see [docs/testing.md §2.1](../testing.md#21-per-backend-golden-matrix).)
+4. A **Pass-A-only node** — one Pass A emitted that Pass B does not know — is a **bug**. It is counted and reported, never silently kept or dropped. Full pipeline golden enforcement is still target work; see `DEV-014` in [deviations](../architecture/deviations.md).
 
 Node-level provenance is written to `Node.metadata.provenance`; edge-level provenance is the real `edges.provenance` column. Neither needs a schema change.
 
@@ -189,7 +189,7 @@ extension. What actually ships:
 
 | Backend `id` | Languages | Extensions | Enricher | Mode |
 |---|---|---|---|---|
-| `typescript` | typescript, tsx, javascript, jsx | `.ts` `.tsx` `.js` `.jsx` `.mjs` `.cjs` | TS Compiler (Pass B) | **`complement`** |
+| `typescript` | typescript, tsx, javascript, jsx | `.ts` `.tsx` `.mts` `.cts` `.js` `.jsx` `.mjs` `.cjs` | TS Compiler (Pass B) | **`complement`** |
 | `php` | php | `.php` | name resolution (FQN + `use`) | **`complement`** |
 
 PHP ships a **name-resolution enricher** (not a type checker): heritage, `use` → `imports`, `type_of` / `returns`, and `calls` / `instantiates` with honest `external` / `unresolved` buckets. Pass A still owns the node set.

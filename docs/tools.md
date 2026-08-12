@@ -2,7 +2,7 @@
 
 > 🌐 Languages: **English** (this file) · [Español](tools.es.md)
 
-> Design document. Defines the **transport-agnostic tool contract** that Astrograph exposes to consumers. The contract (name, inputs, **structured result**) lives in `packages/core`; the **CLI** (Stage 1) and **MCP** (Stage 2) are thin formatters over the same structured results. See [ROADMAP §5](../ROADMAP.md#5-stage-2--mcp-support).
+> Design document. Defines the **transport-agnostic tool contract** that Astrograph exposes to consumers. The contract (name, inputs, **structured result**) lives in `packages/core`; the **CLI** and **MCP** are thin formatters over the same structured results. See [ROADMAP stages 1–3](../ROADMAP.md#46-stages-13-shipped-not-v10-complete).
 >
 > The Stage 3 **website is not a consumer of this contract** — it is a static export with no server runtime, decoupled from the binary ([docs/site.md](site.md) §1). It documents the tools; it does not call them.
 
@@ -32,7 +32,7 @@ Every tool must clear two bars before it earns a place:
 > `context` and `explore` look "smart" but are pure assembly: ranking + verbatim code slices + a relationship map. No model is called. They pass the bar.
 
 Additional rules:
-- **Honest results.** Every result carries coverage/partiality and, where relevant, `resolutionState` (`resolved|external|unresolved|ambiguous`) and edge `confidence` (`high|medium|low`) — see [ROADMAP §3](../ROADMAP.md#3-graph-model-data-contract). Never present partial/stale/low-confidence data as complete fact.
+- **Honest results.** Every result carries coverage/partiality and, where relevant, `resolutionState` (`resolved|external|unresolved|ambiguous`) and edge `confidence` (`high|medium|low`) — see [ROADMAP §3](../ROADMAP.md#3-graph-model-short). Never present partial/stale/low-confidence data as complete fact.
 - **Token-budget aware.** Context-shaped tools accept a budget and return *compact, explainable* payloads, not raw graph dumps.
 - **MCP naming.** Exposed over MCP as `astrograph_<tool>`.
 
@@ -189,6 +189,6 @@ Anything requiring generated prose, embeddings, or network stays out while Astro
 
 ## 7. References
 - Tool shapes/descriptions to mirror: [`codegraph/src/mcp/tools.ts`](../../codegraph/src/mcp/tools.ts), [`server-instructions.ts`](../../codegraph/src/mcp/server-instructions.ts).
-- Core query layer to back the contract: [`codegraph/src/index.ts`](../../codegraph/src/index.ts) (the `CodeGraph` facade), [`src/context/`](../../codegraph/src/context), [`src/graph/`](../../codegraph/src/graph), [`src/search/`](../../codegraph/src/search).
+- Historical comparison: sibling `codegraph/src/index.ts`, `src/context/`, `src/graph/`, and `src/search/` paths are not vendored as Astrograph documentation dependencies.
 - Progressive behavior + coverage envelope: [docs/progressive-indexing.md](progressive-indexing.md).
-- Stage 2 framing: [ROADMAP §5](../ROADMAP.md#5-stage-2--mcp-support).
+- Shipped CLI/MCP framing: [ROADMAP stages 1–3](../ROADMAP.md#46-stages-13-shipped-not-v10-complete).

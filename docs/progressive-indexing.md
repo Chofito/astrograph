@@ -2,7 +2,7 @@
 
 > 🌐 Languages: **English** (this file) · [Español](progressive-indexing.es.md)
 
-> Design document. It belongs to **Stage 2 (MCP daemon)** of the [ROADMAP](../ROADMAP.md), but distinguishes the first practical V1 version from the fully mature Stage 5 / v2 version. It imposes **requirements on the V1 core** (see §6). The ROADMAP only references this document; the detail lives here so it doesn't bloat.
+> Historical/target design. The background priority queue and demand-boost flow below are **not implemented** at baseline `8c6e9ad`. Current behavior is full `init`, explicit/hash-based delta sync, and watcher batching before reads; see [Incremental synchronization](architecture/incremental-sync.md). This document remains a future design input, not AS-IS evidence.
 
 ## 1. Idea
 
@@ -39,7 +39,7 @@ It's the WoW-style "level of detail" per file.
 
 **`resolved` is per-backend, not per-language-privilege.** A file is `resolved` when every pass *its
 backend runs* has run. For a backend with an enricher (JS/TS) that means Pass A + Pass B. For a backend
-without one (`mode: 'none'`, e.g. PHP) Pass A **is** the pipeline, so `parsed → resolved` is immediate
+without one (`mode: 'none'`, e.g. an enricher-disabled backend) Pass A **is** the pipeline, so `parsed → resolved` is immediate
 and its files count as fully covered — otherwise coverage would report a permanent deficit for every
 enricher-less language and every banner would read `partial: yes` forever. Fidelity is carried by edge
 `provenance`/`confidence` instead. Normative: [graph-model §6.1](graph-model.md#61-what-resolved-means-per-backend-language-agnostic).

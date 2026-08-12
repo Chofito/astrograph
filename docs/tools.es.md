@@ -4,7 +4,7 @@
 
 > 🌐 Idiomas: **Español** (este archivo) · [English](tools.md)
 
-> Documento de diseño. Define el **contrato de tools agnóstico del transporte** que Astrograph expone a sus consumidores. El contrato (nombre, inputs, **resultado estructurado**) vive en `packages/core`; **MCP** (Etapa 2), la **CLI** (Etapa 1) y la **Web UI** (Etapa 3) son formatters finos sobre los mismos resultados estructurados. Ver [ROADMAP §5](../ROADMAP.es.md#5-stage-2--mcp-support).
+> Documento de diseño. Define el **contrato de tools agnóstico del transporte** que Astrograph expone a sus consumidores. El contrato (nombre, inputs, **resultado estructurado**) vive en `packages/core`; **MCP** (Etapa 2), la **CLI** (Etapa 1) y la **Web UI** (Etapa 3) son formatters finos sobre los mismos resultados estructurados. Ver [ROADMAP §5](../ROADMAP.es.md#5-etapa-2--soporte-mcp).
 
 ## 1. Por qué un contrato, no "MCP tools"
 
@@ -30,7 +30,7 @@ Toda tool debe pasar dos barras antes de ganarse su lugar:
 > `context` y `explore` parecen "inteligentes" pero son ensamblado puro: ranking + recortes de código verbatim + un mapa de relaciones. No se llama a ningún modelo. Pasan la barra.
 
 Reglas adicionales:
-- **Resultados honestos.** Todo resultado lleva cobertura/parcialidad y, donde aplique, `resolutionState` (`resolved|external|unresolved|ambiguous`) y `confidence` de edge (`high|medium|low`) — ver [ROADMAP §3](../ROADMAP.es.md#3-graph-model-data-contract). Nunca presentar datos parciales/stale/baja-confianza como hecho completo.
+- **Resultados honestos.** Todo resultado lleva cobertura/parcialidad y, donde aplique, `resolutionState` (`resolved|external|unresolved|ambiguous`) y `confidence` de edge (`high|medium|low`) — ver [ROADMAP §3](../ROADMAP.es.md#3-modelo-del-grafo-contrato-de-datos). Nunca presentar datos parciales/stale/baja-confianza como hecho completo.
 - **Consciente del presupuesto de tokens.** Las tools tipo contexto aceptan un budget y devuelven payloads *compactos y explicables*, no volcados de grafo crudo.
 - **Naming MCP.** Expuestas sobre MCP como `astrograph_<tool>`.
 
@@ -55,7 +55,7 @@ interface ToolResult<T> {
 }
 ```
 
-Los formatters renderizan `meta` como banner (MCP), línea de footer (CLI) o badge (Web). El comportamiento progresivo por tool está en [docs/progressive-indexing.es.md §4](progressive-indexing.es.md#4-what-works-progressively-and-what-doesnt).
+Los formatters renderizan `meta` como banner (MCP), línea de footer (CLI) o badge (Web). El comportamiento progresivo por tool está en [docs/progressive-indexing.es.md §4](progressive-indexing.es.md#4-qué-funciona-progresivamente-y-qué-no).
 
 ## 4. Las tools (V1 — espejo de las 10 de codegraph)
 
@@ -186,6 +186,6 @@ Cualquier cosa que requiera prosa generada, embeddings o red queda fuera mientra
 
 ## 7. Referencias
 - Formas/descripciones de tool a espejar: [`codegraph/src/mcp/tools.ts`](../../codegraph/src/mcp/tools.ts), [`server-instructions.ts`](../../codegraph/src/mcp/server-instructions.ts).
-- Capa de queries del core que respalda el contrato: [`codegraph/src/index.ts`](../../codegraph/src/index.ts) (el facade `CodeGraph`), [`src/context/`](../../codegraph/src/context), [`src/graph/`](../../codegraph/src/graph), [`src/search/`](../../codegraph/src/search).
+- Comparación histórica: las rutas hermanas `codegraph/src/index.ts`, `src/context/`, `src/graph/` y `src/search/` no forman parte de las dependencias documentales vendorizadas de Astrograph.
 - Comportamiento progresivo + envelope de cobertura: [docs/progressive-indexing.es.md](progressive-indexing.es.md).
-- Framing de la Etapa 2: [ROADMAP §5](../ROADMAP.es.md#5-stage-2--mcp-support).
+- Framing de la Etapa 2: [ROADMAP §5](../ROADMAP.es.md#5-etapa-2--soporte-mcp).

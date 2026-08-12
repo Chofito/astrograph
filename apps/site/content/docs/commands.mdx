@@ -90,8 +90,9 @@ See **[MCP & skills](/docs/mcp)** for host-by-host setup.
 
 ## Honest results
 
-Every query reports a coverage banner — `coverage R/T resolved · partial: yes/no` — and flags `external`,
-`unresolved`, and `ambiguous` references. Partial or stale results are never presented as complete facts.
+Every query reports a coverage banner — `coverage R/T resolved · partial: yes/no` — and can flag
+`external`, `unresolved`, and `ambiguous` references. Treat negative/global answers conservatively:
+some query-domain partiality and unresolved-evidence gaps remain tracked in the architecture backlog.
 
 `astrograph status` also lists the **language backends** in play — which parser claims which extensions,
 and whether a language gets an enricher (JS/TS: the TypeScript Compiler) or tree-sitter structure only.

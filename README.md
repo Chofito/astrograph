@@ -29,13 +29,13 @@ It knows about:
 * unresolved and ambiguous edges, reported honestly instead of hidden
 * coverage states so every answer can say whether it is complete or partial
 
-**JS/TS has semantic depth:** the TypeScript Compiler enricher (Pass B) provides exact import/type/call resolution. **PHP has a name-resolution enricher** (FQN + `use` aliases) for heritage, type positions, calls, and `new`. Other languages get tree-sitter structural extraction until an enricher lands.
+**JS/TS has semantic depth:** the TypeScript Compiler enricher (Pass B) provides compiler-backed import/type/call resolution. **PHP has a name-resolution enricher** (FQN + `use` aliases) for heritage, type positions, calls, and `new`. Files are indexed only when a registered backend claims their extension; adding a grammar alone does not enable another language.
 
 Language backends shipping today:
 
 | Backend | Files | Pass B enricher |
 |---|---|---|
-| `typescript` | `.ts` `.tsx` `.js` `.jsx` `.mjs` `.cjs` | TypeScript Compiler (semantic depth) |
+| `typescript` | `.ts` `.tsx` `.mts` `.cts` `.js` `.jsx` `.mjs` `.cjs` | TypeScript Compiler (semantic depth) |
 | `php` | `.php` | name resolution (heritage, types, calls) |
 
 `astrograph status` lists the active backends. Adding a language means registering another backend, not changing the core.
@@ -79,7 +79,7 @@ Promo/docs site           active (Stage 3)
 3D explorer               parked
 ```
 
-See [ROADMAP.md](ROADMAP.md) for the v1.0 stabilization plan and [docs/contracts.md](docs/contracts.md) for the canonical types.
+See [ROADMAP.md](ROADMAP.md) for product scope, [docs/contracts.md](docs/contracts.md) for canonical types, and the [architecture index](docs/architecture/README.md) for implemented flows, diagrams, ownership, and known deviations.
 
 ## Quick Start
 
@@ -261,11 +261,7 @@ Astrograph includes a deterministic Tier 1 eval harness. It indexes a repo, runs
 bun run eval
 ```
 
-Run it against another repo:
-
-```bash
-bun run eval /path/to/other/repo
-```
+The checked-in cases currently name Astrograph symbols. Passing another repository path only changes the indexed repository; it does not provide a valid comparative suite unless repository-specific cases are added. See [Testing and evaluation](docs/architecture/operations/testing-and-evaluation.md).
 
 This is not an LLM benchmark. It measures whether the graph surfaces the symbols a human would expect to see.
 
@@ -289,6 +285,7 @@ bun run --filter @astrograph/cli typecheck
 
 ## Documentation
 
+* [docs/architecture/README.md](docs/architecture/README.md): canonical architecture map, AS-IS/TO-BE flows, ADRs, ownership, and deviations
 * [ROADMAP.md](ROADMAP.md): product scope and staged plan
 * [docs/contracts.md](docs/contracts.md): canonical public types
 * [docs/cli.md](docs/cli.md): command usage, daemon, MCP install and troubleshooting

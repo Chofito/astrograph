@@ -3,10 +3,10 @@
 > 🌐 Languages: **English** (this folder)
 
 Astrograph's extraction uses a **two-pass architecture**:
-- **Pass A (tree-sitter):** Structural extraction for all languages
+- **Pass A (tree-sitter):** Structural extraction for extensions claimed by a registered backend
 - **Pass B (enrichers):** Language-specific semantic depth (e.g. TS Compiler for JS/TS)
 
-See the detailed design documents below:
+For frozen AS-IS/TO-BE boundaries, evidence, and diagrams, start with the canonical [backend contract](architecture/extraction/backend-contract.md). The older documents below retain detailed design history.
 
 ## Core documentation
 

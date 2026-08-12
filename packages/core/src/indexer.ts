@@ -35,6 +35,12 @@ export interface IndexAllOptions {
 	onProgress?: (e: IndexProgress) => void;
 }
 
+/**
+ * Coordinates full indexing and incremental convergence for one project.
+ *
+ * Language routing belongs to the registry; this class owns persistence order,
+ * reconciliation, invalidation, and storage lifetime.
+ */
 export class Indexer {
 	readonly queries: QueryBuilder;
 

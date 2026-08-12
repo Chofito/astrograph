@@ -15,6 +15,7 @@ export interface TraversalVisit {
 	path: Edge[];
 }
 
+/** Traverse bounded incoming or outgoing edges without revisiting nodes. */
 export function traverseGraph(
 	queries: QueryBuilder,
 	input: TraverseInput,
@@ -61,6 +62,7 @@ export function traverseGraph(
 	return visits.sort(compareVisits);
 }
 
+/** Find a bounded directed path between two persisted node IDs. */
 export function findPath(
 	queries: QueryBuilder,
 	input: Omit<TraverseInput, "limit"> & { targetId: string; limit?: number },

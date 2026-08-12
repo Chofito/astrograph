@@ -22,6 +22,7 @@ export interface OpenProjectOptions {
 	dbPath?: string;
 }
 
+/** Compose a Bun-backed project graph and initialize its storage and grammars. */
 export async function openProject(
 	rootPath: string,
 	opts: OpenProjectOptions = {},

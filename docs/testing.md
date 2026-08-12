@@ -2,7 +2,7 @@
 
 > 🌐 Languages: **English** (this file) · _ES mirror pending (see backlog)_
 
-> Design document. How we keep three coding models honest: a **fixture catalog**, **golden graph snapshots**, **incremental-sync scenarios**, and the **eval harness** that proves Astrograph beats a `grep`/`Read` baseline. Tests are the contract enforcement layer — when a model's code diverges from [docs/contracts.md](contracts.md) or [docs/extraction/overview.md](extraction/overview.md), a golden test fails.
+> Target design with historical completion markers. It is **not** an AS-IS inventory: the current suite has unit/integration coverage and stored golden files, but the goldens are not exercised through the production pipeline and the built-in eval cases are repository-specific. Use [Testing and evaluation](architecture/operations/testing-and-evaluation.md) for the frozen baseline and `DEV-014`/`DEV-015` for gaps. Checkboxes below record prior planning, not current verification.
 >
 > Extraction is **two-pass and multi-backend** ([overview](extraction/overview.md)): Pass A is tree-sitter, Pass B is an optional per-language enricher. The test suite has to pin **both passes, per backend**, and the seam between them (§2.1–2.2) — not just the JS/TS happy path.
 >
@@ -118,10 +118,9 @@ different files:
 | `__golden__/graph.json` | full pipeline (Pass A → reconcile → Pass B) | the graph as persisted, incl. `resolutionState`, `confidence`, `provenance` | every backend |
 | `__golden__/externals.json` | Pass B only | external nodes + `external` edges | enricher backends only |
 
-Matrix rules:
-- A fixture under `php/` or `mixed/` has **no** `externals.json`, and its `pass-a.json` and `graph.json`
-  must have **identical nodes** — a `none`-mode backend adds nothing in Pass B. That equality *is* the
-  test that `mode: 'none'` is wired correctly.
+Target matrix rules (not implemented at the frozen baseline):
+- A fixture under `php/` or `mixed/` has **no** `externals.json`, and PHP's `pass-a.json` and
+  `graph.json` must have **identical nodes** because its complement enricher currently adds edges only.
 - Every golden records the backend `id` and its `versionKeys()` in a header field, so "the grammar
   changed under us" is a visible diff instead of a mystery failure.
 - Adding a backend without adding its `pass-a.json` goldens fails the suite (same rule as a missing
@@ -222,7 +221,7 @@ Measured via a `bench` helper; recorded to `docs/benchmarks/` over time.
 
 ## 7. Eval harness (does it actually help agents?)
 
-Mirrors [`codegraph/__tests__/evaluation/`](../../codegraph/__tests__/evaluation) in spirit. **This is the V1 1.0 gate** (ROADMAP §14): if it doesn't beat the baseline, the design is wrong, not the polish.
+Historically modeled after a sibling `codegraph/__tests__/evaluation/` directory that is not part of this repository. This section is a target design, not a current V1 gate.
 
 **Methodology.**
 - Pick real **single-app** repos (Next.js, React Native/Expo, NestJS, Strapi — ROADMAP §1).
@@ -252,4 +251,4 @@ Reminder: the **agent writes** these; the **user runs** them.
 - Contracts under test: [docs/contracts.md](contracts.md).
 - Behavior the goldens encode: [docs/extraction/overview.md](extraction/overview.md) (two passes, reconciliation) · [tree-sitter.md](extraction/tree-sitter.md) (Pass A) · [typescript.md](extraction/typescript.md) (Pass B).
 - Coverage/partiality semantics asserted: [docs/progressive-indexing.md](progressive-indexing.md).
-- Eval reference: [`codegraph/__tests__/evaluation/`](../../codegraph/__tests__/evaluation).
+- Historical eval reference: sibling `codegraph/__tests__/evaluation/` (not vendored here).
