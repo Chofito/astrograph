@@ -17,9 +17,9 @@ export function formatTrace(result: ToolResult<TraceOutput>): string {
 		data.destinationCallees.length > 0
 	) {
 		lines.push("", "Destination callees");
-		data.destinationCallees.forEach((node) =>
-			lines.push(`- ${formatNode(node)}`),
-		);
+		data.destinationCallees.forEach((node) => {
+			lines.push(`- ${formatNode(node)}`);
+		});
 	}
 	if (data.endpoints !== undefined && data.endpoints.length > 0) {
 		lines.push("", "Endpoints");

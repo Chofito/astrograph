@@ -16,9 +16,9 @@ export function formatContext(result: ToolResult<ContextOutput>): string {
 	const lines = ["Context"];
 	if (data.entryPoints.length > 0) {
 		lines.push("", "Entry points");
-		data.entryPoints.forEach((node, index) =>
-			lines.push(`${index + 1}. ${formatNode(node)}`),
-		);
+		data.entryPoints.forEach((node, index) => {
+			lines.push(`${index + 1}. ${formatNode(node)}`);
+		});
 	}
 	if (data.subgraph.nodes.length > 0) {
 		lines.push("", "Symbols");
@@ -29,11 +29,15 @@ export function formatContext(result: ToolResult<ContextOutput>): string {
 	}
 	if (data.subgraph.edges.length > 0) {
 		lines.push("", "Edges");
-		data.subgraph.edges.forEach((edge) => lines.push(`- ${formatEdge(edge)}`));
+		data.subgraph.edges.forEach((edge) => {
+			lines.push(`- ${formatEdge(edge)}`);
+		});
 	}
 	if (data.codeBlocks.length > 0) {
 		lines.push("", "Code");
-		data.codeBlocks.forEach((block) => lines.push(formatCodeBlock(block)));
+		data.codeBlocks.forEach((block) => {
+			lines.push(formatCodeBlock(block));
+		});
 	}
 	if (data.relatedFiles.length > 0) {
 		lines.push("", `Related files: ${data.relatedFiles.join(", ")}`);

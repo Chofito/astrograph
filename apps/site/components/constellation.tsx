@@ -21,6 +21,8 @@ const STAR_TINTS = [
 ];
 
 type Star = {
+	/** Stable identity for React keys: the field is generated once, deterministically. */
+	id: string;
 	cx: number;
 	cy: number;
 	r: number;
@@ -36,6 +38,7 @@ function buildStars(seed: number, count: number, w: number, h: number): Star[] {
 	for (let i = 0; i < count; i++) {
 		const big = rand() > 0.92;
 		stars.push({
+			id: `${seed}-${i}`,
 			cx: Math.round(rand() * w),
 			cy: Math.round(rand() * h),
 			r: big ? 1.6 + rand() * 1.4 : 0.4 + rand() * 1.1,
@@ -61,13 +64,14 @@ export function Starfield() {
 	return (
 		<div className="astro-starfield" aria-hidden="true">
 			<svg
+				role="presentation"
 				className="astro-starfield-layer astro-starfield-far"
 				viewBox={`0 0 ${FIELD_W} ${FIELD_H}`}
 				preserveAspectRatio="xMidYMid slice"
 			>
-				{FAR_STARS.map((s, i) => (
+				{FAR_STARS.map((s) => (
 					<circle
-						key={i}
+						key={s.id}
 						cx={s.cx}
 						cy={s.cy}
 						r={s.r}
@@ -82,13 +86,14 @@ export function Starfield() {
 				))}
 			</svg>
 			<svg
+				role="presentation"
 				className="astro-starfield-layer astro-starfield-near"
 				viewBox={`0 0 ${FIELD_W} ${FIELD_H}`}
 				preserveAspectRatio="xMidYMid slice"
 			>
-				{NEAR_STARS.map((s, i) => (
+				{NEAR_STARS.map((s) => (
 					<circle
-						key={i}
+						key={s.id}
 						cx={s.cx}
 						cy={s.cy}
 						r={s.r + 0.5}
@@ -148,7 +153,7 @@ export function HeroConstellation() {
 			<g className="astro-constellation-edges">
 				{EDGES.map(([a, b], i) => (
 					<line
-						key={i}
+						key={`edge-${a}-${b}`}
 						x1={NODES[a]!.x}
 						y1={NODES[a]!.y}
 						x2={NODES[b]!.x}
@@ -161,7 +166,7 @@ export function HeroConstellation() {
 			<g className="astro-constellation-nodes">
 				{NODES.map((n, i) => (
 					<g
-						key={i}
+						key={`node-${n.x}-${n.y}`}
 						style={{ animationDelay: `${i * 260}ms` }}
 						className="astro-node-g"
 					>

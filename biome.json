@@ -59,6 +59,15 @@
 					}
 				}
 			}
+		},
+		{
+			"includes": ["packages/core/__fixtures__/**"],
+			"linter": {
+				"rules": {
+					"suspicious": { "noDuplicateClassMembers": "off" },
+					"a11y": { "useButtonType": "off" }
+				}
+			}
 		}
 	]
 }

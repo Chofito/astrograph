@@ -8,15 +8,15 @@ export function formatNodeDetails(result: ToolResult<NodeOutput>): string {
 	}
 	if (result.data.callersPreview.length > 0) {
 		lines.push("", "Callers preview");
-		result.data.callersPreview.forEach((node) =>
-			lines.push(`- ${formatNode(node)}`),
-		);
+		result.data.callersPreview.forEach((node) => {
+			lines.push(`- ${formatNode(node)}`);
+		});
 	}
 	if (result.data.calleesPreview.length > 0) {
 		lines.push("", "Callees preview");
-		result.data.calleesPreview.forEach((node) =>
-			lines.push(`- ${formatNode(node)}`),
-		);
+		result.data.calleesPreview.forEach((node) => {
+			lines.push(`- ${formatNode(node)}`);
+		});
 	}
 	if (result.data.code !== undefined) {
 		lines.push("", formatCodeBlock(result.data.code));
