@@ -33,6 +33,14 @@ jobs:
       - name: Lint and format check
         run: bun run check
 
+      # Warning mode: the repository carries pre-existing documentation debt
+      # (see docs/architecture/documentation-checklist.md). Cutover to a gate:
+      # when `bun run docs:check` reports 0 errors on main, drop `--warn-only`
+      # and `continue-on-error` from this step.
+      - name: Documentation guard
+        continue-on-error: true
+        run: bun run docs:check --warn-only
+
       - name: Test
         run: bun test
 

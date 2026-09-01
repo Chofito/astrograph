@@ -14,8 +14,9 @@
 		"bun": ">=1.1.0"
 	},
 	"scripts": {
-		"typecheck": "bun run --filter '*' typecheck && bun run typecheck:eval",
+		"typecheck": "bun run --filter '*' typecheck && bun run typecheck:eval && bun run typecheck:scripts",
 		"typecheck:eval": "tsc --noEmit -p tsconfig.eval.json",
+		"typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
 		"test": "bun test",
 		"eval": "bun eval/runner.ts",
 		"bench": "bun bench/rss.ts",
@@ -27,6 +28,7 @@
 		"dev:unlink": "cd packages/cli && bun unlink",
 		"install:local": "bun run build && mkdir -p ~/.local/bin && install -m 755 dist/astrograph ~/.local/bin/astrograph && ~/.local/bin/astrograph --version",
 		"clean": "rm -rf dist packages/*/dist apps/*/dist",
+		"docs:check": "bun scripts/docs-check.ts",
 		"check": "biome check .",
 		"check:fix": "biome check --write .",
 		"format": "biome format --write ."

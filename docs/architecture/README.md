@@ -59,6 +59,7 @@ When current code conflicts with the target, the architecture document describes
 - Surfaces: [CLI](surfaces/cli.md), [MCP](surfaces/mcp.md), [agent skill](surfaces/agent-skill.md)
 - Operations: [resources](operations/lifecycle-and-resources.md), [testing/eval](operations/testing-and-evaluation.md), [distribution](operations/distribution.md)
 - Decisions: [ADR index](decisions/README.md)
+- Process: [document template](document-template.md), [documentation checklist](documentation-checklist.md)
 
 ## Legacy documentation disposition
 
@@ -86,3 +87,5 @@ When current code conflicts with the target, the architecture document describes
 ## Maintenance rule
 
 A behavior change is incomplete until its canonical architecture document, diagram, deviation status, and affected public contract are updated in the same review.
+
+The mechanical half of that rule is enforced by `bun run docs:check` (`scripts/docs-check.ts`): local links and anchors, architecture metadata, fence balance, duplicate deviation IDs, and the required-document inventory. The judgement half — which document owns a change, and whether a claim still cites real evidence — is the [documentation checklist](documentation-checklist.md).
