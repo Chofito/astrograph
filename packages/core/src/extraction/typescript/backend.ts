@@ -126,19 +126,28 @@ export class TypescriptLanguageBackend
 	 * not this method by string equality.
 	 */
 	private invalidate(input: InvalidationInput): InvalidationResult {
-		const affected = new Set<string>();
-		const changed = [...input.added, ...input.modified];
-
-		for (const filePath of changed) {
-			affected.add(filePath);
-			for (const dependent of input.dependentsOf(filePath)) {
-				affected.add(dependent);
-			}
+		// A file appearing or disappearing changes the compiler's module graph for
+		// the whole program, and the evidence for that is not in the edge table: an
+		// importer written before its module exists holds an unresolved `imports`
+		// edge with a null target, so no recorded dependency points at the new
+		// file. Re-resolve everything this backend owns.
+		//
+		// Conservative on purpose. Narrowing it needs the Program's own module
+		// resolution, which belongs to the affected-set optimization work, not
+		// here — and being conservative can only cost time, while being narrow
+		// costs correctness.
+		if (
+			input.added.length > 0 ||
+			input.removed.length > 0 ||
+			input.configurationChanged
+		) {
+			return { resolveFiles: [...input.ownedFiles].sort() };
 		}
 
-		// A removed file's importers must be re-resolved, and the identities were
-		// captured before deletion precisely so this is still answerable.
-		for (const filePath of input.removed) {
+		// Content-only edits: recorded edges are sufficient and much cheaper.
+		const affected = new Set<string>();
+		for (const filePath of input.modified) {
+			affected.add(filePath);
 			for (const dependent of input.dependentsOf(filePath)) {
 				affected.add(dependent);
 			}
@@ -150,8 +159,6 @@ export class TypescriptLanguageBackend
 			}
 		}
 
-		// A configuration or version change invalidates the whole program: the
-		// compiler's view of every file may differ.
 		return {
 			resolveFiles: [...affected].filter((path) => this.owns(path)).sort(),
 		};

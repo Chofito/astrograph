@@ -623,8 +623,12 @@ export class Indexer {
 		for (const backend of this.registry.list()) {
 			const owns = (path: string) =>
 				membership.get(path)?.backendId === backend.id;
+			const scoped: InvalidationInput = {
+				...input,
+				ownedFiles: [...(membership.byBackend.get(backend.id) ?? [])],
+			};
 
-			const result = backend.enricher?.invalidate?.(input) ?? {
+			const result = backend.enricher?.invalidate?.(scoped) ?? {
 				// Conservative default for a backend that does not model its own
 				// dependencies: its changed files plus the files holding recorded
 				// edges into them. Recorded edges, never name similarity.
@@ -656,6 +660,8 @@ export class Indexer {
 	}): InvalidationInput {
 		return {
 			...input,
+			// Replaced per backend in `collectAffectedFiles`.
+			ownedFiles: [],
 			dependentsOf: (filePath) => {
 				const files = new Set<string>();
 				for (const node of this.queries.getNodesByFile(filePath)) {

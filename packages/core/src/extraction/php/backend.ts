@@ -143,22 +143,27 @@ export class PhpLanguageBackend implements LanguageBackend {
 	 * resolvable name, and this method never returns a non-PHP path.
 	 */
 	private invalidate(input: InvalidationInput): InvalidationResult {
-		const affected = new Set<string>();
-		const changed = [...input.added, ...input.modified];
+		// Adding or removing a class changes the FQN index, and a file that
+		// references a class which did not exist yet holds an unresolved edge with
+		// no target — so no recorded dependency points at the new file. Re-resolve
+		// every PHP file; the name index is rebuilt on the next `loadProject`.
+		if (
+			input.added.length > 0 ||
+			input.removed.length > 0 ||
+			input.configurationChanged
+		) {
+			return { resolveFiles: [...input.ownedFiles].filter(isPhpPath).sort() };
+		}
 
-		for (const filePath of changed) {
+		// Content-only edits: recorded `extends`/`implements`/`imports`/`calls`
+		// edges name the real dependents, and no bare method name is matched.
+		const affected = new Set<string>();
+		for (const filePath of input.modified) {
 			affected.add(filePath);
 			for (const dependent of input.dependentsOf(filePath)) {
 				affected.add(dependent);
 			}
 		}
-		for (const filePath of input.removed) {
-			for (const dependent of input.dependentsOf(filePath)) {
-				affected.add(dependent);
-			}
-		}
-		// Identities captured before deletion: whoever extended or called a class
-		// that no longer exists must be recomputed, not left pointing at a ghost.
 		for (const identity of input.priorIdentities) {
 			if (!isPhpPath(identity.filePath)) continue;
 			for (const dependent of input.dependentsOf(identity.filePath)) {

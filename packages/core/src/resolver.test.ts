@@ -1435,11 +1435,15 @@ describe("Pass B: edge resolution", () => {
 				.find((node) => node.name === "laterFn");
 			expect(laterNode).toBeDefined();
 
-			// The declaration exists, and the unproven call still says so.
-			const toLater = indexer.queries
+			// The declaration exists and owns its own structural edges — `contains`
+			// from its file, `exports` from itself. Those are not the question. The
+			// question is whether the *call* was promoted, and it must not be.
+			const callsIntoLater = indexer.queries
 				.getAllEdges()
-				.filter((edge) => edge.target === laterNode?.id);
-			expect(toLater).toEqual([]);
+				.filter(
+					(edge) => edge.target === laterNode?.id && edge.kind === "calls",
+				);
+			expect(callsIntoLater).toEqual([]);
 
 			const stillUnresolved = indexer.queries
 				.getAllEdges()
@@ -1494,14 +1498,15 @@ describe("Pass B: edge resolution", () => {
 
 			// The importer was re-resolved by the TypeScript backend, not promoted
 			// by a name match in core.
-			const resolved = indexer.queries
+			const resolvedCalls = indexer.queries
 				.getAllEdges()
 				.filter(
 					(edge) =>
 						edge.target === laterNode?.id &&
+						edge.kind === "calls" &&
 						edge.resolutionState === "resolved",
 				);
-			expect(resolved.length).toBeGreaterThan(0);
+			expect(resolvedCalls.length).toBeGreaterThan(0);
 
 			assertGraphIntegrity({
 				nodes: indexer.queries.getAllNodes(),

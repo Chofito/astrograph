@@ -51,18 +51,55 @@ describe("CLI formatters", () => {
 		expect(jsonEnvelope(result)).toBe(JSON.stringify(result));
 	});
 
-	test("empty callers surfaces php capability note in the body", async () => {
+	test("empty callers surfaces the capability reason in the body", async () => {
+		const { formatCallers } = await import("../format/callers");
+		// Structured, not prose-matched: since AG-206 the formatter reads
+		// `reason.kind`, so rewording the detail cannot break the surface.
+		const detail = "php backend produces no calls edges";
+		const result: ToolResult<[]> = {
+			data: [],
+			meta: {
+				coverage: { total: 1, resolved: 1, parsed: 0, pending: 0 },
+				partial: true,
+				domain: "global_reverse",
+				reasons: [{ kind: "capability_unsupported", detail }],
+				notes: [detail],
+			},
+		};
+		expect(formatCallers(result as never)).toContain(`(${detail})`);
+	});
+
+	test("a capability reason is detected by kind, not by its wording", async () => {
 		const { formatCallers } = await import("../format/callers");
 		const result: ToolResult<[]> = {
 			data: [],
 			meta: {
 				coverage: { total: 1, resolved: 1, parsed: 0, pending: 0 },
 				partial: true,
-				notes: ["php backend produces no call edges"],
+				domain: "global_reverse",
+				reasons: [
+					{ kind: "capability_unsupported", detail: "reworded entirely" },
+				],
 			},
 		};
-		expect(formatCallers(result as never)).toContain(
-			"(php backend produces no call edges)",
+		expect(formatCallers(result as never)).toContain("(reworded entirely)");
+	});
+
+	test("a non-capability reason does not become the empty-result body", async () => {
+		const { formatCallers } = await import("../format/callers");
+		const result: ToolResult<[]> = {
+			data: [],
+			meta: {
+				coverage: { total: 2, resolved: 1, parsed: 0, pending: 1 },
+				partial: true,
+				domain: "global_reverse",
+				reasons: [
+					{ kind: "coverage_incomplete", detail: "1 of 2 files unresolved." },
+				],
+			},
+		};
+		expect(formatCallers(result as never)).not.toContain(
+			"(1 of 2 files unresolved.)",
 		);
 	});
 });

@@ -27,7 +27,9 @@ At most one event survives per path. `unlink` dominates: a batch that both chang
 
 Steps 4 and 5 are in that order deliberately: a backend builds its project view from persisted Pass A rows, so loading first would show it the previous pass's nodes.
 
-`syncFiles` refreshes `configHash` and the version keys exactly like `sync`; a watch-driven index that never updated its identity was a second kind of index. An event batch never retires a path it did not mention, because silence is not deletion. Name-based healing is gone. It matched a bare `node.name` against every unresolved edge and promoted whatever it found, which could link a PHP `save()` to a TypeScript call and two same-named symbols in different namespaces to each other. Storage no longer offers a lookup from a target name to edges, so the behavior cannot return by accident. An edge whose target cannot be proven stays `unresolved` — a correct answer, not a gap.
+`syncFiles` refreshes `configHash` and the version keys exactly like `sync`; a watch-driven index that never updated its identity was a second kind of index. An event batch never retires a path it did not mention, because silence is not deletion. A file being added or removed re-resolves the owning backend's whole file set, because a module that did not exist yet has no recorded edge pointing at it. Content-only edits use recorded dependents.
+
+Name-based healing is gone. It matched a bare `node.name` against every unresolved edge and promoted whatever it found, which could link a PHP `save()` to a TypeScript call and two same-named symbols in different namespaces to each other. Storage no longer offers a lookup from a target name to edges, so the behavior cannot return by accident. An edge whose target cannot be proven stays `unresolved` — a correct answer, not a gap.
 
 ```mermaid
 sequenceDiagram

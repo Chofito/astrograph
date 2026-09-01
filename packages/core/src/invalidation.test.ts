@@ -127,18 +127,25 @@ function recordingBackend(
 	};
 }
 
+/**
+ * A live project: one record keyed by *relative* path, which both the scanner
+ * and the filesystem read through. Snapshotting it into an absolute-keyed copy
+ * made later edits invisible to the indexer, so a test that "changed" a file
+ * silently changed nothing.
+ */
 function memoryFs(files: Record<string, string>): FileSystem {
+	const read = (absolute: string) => files[absolute.replace("/project/", "")];
 	return {
 		async readText(path) {
-			const c = files[path];
+			const c = read(path);
 			if (c === undefined) throw new Error(`ENOENT: ${path}`);
 			return c;
 		},
 		async exists(path) {
-			return files[path] !== undefined;
+			return read(path) !== undefined;
 		},
 		async stat(path) {
-			const c = files[path];
+			const c = read(path);
 			if (c === undefined) throw new Error(`ENOENT: ${path}`);
 			return { size: c.length, modifiedAt: NOW };
 		},
@@ -160,14 +167,11 @@ function openIndexer(
 	const storage = new BunSqliteStorageAdapter(":memory:");
 	runMigrations(storage, { now: () => NOW });
 	const queries = new QueryBuilder(storage);
-	const absolute = Object.fromEntries(
-		Object.entries(files).map(([p, c]) => [`/project/${p}`, c]),
-	);
 
 	const indexer = new Indexer({
 		queries,
 		storage,
-		fs: memoryFs(absolute),
+		fs: memoryFs(files),
 		hasher: HASHER,
 		glob: memoryGlob(files),
 		registry: new LanguageRegistry(backends),
@@ -211,8 +215,7 @@ describe("core never promotes an edge by name", () => {
 			queries.upsertEdge(unresolved);
 
 			// Now a PHP class grows a `save` method with the very same name.
-			files["/project/src/Model.php"] = "Model save";
-			(files as Record<string, string>)["src/Model.php"] = "Model save";
+			files["src/Model.php"] = "Model save";
 
 			await indexer.sync();
 
@@ -261,7 +264,6 @@ describe("backends own their affected set", () => {
 			ts.resolved.length = 0;
 			php.resolved.length = 0;
 
-			files["/project/src/a.ts"] = "alpha gamma";
 			files["src/a.ts"] = "alpha gamma";
 			await indexer.sync();
 
@@ -307,7 +309,6 @@ describe("backends own their affected set", () => {
 			greedy.resolved.length = 0;
 			php.resolved.length = 0;
 
-			files["/project/src/a.ts"] = "alpha gamma";
 			files["src/a.ts"] = "alpha gamma";
 			await indexer.sync();
 
@@ -332,7 +333,6 @@ describe("backends own their affected set", () => {
 			await indexer.indexAll();
 			ts.invalidations.length = 0;
 
-			delete files["/project/src/gone.ts"];
 			delete files["src/gone.ts"];
 			await indexer.sync();
 
@@ -356,7 +356,6 @@ describe("backends own their affected set", () => {
 			await indexer.indexAll();
 			plain.resolved.length = 0;
 
-			files["/project/src/a.ts"] = "alpha beta";
 			files["src/a.ts"] = "alpha beta";
 			await indexer.sync();
 

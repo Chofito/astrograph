@@ -597,6 +597,8 @@ interface InvalidationInput {
   /** Identities captured BEFORE deletion; afterwards the evidence is gone. */
   priorIdentities: readonly PriorIdentity[];
   configurationChanged: boolean;
+  /** Every eligible file this backend owns in the current pass. */
+  ownedFiles: readonly string[];
   /** Files holding recorded edges into this file. Never name similarity. */
   dependentsOf(filePath: string): string[];
   dependenciesOf(filePath: string): string[];
@@ -615,6 +617,7 @@ Rules:
 - TypeScript derives dependents from module and type semantics; PHP from FQNs, `use` aliases, inheritance, and known types. Neither may return a path it does not own.
 - A backend that cannot prove a single target leaves the edge `unresolved` or `ambiguous`. That is a correct answer, not a failure.
 - Omitting `invalidate` selects a conservative default: the changed files the backend owns plus the files holding recorded edges into them.
+- **A file appearing or disappearing invalidates the backend's whole program.** The evidence for that dependency is not in the edge table: an importer written before its module exists holds an unresolved `imports` edge with a null target, so nothing recorded points at the new file. Both shipping backends therefore re-resolve `ownedFiles` on add, remove, or a configuration change, and use recorded dependents only for content-only edits. Narrowing this is affected-set optimization, not correctness; being conservative costs time, being narrow costs answers.
 
 Consequence worth stating plainly: adding a declaration named `laterFn` somewhere no longer
 resolves an unproven `laterFn()` call elsewhere. Only a real module or name-resolution

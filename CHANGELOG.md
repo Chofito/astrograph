@@ -32,6 +32,8 @@ Astrograph is currently a **public preview**. `0.x` releases may change CLI, MCP
 
 - Name-based edge healing. `healUnresolvedEdges` matched a bare `node.name` against every unresolved edge in the graph and promoted whatever it found, which could link a PHP `save()` to a TypeScript call, or two same-named symbols in different namespaces to each other, and present the result as `resolved`. Invalidation is now owned by the producing backend, and storage no longer offers a lookup from a target name to edges.
 
+  Adding or removing a file re-resolves the owning backend's whole file set, because an importer written before its module exists holds an unresolved edge that points nowhere.
+
   **Behavior change:** adding a declaration named `laterFn` no longer resolves an unproven `laterFn()` call elsewhere. Only a real module or name-resolution relationship does. Some edges that previously read `resolved` will now correctly read `unresolved`; per contracts §12.4 that is a correctness fix, not a breaking promise.
 
 ### Changed

@@ -351,25 +351,48 @@ describe("GraphQueries", () => {
 		}
 	});
 
-	test("meta partial flips when scoped files are pending", async () => {
+	test("getNode is a reverse claim, so its coverage is the whole project", async () => {
+		// Previously this scoped coverage to the node's own file and reported
+		// total: 1. A callers preview can contain a relation from any file, so
+		// scoping it there let an incomplete preview look complete (AG-206).
 		const graph = await indexFixtureProject();
 		try {
 			const resolved = await graph.getNode({ symbol: "helper" });
+			expect(resolved.meta.domain).toBe("global_reverse");
 			expect(resolved.meta.partial).toBe(false);
+			expect(resolved.meta.coverage.total).toBeGreaterThan(1);
 
 			const file = graph.queries.getFile("src/b.ts");
 			expect(file).not.toBeUndefined();
 			graph.queries.upsertFile({ ...file!, state: "pending" });
 
 			const pending = await graph.getNode({ symbol: "helper" });
-			expect(pending.meta.coverage).toEqual({
-				total: 1,
-				resolved: 0,
-				parsed: 0,
-				pending: 1,
-			});
+			expect(pending.meta.coverage.pending).toBe(1);
 			expect(pending.meta.partial).toBe(true);
 			expect(pending.meta.pendingFiles).toEqual(["src/b.ts"]);
+			expect(pending.meta.reasons?.map((r) => r.kind)).toContain(
+				"coverage_incomplete",
+			);
+		} finally {
+			graph.close();
+		}
+	});
+
+	test("a pending file elsewhere does not make a local callees answer partial", async () => {
+		// The complement of the test above: `callees` is genuinely local, so an
+		// unrelated pending file must not degrade it.
+		const graph = await indexFixtureProject();
+		try {
+			const before = await graph.callees({ symbol: "helper" });
+			expect(before.meta.domain).toBe("local_outgoing");
+			expect(before.meta.partial).toBe(false);
+
+			const unrelated = graph.queries.getFile("src/chain.ts");
+			expect(unrelated).not.toBeUndefined();
+			graph.queries.upsertFile({ ...unrelated!, state: "pending" });
+
+			const after = await graph.callees({ symbol: "helper" });
+			expect(after.meta.partial).toBe(false);
 		} finally {
 			graph.close();
 		}

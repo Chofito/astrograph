@@ -288,6 +288,16 @@ export interface InvalidationInput {
 	/** True when configuration or a backend version key changed this pass. */
 	configurationChanged: boolean;
 	/**
+	 * Every eligible file this backend owns in the current pass.
+	 *
+	 * Needed because a file that *appears* has no recorded edge pointing at it
+	 * yet: an importer written before its module exists holds an unresolved
+	 * `imports` edge with a null target, so `dependentsOf` cannot find it. A
+	 * backend decides for itself what an added or removed file means for its
+	 * program; core does not guess.
+	 */
+	ownedFiles: readonly string[];
+	/**
 	 * Files holding edges that point into `filePath`'s nodes, from the persisted
 	 * graph. Real recorded relationships, never name similarity.
 	 */
