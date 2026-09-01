@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import type { Hasher, LanguageBackend, PassAResult } from "../types";
+import type { Enricher, Hasher, LanguageBackend, PassAResult } from "../types";
 import {
+	BackendRegistrationError,
 	createDefaultRegistry,
+	EXTRACTION_CONTRACT_VERSION,
 	grammarsForRegistry,
 	LanguageRegistry,
 } from "./registry";
@@ -10,7 +12,11 @@ const HASHER: Hasher = { hash: (s) => String(Bun.hash(s)) };
 
 const NOOP_PASS_A: PassAResult = { nodes: [], edges: [], errors: [] };
 
-function fakeBackend(id: string, extensions: string[]): LanguageBackend {
+function fakeBackend(
+	id: string,
+	extensions: string[],
+	overrides: Partial<LanguageBackend> = {},
+): LanguageBackend {
 	return {
 		id,
 		languages: [id],
@@ -18,8 +24,16 @@ function fakeBackend(id: string, extensions: string[]): LanguageBackend {
 		parser: { extractNodes: () => NOOP_PASS_A },
 		capabilities: { edgeKinds: ["contains"] },
 		versionKeys: () => ({ version: "1" }),
+		...overrides,
 	};
 }
+
+const STUB_ENRICHER: Enricher = {
+	mode: "complement",
+	id: "stub",
+	provenance: "synthesized:stub",
+	resolveEdges: () => ({ edges: [], errors: [], externalNodes: [] }),
+};
 
 describe("LanguageRegistry", () => {
 	test("backendForPath routes by extension, case-insensitively", () => {
@@ -103,6 +117,12 @@ describe("createDefaultRegistry", () => {
 		const registry = createDefaultRegistry({ hasher: HASHER });
 		const php = registry.backendById("php");
 		expect(php?.enricher?.mode).toBe("complement");
+		// PHP enrichment is name resolution over the same tree-sitter parse, so
+		// its rows must not be stamped with the TypeScript compiler's provenance.
+		expect(php?.enricher?.provenance).toBe("tree-sitter");
+		expect(registry.backendById("typescript")?.enricher?.provenance).toBe(
+			"ts-compiler",
+		);
 		expect(php?.capabilities.edgeKinds).toEqual([
 			"contains",
 			"extends",
@@ -113,6 +133,149 @@ describe("createDefaultRegistry", () => {
 			"calls",
 			"instantiates",
 		]);
+	});
+});
+
+describe("LanguageRegistry registration validation", () => {
+	test("two backends with the same id are rejected", () => {
+		expect(
+			() =>
+				new LanguageRegistry([
+					fakeBackend("php", [".php"]),
+					fakeBackend("php", [".php5"]),
+				]),
+		).toThrow(BackendRegistrationError);
+	});
+
+	test("two backends claiming the same extension are rejected, case-insensitively", () => {
+		expect(
+			() =>
+				new LanguageRegistry([
+					fakeBackend("typescript", [".ts"]),
+					fakeBackend("other", [".TS"]),
+				]),
+		).toThrow(/claimed by both "typescript" and "other"/);
+	});
+
+	test("a backend claiming no extensions is rejected", () => {
+		expect(() => new LanguageRegistry([fakeBackend("empty", [])])).toThrow(
+			/claims no extensions/,
+		);
+	});
+
+	test("an extension without a leading dot is rejected", () => {
+		expect(() => new LanguageRegistry([fakeBackend("bad", ["ts"])])).toThrow(
+			/invalid extension "ts"/,
+		);
+	});
+
+	test("capabilities must include contains, because Pass A always runs", () => {
+		expect(
+			() =>
+				new LanguageRegistry([
+					fakeBackend("nocontains", [".x"], {
+						enricher: STUB_ENRICHER,
+						capabilities: { edgeKinds: ["calls"] },
+					}),
+				]),
+		).toThrow(/must declare "contains"/);
+	});
+
+	test("a Pass-A-only backend may not advertise enricher-only edge kinds", () => {
+		expect(
+			() =>
+				new LanguageRegistry([
+					fakeBackend("overclaim", [".x"], {
+						capabilities: { edgeKinds: ["contains", "calls"] },
+					}),
+				]),
+		).toThrow(
+			/Pass-A-only backend "overclaim" declares enricher-only edge kinds: calls/,
+		);
+	});
+
+	test("a Pass-A-only backend declaring exactly contains is accepted", () => {
+		const registry = new LanguageRegistry([fakeBackend("passa", [".x"])]);
+		expect(registry.backendById("passa")?.enricher).toBeUndefined();
+	});
+
+	test("duplicate and unknown edge kinds are rejected", () => {
+		expect(
+			() =>
+				new LanguageRegistry([
+					fakeBackend("dupe", [".x"], {
+						capabilities: { edgeKinds: ["contains", "contains"] },
+					}),
+				]),
+		).toThrow(/declares edge kind "contains" twice/);
+
+		expect(
+			() =>
+				new LanguageRegistry([
+					fakeBackend("unknown", [".x"], {
+						capabilities: {
+							edgeKinds: ["contains", "teleports" as never],
+						},
+					}),
+				]),
+		).toThrow(/unknown edge kind "teleports"/);
+	});
+
+	test("an enricher without id or provenance is rejected", () => {
+		expect(
+			() =>
+				new LanguageRegistry([
+					fakeBackend("noid", [".x"], {
+						enricher: { ...STUB_ENRICHER, id: "" },
+						capabilities: { edgeKinds: ["contains", "calls"] },
+					}),
+				]),
+		).toThrow(/enricher without an id/);
+
+		expect(
+			() =>
+				new LanguageRegistry([
+					fakeBackend("noprov", [".x"], {
+						enricher: { ...STUB_ENRICHER, provenance: "" as never },
+						capabilities: { edgeKinds: ["contains", "calls"] },
+					}),
+				]),
+		).toThrow(/enricher without a provenance/);
+	});
+
+	test("a non-complement enricher is rejected at registration", () => {
+		expect(
+			() =>
+				new LanguageRegistry([
+					fakeBackend("replacer", [".x"], {
+						enricher: { ...STUB_ENRICHER, mode: "replace" as never },
+						capabilities: { edgeKinds: ["contains", "calls"] },
+					}),
+				]),
+		).toThrow(/non-complement enricher/);
+	});
+});
+
+describe("LanguageRegistry summary and version keys", () => {
+	test("enricher status is derived from presence, not configured", () => {
+		const registry = new LanguageRegistry([
+			fakeBackend("passa", [".a"]),
+			fakeBackend("rich", [".b"], {
+				enricher: STUB_ENRICHER,
+				capabilities: { edgeKinds: ["contains", "calls"] },
+			}),
+		]);
+		expect(registry.summary().map((b) => [b.id, b.enricher])).toEqual([
+			["passa", "none"],
+			["rich", "complement"],
+		]);
+	});
+
+	test("version keys carry the extraction contract identity so old indexes rebuild", () => {
+		const registry = new LanguageRegistry([fakeBackend("passa", [".a"])]);
+		expect(registry.versionKeys()["extraction:contract"]).toBe(
+			EXTRACTION_CONTRACT_VERSION,
+		);
 	});
 });
 

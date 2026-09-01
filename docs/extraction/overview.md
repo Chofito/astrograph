@@ -121,10 +121,13 @@ Note the argument order: **`(filePath, source)`**.
 ### `Enricher`
 
 ```ts
-type EnricherMode = 'complement' | 'replace' | 'none';
+type EnricherMode = 'complement';
+type EnricherStatus = EnricherMode | 'none';   // how `status` presents it
 
 interface Enricher {
   readonly mode: EnricherMode;
+  readonly id: string;
+  readonly provenance: Provenance;   // stamped on this enricher's reconciled nodes
   loadProject?(opts: LoadProjectOptions): void;
   resolveEdges(filePath: string): EdgeResolutionResult;
 }
@@ -139,10 +142,7 @@ interface EdgeResolutionResult {
 
 Optional Pass B, **per file**, driven by a project loaded once via `loadProject`. It refines edges (`confidence`, `resolutionState`, `provenance`), adds `type_of`/`returns` edges, creates minimal external nodes, and may supply project nodes Pass A deliberately withheld.
 
-**Modes:**
-- `complement` — Pass A emits a conservative **subset** with byte-identical ids; Pass B reconciles by id (see below). **This is the TypeScript backend's mode.**
-- `replace` — Pass B supersedes Pass A for the relationships it covers.
-- `none` — no enricher; tree-sitter output is final. (Disable a language's enricher with `backends.<id>.enricher: false`.)
+**Shapes:** a backend either has **no enricher** — Pass A is final and the file reaches `resolved` (disable one with `backends.<id>.enricher: false`) — or exactly **one complement enricher**. Pass A emits a conservative **subset** with byte-identical ids; Pass B reconciles by id (see below). Nothing skips Pass A, and no enricher may delete a Pass-A node.
 
 ### `complement` reconciliation (the rule that keeps ids stable)
 
@@ -151,7 +151,7 @@ Optional Pass B, **per file**, driven by a project loaded once via `loadProject`
 3. Pass B reconciles **by node id**: matched nodes are enriched **in place** (so ids never churn as a file moves `parsed → resolved`), enricher-only nodes are added.
 4. A **Pass-A-only node** — one Pass A emitted that Pass B does not know — is a **bug**. It is counted and reported, never silently kept or dropped. Full pipeline golden enforcement is still target work; see `DEV-014` in [deviations](../architecture/deviations.md).
 
-Node-level provenance is written to `Node.metadata.provenance`; edge-level provenance is the real `edges.provenance` column. Neither needs a schema change.
+Node-level provenance is written to `Node.metadata.provenance`; edge-level provenance is the real `edges.provenance` column. Neither needs a schema change. The value comes from `Enricher.provenance` — `ts-compiler` for the TypeScript backend, `tree-sitter` for the PHP name resolver, whatever a third-party backend declares — never from a language name guessed by the indexer.
 
 ### Orchestration
 

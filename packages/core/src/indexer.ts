@@ -1,9 +1,14 @@
+import {
+	type AstrographConfig,
+	type NormalizedAstrographConfig,
+	normalizeAstrographConfig,
+	semanticAstrographConfig,
+} from "./config";
 import type { QueryBuilder } from "./db/queries";
 import { type ReconcileStats, reconcileNodes } from "./extraction/reconcile";
 import type { LanguageRegistry } from "./extraction/registry";
 import { languageFromPath } from "./extraction/shared/language";
 import type {
-	AstrographConfig,
 	Edge,
 	EdgeResolutionResult,
 	ExtractionError,
@@ -49,7 +54,7 @@ export class Indexer {
 	private readonly hasher: Hasher;
 	private readonly glob: GlobScanner;
 	private readonly registry: LanguageRegistry;
-	private readonly config: AstrographConfig;
+	private readonly config: NormalizedAstrographConfig;
 	private readonly root: string;
 	private readonly now: () => number;
 
@@ -72,7 +77,12 @@ export class Indexer {
 		this.hasher = options.hasher;
 		this.glob = options.glob;
 		this.registry = options.registry;
-		this.config = options.config ?? {};
+		this.config = normalizeAstrographConfig(options.config, {
+			knownBackendIds: [
+				...this.registry.list().map((backend) => backend.id),
+				...Object.keys(options.config?.backends ?? {}),
+			],
+		});
 		this.root = normalizePath(options.root);
 		this.now = options.now ?? Date.now;
 	}
@@ -338,7 +348,8 @@ export class Indexer {
 		backend: LanguageBackend,
 	): EdgeResolutionResult | undefined {
 		const enricher = backend.enricher;
-		if (!enricher || enricher.mode === "none") return undefined;
+		// No enricher means Pass-A-only: there is nothing to resolve.
+		if (!enricher) return undefined;
 		const cached = this.resolveCache.get(relPath);
 		if (cached) return cached;
 		const result = enricher.resolveEdges(relPath);
@@ -398,12 +409,9 @@ export class Indexer {
 		const existing = this.queries.getFile(relPath);
 		if (!options.force && existing?.contentHash === contentHash) return;
 
-		// A "replace" enricher owns the node set outright; running Pass A would
-		// only produce rows it is about to delete.
-		const skipPassA = backend.enricher?.mode === "replace";
-		const extraction = skipPassA
-			? { nodes: [], edges: [], errors: [] }
-			: backend.parser.extractNodes(relPath, source);
+		// Pass A is the structural floor: every eligible claimed file runs it
+		// exactly once, whether or not the backend also ships an enricher.
+		const extraction = backend.parser.extractNodes(relPath, source);
 
 		this.writeParsedFile(relPath, {
 			contentHash,
@@ -425,14 +433,18 @@ export class Indexer {
 	private indexFileReconcile(relPath: string): void {
 		const backend = this.registry.backendForPath(relPath);
 		if (!backend) return;
+		const enricher = backend.enricher;
+		if (!enricher) return;
 		const result = this.resolveFor(relPath, backend);
 		if (!result?.nodes) return;
 		const enriched = result.nodes;
 
 		const write = this.storage.transaction(() => {
 			const passANodes = this.queries.getNodesByFile(relPath);
+			// Provenance is declared by the producing enricher; the indexer must
+			// never infer it from a language name.
 			const plan = reconcileNodes(passANodes, enriched, {
-				provenance: "ts-compiler",
+				provenance: enricher.provenance,
 				filePath: relPath,
 			});
 
@@ -653,14 +665,16 @@ export class Indexer {
 			"yarn.lock",
 			"pnpm-lock.yaml",
 			".gitignore",
-			".astrograph/config.json",
 		];
 
 		// Ask every registered backend for its real versions, so bumping a grammar
 		// or the compiler actually invalidates the index.
-		const parts = Object.entries(this.registry.versionKeys()).map(
-			([key, value]) => `${key}:${value}`,
-		);
+		const parts = [
+			`config:${JSON.stringify(semanticAstrographConfig(this.config))}`,
+			...Object.entries(this.registry.versionKeys()).map(
+				([key, value]) => `${key}:${value}`,
+			),
+		];
 		for (const relPath of inputs) {
 			const absolutePath = this.joinRoot(relPath);
 			if (!(await this.fs.exists(absolutePath))) continue;

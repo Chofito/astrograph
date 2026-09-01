@@ -1,6 +1,6 @@
 # Language backend contract
 
-Status: mixed
+Status: current (enricher contract); mixed (lifecycle)
 Baseline: `8c6e9ad004a491886fb396cddca0dd617c67f495`
 Canonical owner: `packages/core/src/extraction/registry.ts`
 
@@ -25,9 +25,9 @@ At the baseline, the default registry registers two backends only: `typescript` 
 
 `LanguageRegistry` stores backends by ID and extensions in a lower-cased map. `backendForPath()` is the single routing authority, while `allExtensions()` supplies the scanner's indexable suffixes. `createDefaultRegistry()` applies `config.backends.<id>.enabled` and `.enricher` overrides before constructing the two shipping backends.
 
-Every `LanguageBackend` exposes a parser, optional `Enricher`, `BackendCapabilities`, and `versionKeys()`. The registry prefixes each backend's version keys before they participate in index identity. `summary()` reports claimed languages/extensions, enricher mode, capability edge kinds, and grammar availability for status consumers.
+Every `LanguageBackend` exposes a parser, optional `Enricher`, `BackendCapabilities`, and `versionKeys()`. The registry prefixes each backend's version keys before they participate in index identity, and adds its own `extraction:contract` key so a narrowing of this contract rebuilds pre-existing indexes. `summary()` reports claimed languages/extensions, enricher presentation (`complement` or `none`), capability edge kinds, and grammar availability for status consumers.
 
-The implemented contract still admits `complement`, `replace`, and `none` as `EnricherMode` values. Both shipped enrichers are `complement`; disabling an enricher means `enricher` is absent and only Pass A runs. The current `Indexer` treats `replace` differently from `complement`, despite the target contract below.
+`EnricherMode` is the single literal `"complement"`. A backend either has no enricher — Pass-A-only, and the file reaches `resolved` after Pass A — or exactly one complementary enricher that declares its own `id` and `provenance`. There is no mode that skips Pass A and no object-valued `none`. `LanguageRegistry` enforces this at construction and throws `BackendRegistrationError` on duplicate backend ids, an extension claimed by two backends, empty/duplicated/unknown edge kinds, capabilities that omit `contains`, a Pass-A-only backend advertising enricher-only edge kinds, or an enricher missing `id`/`provenance`.
 
 ```mermaid
 flowchart LR
@@ -44,16 +44,16 @@ flowchart LR
   FinalA --> Indexer
 ```
 
-## Target behavior (TO-BE)
+## Operational contract
 
-`ROADMAP.md` §1–2 and §10 lock the intended model: Tree-sitter Pass A always runs and owns structural nodes; an enricher may add edges and insert nodes that Pass A intentionally omitted, but it must not delete Pass A nodes. `docs/contracts.md` §5.1 defines ID-based reconciliation and the `PASS_A_NODE_DROPPED` warning for subset violations.
+`ROADMAP.md` §1–2 and §10 lock the model, and it is now implemented: Tree-sitter Pass A always runs and owns structural nodes; an enricher may add edges and insert nodes that Pass A intentionally omitted, but it must not delete Pass A nodes. `docs/contracts.md` §5.1 defines ID-based reconciliation and the `PASS_A_NODE_DROPPED` warning for subset violations.
 
-The implemented `replace` and object-valued `none` modes conflict with that direction (`DEV-007`). The target operational contract is therefore:
-
-- no enricher: Pass A is the final extraction for the file;
+- no enricher: Pass A is the final extraction for the file, and the file record reaches `resolved`;
 - complement enricher: Pass A first, then ID-based updates/inserts plus semantic edges;
-- no shipping mode may bypass Pass A or delete a Pass-A node;
-- producer provenance belongs to the backend/result rather than being inferred by the indexer.
+- no configuration bypasses Pass A or deletes a Pass-A node;
+- provenance is declared by the producing enricher (`Enricher.provenance`) and stamped by reconciliation; the indexer never infers it from a language name.
+
+Node enrichment and edge resolution stay conceptually separate (ADR-002), but `resolveEdges()` still returns both in one bounded result; splitting the call and streaming it belongs to `DEV-008`/`DEV-013`.
 
 ## Invariants
 
@@ -84,7 +84,7 @@ The implemented `replace` and object-valued `none` modes conflict with that dire
 
 ## Source evidence
 
-- `packages/core/src/types.ts`: `Parser`, `Enricher`, `LanguageBackend`, `EdgeResolutionResult`, and `EnricherMode`.
+- `packages/core/src/types.ts`: `Parser`, `Enricher`, `LanguageBackend`, `EdgeResolutionResult`, `EnricherMode`, and `EnricherStatus`.
 - `packages/core/src/extraction/registry.ts`: routing, default construction, status and grammar derivation.
 - `packages/core/src/extraction/typescript/backend.ts`: shipping JS/TS complement backend.
 - `packages/core/src/extraction/php/backend.ts`: shipping PHP complement backend.
@@ -92,7 +92,6 @@ The implemented `replace` and object-valued `none` modes conflict with that dire
 
 ## Known deviations
 
-- `DEV-007`: current mode semantics and hard-coded reconciled-node provenance disagree with the locked Pass-A authority model.
 - `DEV-008`: resolving all files before a separate edge phase can retain result data beyond a per-file lifetime.
 - `DEV-013`: the backend contract has no disposal lifecycle despite PHP owning a WASM parser.
 

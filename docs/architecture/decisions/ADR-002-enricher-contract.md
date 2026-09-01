@@ -29,6 +29,29 @@ interface Enricher {
 
 This is an architectural direction, not a claim that the baseline interface already has this exact shape.
 
+## Implemented interface (DEV-007)
+
+```ts
+type EnricherMode = 'complement'
+type EnricherStatus = EnricherMode | 'none'   // presentation in `status` only
+
+interface Enricher {
+  readonly mode: EnricherMode
+  readonly id: string
+  readonly provenance: Provenance
+  loadProject?(opts: LoadProjectOptions): void
+  resolveEdges(filePath: string): EdgeResolutionResult
+}
+```
+
+Differences from the sketch, and why:
+
+- `id` is required, so evidence can name the producing enricher, not just its provenance class.
+- `enrichNodes()` is **not** split out yet. Node enrichment still arrives as the optional `nodes` field of `EdgeResolutionResult`. Splitting the call is only useful together with streaming and per-file lifetime, which are `DEV-008`/`DEV-013`; shipping two node-producing entry points before then would mean two public contracts at once.
+- `dispose()` is **not** added yet, for the same reason: it must land with the storage-close ordering work (`DEV-013`).
+- Registration is validated by `LanguageRegistry` (`BackendRegistrationError`): unique backend ids, one owner per extension, and capabilities that match what the configured backend can actually emit.
+- `LanguageRegistry.versionKeys()` contributes `extraction:contract`, so narrowing this contract rebuilds pre-existing indexes.
+
 ## Consequences
 
 - Provenance is backend-owned rather than indexer-hardcoded.
@@ -53,5 +76,5 @@ This is an architectural direction, not a claim that the baseline interface alre
 
 ## Current deviations
 
-`DEV-007`, `DEV-008`, `DEV-012`, and `DEV-013`.
+`DEV-008`, `DEV-012`, and `DEV-013`. `DEV-007` is closed by the implemented interface above.
 

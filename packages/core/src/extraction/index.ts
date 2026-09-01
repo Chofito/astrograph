@@ -8,7 +8,9 @@ export type {
 export { reconcileNodes } from "./reconcile";
 export type { CreateRegistryOptions } from "./registry";
 export {
+	BackendRegistrationError,
 	createDefaultRegistry,
+	EXTRACTION_CONTRACT_VERSION,
 	grammarsForRegistry,
 	LanguageRegistry,
 } from "./registry";

@@ -231,16 +231,30 @@ export interface Parser {
 }
 
 /**
- * How a backend's enricher relates to its Pass A parser.
- * - `complement`: Pass A runs, the enricher's node view is reconciled onto it.
- * - `replace`: Pass A is skipped; the enricher is the only source of nodes.
- * - `none`: there is no enricher; Pass A output is the final answer.
+ * The only relationship an enricher may have with its Pass A parser: Pass A
+ * always runs, and the enricher's node view is reconciled onto it. Pass-A-only
+ * is expressed by {@link LanguageBackend.enricher} being `undefined`, not by a
+ * mode value.
  */
-export type EnricherMode = "complement" | "replace" | "none";
+export type EnricherMode = "complement";
 
-/** Optional backend-specific semantic pass layered according to {@link EnricherMode}. */
+/**
+ * How `status` presents a backend's enrichment. Derived from the presence of an
+ * enricher; it is a projection, never an operating mode a backend can select.
+ */
+export type EnricherStatus = EnricherMode | "none";
+
+/**
+ * Optional backend-specific semantic pass. It may update nodes whose ids match
+ * Pass A, insert declarations Pass A intentionally omitted, and add semantic
+ * edges; it can never delete a Pass A node.
+ */
 export interface Enricher {
 	readonly mode: EnricherMode;
+	/** Identity of the producing enricher, for evidence and diagnostics. */
+	readonly id: string;
+	/** Stamped on the nodes this enricher owns; the indexer never infers it. */
+	readonly provenance: Provenance;
 	loadProject?(opts: LoadProjectOptions): void;
 	resolveEdges(filePath: string): EdgeResolutionResult;
 }
@@ -428,8 +442,8 @@ export interface BackendStatus {
 	extensions: string[];
 	/** Version keys that feed the config hash (parser + enricher versions). */
 	versions: Record<string, string>;
-	/** Enricher mode; "none" when the backend has no enricher. */
-	enricher: EnricherMode;
+	/** Presentation of enrichment; "none" when the backend has no enricher. */
+	enricher: EnricherStatus;
 	/** Edge kinds this backend can produce. */
 	capabilities: BackendCapabilities;
 	/** Grammars this backend needs that are loaded and ready. */
@@ -490,22 +504,6 @@ export interface IndexProgress {
 	current: number;
 	total: number;
 	file?: string;
-}
-
-/** Persisted project configuration that affects scanning, backends, and freshness. */
-export interface AstrographConfig {
-	include?: string[];
-	exclude?: string[];
-	maxFileSizeBytes?: number;
-	kinds?: NodeKind[];
-	watchDebounceMs?: number;
-	tsconfigPath?: string;
-	/**
-	 * Per-backend overrides keyed by `LanguageBackend.id`.
-	 * `enabled: false` drops the backend (its files stop being indexed);
-	 * `enricher: false` keeps Pass A but disables Pass B for that backend.
-	 */
-	backends?: Record<string, { enabled?: boolean; enricher?: boolean }>;
 }
 
 export class AstrographError extends Error {

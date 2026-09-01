@@ -18,7 +18,7 @@ The implementation explicitly excludes framework wiring and dynamic behavior: Ma
 
 `PhpLanguageBackend.loadProject()` resets a `PhpAstCache`, records the project root/file list and SQLite node lookup callback, and clears its name index. Before resolving a file, `ensureNameIndex()` parses every configured PHP file one at a time, contributes compact FQN/method/heritage information from live trees, then releases each tree.
 
-For the requested file, the backend obtains one live tree, supplies that same tree to `TreeSitterParser.extractNodes()`, then calls `resolvePhpHeritage()` before releasing it in `finally`. PHP edges retain `tree-sitter` provenance because the enricher derives them from Tree-sitter AST evidence.
+The PHP enricher declares `id: "php-names"` and `provenance: "tree-sitter"`; reconciliation stamps that value, not the TypeScript compiler's, on any node it owns. For the requested file, the backend obtains one live tree, supplies that same tree to `TreeSitterParser.extractNodes()`, then calls `resolvePhpHeritage()` before releasing it in `finally`. PHP edges retain `tree-sitter` provenance because the enricher derives them from Tree-sitter AST evidence.
 
 Name resolution normalizes leading/trailing namespace separators and resolves a type reference by absolute FQN, local alias, or current namespace; it never searches the project by bare type name. The index maps project FQNs to Pass-A node IDs, types to methods, inheritance/interfaces and trait-use markers. Namespace walking supports semicolon and braced namespaces.
 

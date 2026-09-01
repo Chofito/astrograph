@@ -2,7 +2,6 @@ import type {
 	BackendCapabilities,
 	EdgeResolutionResult,
 	Enricher,
-	EnricherMode,
 	Hasher,
 	Language,
 	LanguageBackend,
@@ -74,7 +73,11 @@ export class PhpLanguageBackend implements LanguageBackend {
 			this.capabilities = PASS_A_ONLY_CAPABILITIES;
 		} else {
 			this.enricher = {
-				mode: "complement" satisfies EnricherMode,
+				mode: "complement",
+				id: "php-names",
+				// The PHP enricher resolves names over the same tree-sitter parse
+				// Pass A used; its rows are tree-sitter facts, not compiler facts.
+				provenance: "tree-sitter",
 				loadProject: (o) => this.loadProject(o),
 				resolveEdges: (filePath) => this.resolveEdges(filePath),
 			};

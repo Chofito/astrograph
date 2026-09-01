@@ -2,7 +2,7 @@
 
 > 🌐 Languages: **English** (this file) · _ES mirror pending (see backlog)_
 
-> **Single source of truth.** These TypeScript interfaces are the contract every implementer (and every coding model) must use verbatim. When code and prose disagree, **these types win**. They live in `packages/core/src/types.ts` (and `.../contracts.ts` for tool I/O). Derived from [docs/graph-model.md](graph-model.md) and [docs/tools.md](tools.md).
+> **Single source of truth.** These TypeScript interfaces are the contract every implementer (and every coding model) must use verbatim. When code and prose disagree, **these types win**. They live in `packages/core/src/types.ts`, `packages/core/src/config.ts`, and `.../contracts.ts` for tool I/O. Derived from [docs/graph-model.md](graph-model.md) and [docs/tools.md](tools.md).
 >
 > Rule: **the core never imports `bun:*`.** Everything platform-specific is an adapter interface (§5), injected.
 
@@ -216,13 +216,14 @@ export interface Parser {
 }
 
 /**
- * How a backend's enricher blends with Pass A:
- * - `complement` — Pass A emits a conservative SUBSET; the enricher reconciles by node id,
- *   enriches matches in place, and adds its own nodes (§5.1).
- * - `replace`     — enricher output supersedes Pass A for the relationships it covers.
- * - `none`        — no enricher runs; tree-sitter output is final.
+ * The only relationship an enricher may have with Pass A: Pass A emits a conservative
+ * SUBSET; the enricher reconciles by node id, enriches matches in place, and adds its
+ * own nodes (§5.1). Pass-A-only is `LanguageBackend.enricher === undefined`, not a mode.
  */
-export type EnricherMode = 'complement' | 'replace' | 'none';
+export type EnricherMode = 'complement';
+
+/** How `status` presents enrichment. Derived from presence; never selected by a backend. */
+export type EnricherStatus = EnricherMode | 'none';
 
 export interface EdgeResolutionResult {
   edges: Edge[];
@@ -234,8 +235,11 @@ export interface EdgeResolutionResult {
 
 /** Pass B: language-specific semantic enrichment (e.g. TS Compiler for JS/TS). */
 export interface Enricher {
-  readonly mode: EnricherMode;
-  /** Load whatever cross-file program the enricher needs (optional; `none`-mode backends omit it). */
+  readonly mode: EnricherMode;                 // always 'complement'
+  readonly id: string;                         // producing enricher, for evidence
+  /** Stamped on this enricher's reconciled nodes. The indexer never infers it. */
+  readonly provenance: Provenance;
+  /** Load whatever cross-file program the enricher needs (optional). */
   loadProject?(opts: LoadProjectOptions): void;
   /** Resolve one file's references into edges (+ external/enricher-only nodes). */
   resolveEdges(filePath: string): EdgeResolutionResult;
@@ -257,6 +261,12 @@ export interface LanguageBackend {
   versionKeys(): Record<string, string>;
 }
 ```
+
+`LanguageRegistry` rejects a backend at construction (`BackendRegistrationError`) when ids or
+extensions collide, when `capabilities.edgeKinds` is empty, duplicated, unknown, or omits
+`contains` (Pass A always runs), or when a backend without an enricher advertises
+enricher-only edge kinds. The registry also folds `extraction:contract` into `versionKeys()`,
+so narrowing this contract rebuilds pre-existing indexes instead of mixing row generations.
 
 ### 5.1 `complement` mode — the reconciliation rule (normative)
 
@@ -344,7 +354,7 @@ export interface BackendStatus {
   languages: string[];
   extensions: string[];
   versions: Record<string, string>;      // from LanguageBackend.versionKeys() — grammar + enricher versions
-  enricher: EnricherMode;                // 'none' when the backend has no enricher
+  enricher: EnricherStatus;              // 'none' when the backend has no enricher
   capabilities: BackendCapabilities;     // edge kinds this backend can produce
   grammarsLoaded: string[];              // grammars loaded and ready this session
   grammarsUnavailable: { lang: string; reason: string }[];  // declared but unloadable — degrade, never throw
@@ -406,13 +416,11 @@ Defaults: `w_fts=1.0, w_central=0.4, w_export=0.3, w_gen=0.5, w_test=0.3, w_prox
 
 ```ts
 export interface AstrographConfig {
-  include?: string[];          // default: every file under root whose extension a registered
-                               // backend claims (LanguageBackend.extensions)
-  exclude?: string[];          // added to .gitignore-derived ignores
-  maxFileSizeBytes?: number;   // default 2_000_000; larger files skipped (recorded)
-  kinds?: NodeKind[];          // declared at baseline but not applied; do not rely on it (DEV-006)
-  watchDebounceMs?: number;    // current default 300 ms; runtime validation/clamping is not implemented
-  tsconfigPath?: string;       // override primary config discovery (TypeScript backend only)
+  include?: string[];          // default: every extension claimed by an enabled backend
+  exclude?: string[];          // default: [] ; added to .gitignore-derived ignores
+  maxFileSizeBytes?: number;   // default: 2_000_000; integer 1..1_073_741_824
+  watchDebounceMs?: number;    // default: 300; integer 0..60_000, operational only
+  tsconfigPath?: string;       // optional non-empty project-relative TS config path
   /** Per-backend switches, keyed by LanguageBackend.id ('typescript', 'php', …). */
   backends?: Record<string, {
     enabled?: boolean;         // default true — false skips the backend entirely (its files aren't indexed)
@@ -420,6 +428,19 @@ export interface AstrographConfig {
   }>;
 }
 ```
+
+`parseAstrographConfig(input, { knownBackendIds })` in `@astrograph/core` is the
+side-effect-free canonical parser. It returns either `{ ok: true, config,
+diagnostics: [] }` with defaults applied, or `{ ok: false, diagnostics }`. Every
+diagnostic has a stable `code`, an RFC 6901 JSON Pointer `path` (the root is
+`""`), and a message. Unknown top-level keys, unknown backend IDs, and unknown
+backend override keys are errors. In particular, `kinds` is no longer supported:
+existing configs must remove it rather than relying on an ignored filter.
+
+Normalized `include`/`exclude` lists are de-duplicated and sorted; project-relative
+paths use `/`. The semantic config identity contains include/exclude, size,
+TypeScript path, and backend switches, but deliberately excludes
+`watchDebounceMs`.
 
 Turning an enricher off is **honest, not lossy**: the affected files still reach `resolved` with
 tree-sitter-provenance edges (graph-model §6), they just lose semantic depth. Changing `backends`

@@ -16,7 +16,7 @@ The enricher is not a project scanner, package manager, monorepo resolver, or la
 
 ## Current behavior (AS-IS)
 
-`TypescriptLanguageBackend` creates a complement `Enricher` unless `backends.typescript.enricher` is false. In Pass-A-only mode it advertises only `contains`; otherwise capabilities include calls, module edges, heritage, type relations, returns, instantiation, overrides, and decorators.
+`TypescriptLanguageBackend` creates a complement `Enricher` unless `backends.typescript.enricher` is false, in which case there is no enricher object at all. That enricher declares `id: "ts-compiler"` and `provenance: "ts-compiler"`, which reconciliation stamps onto every node it updates or inserts. In Pass-A-only mode the backend advertises only `contains`; otherwise capabilities include calls, module edges, heritage, type relations, returns, instantiation, overrides, and decorators.
 
 `TsExtractor.loadProject()` locates an explicit config or the nearest supported config, reads compiler options, and creates one `ts.Program`. When the indexer supplies scanned `fileNames`, those normalized files become `rootNames` instead of the full tsconfig enumeration. It records relative/absolute path mappings and accepts `loadNodesForFile` for SQLite-backed cross-file lookups.
 
@@ -86,7 +86,6 @@ sequenceDiagram
 
 ## Known deviations
 
-- `DEV-007`: modes/provenance do not yet fully express the locked complement-only target.
 - `DEV-008`: intermediate result caching can retain enrichment results across phases.
 - `DEV-012`: `nodesByFile` keeps project node arrays and `extractNodes()` reparses a source file despite a `Program` source file existing.
 - `DEV-014`: fixture tests do not provide end-to-end evidence through registry/indexer/SQLite.

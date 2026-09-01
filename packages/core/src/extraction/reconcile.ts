@@ -26,7 +26,10 @@ export interface ReconcilePlan {
 }
 
 export interface ReconcileOptions {
-	/** Stamped into `metadata.provenance` on every enricher record. */
+	/**
+	 * Stamped into `metadata.provenance` on every enricher record. Declared by
+	 * the producing enricher; callers must not infer it from a language name.
+	 */
 	provenance?: Provenance;
 	/** Only used to label the emitted `PASS_A_NODE_DROPPED` warnings. */
 	filePath?: string;

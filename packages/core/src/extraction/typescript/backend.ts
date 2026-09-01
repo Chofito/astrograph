@@ -3,7 +3,6 @@ import type {
 	BackendCapabilities,
 	EdgeResolutionResult,
 	Enricher,
-	EnricherMode,
 	Language,
 	LanguageBackend,
 	LoadProjectOptions,
@@ -79,7 +78,10 @@ export class TypescriptLanguageBackend
 			opts.enricher === false
 				? undefined
 				: {
-						mode: "complement" satisfies EnricherMode,
+						mode: "complement",
+						id: "ts-compiler",
+						// Reconciled nodes are the compiler's own view of this file.
+						provenance: "ts-compiler",
 						loadProject: (o) => this.loadProject(o),
 						resolveEdges: (filePath) => this.resolveEdges(filePath),
 					};

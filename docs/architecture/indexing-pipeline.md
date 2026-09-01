@@ -21,11 +21,8 @@ flowchart TD
     Size -- no --> Backend{"backend exists?"}
     Backend -- no --> Missing["Persist NO_BACKEND"]
     Backend -- yes --> Hash["Read + content hash"]
-    Hash --> Mode{"enricher mode = replace?"}
-    Mode -- yes --> Empty["Persist empty parsed node set"]
-    Mode -- no --> Parse["parser.extractNodes"]
-    Parse --> PersistA["Persist file/nodes/edges"]
-    Empty --> PersistA
+    Hash --> Parse["parser.extractNodes (always)"]
+    Parse --> PersistA["Persist file/nodes/edges (resolved if no enricher)"]
     Large --> Reconcile
     Missing --> Reconcile
     PersistA --> Reconcile["For each file: resolve + reconcile nodes"]
@@ -33,7 +30,7 @@ flowchart TD
     Edges --> Meta["Persist root, versions, config hash, timestamp"]
 ```
 
-`beginPass` groups all input files by backend and calls each enricher's `loadProject`. `resolveFor` memoizes one `EdgeResolutionResult` per file so the reconciliation phase and edge phase share it. A backend without an enricher reaches `resolved` during Pass A. An enriched file reaches `resolved` after its edges are written.
+`beginPass` groups all input files by backend and calls each enricher's `loadProject`. `resolveFor` memoizes one `EdgeResolutionResult` per file so the reconciliation phase and edge phase share it, and returns `undefined` when the backend has no enricher. Pass A runs for every eligible claimed file — there is no branch that skips it. A backend without an enricher reaches `resolved` during Pass A. An enriched file reaches `resolved` after its edges are written; its reconciled nodes are stamped with `Enricher.provenance`, declared by the producing backend.
 
 ## Target behavior (TO-BE)
 
@@ -86,5 +83,5 @@ Indexer orchestration, transactions, reconciliation and coverage are reusable. P
 
 ## Known deviations
 
-`DEV-002`, `DEV-003`, `DEV-007`, and `DEV-008` are direct mismatches in this flow.
+`DEV-002`, `DEV-003`, and `DEV-008` are direct mismatches in this flow.
 
