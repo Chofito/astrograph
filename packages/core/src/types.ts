@@ -479,6 +479,12 @@ export interface StatusOutput {
 	diagnostics?: DiagnosticCounts;
 	/** Files whose diagnostics say content is missing, whatever their state. */
 	filesWithCoverageGap?: string[];
+	/**
+	 * True when the last indexing pass began and never recorded completion. The
+	 * stored graph is a mixture of two states and must not be read as current
+	 * (AG-203).
+	 */
+	indexInterrupted?: boolean;
 	pendingSync?: string[];
 	dbSizeBytes: number;
 	lastUpdated: number;

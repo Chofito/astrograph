@@ -1,4 +1,4 @@
-import type { Edge, Node } from "../types";
+import type { Edge, ExtractionError, FileRecord, Node } from "../types";
 
 export interface GraphLike {
 	nodes: Node[];
@@ -114,4 +114,84 @@ function omitUndefined(value: unknown): unknown {
 	}
 
 	return value;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Whole-index normalization (AG-203)                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A file record with only the facts a caller can depend on.
+ *
+ * `indexedAt` and `modifiedAt` are dropped because they are wall-clock
+ * timestamps, not facts about the project. Everything else is kept, including
+ * `contentHash` and `errors`: a converged index must agree about *why* a file is
+ * incomplete, not merely that it exists.
+ */
+export type NormalizedFile = Omit<
+	FileRecord,
+	"indexedAt" | "modifiedAt" | "errors"
+> & {
+	/** Sorted, so two runs that discovered the same problems compare equal. */
+	errors: NormalizedError[];
+};
+
+export type NormalizedError = Omit<ExtractionError, never>;
+
+export interface NormalizedIndex extends NormalizedGraph {
+	files: NormalizedFile[];
+}
+
+export interface IndexSource {
+	getAllFiles(): FileRecord[];
+	getAllNodes(): Node[];
+	getAllEdges(): Edge[];
+}
+
+/**
+ * The comparison boundary for convergence claims.
+ *
+ * `normalize(indexAll(emptyDb)) === normalize(indexAll(reusedDb))` is the whole
+ * point of AG-203, so this must drop exactly the volatile fields and nothing
+ * else. Dropping more would let a real divergence pass.
+ */
+export function normalizeIndex(
+	source: IndexSource,
+	options: NormalizeOptions = {},
+): NormalizedIndex {
+	const graph = normalize(
+		{ nodes: source.getAllNodes(), edges: source.getAllEdges() },
+		options,
+	);
+
+	return {
+		...graph,
+		files: source
+			.getAllFiles()
+			.map((file) => dropVolatileFileFields(file))
+			.sort((a, b) => compareStrings(a.path, b.path)),
+	};
+}
+
+function dropVolatileFileFields(file: FileRecord): NormalizedFile {
+	const {
+		indexedAt: _indexedAt,
+		modifiedAt: _modifiedAt,
+		errors,
+		...stable
+	} = file;
+	return {
+		...stable,
+		errors: [...(errors ?? [])].sort(compareErrors),
+	};
+}
+
+function compareErrors(a: ExtractionError, b: ExtractionError): number {
+	return (
+		compareStrings(a.code ?? "", b.code ?? "") ||
+		compareStrings(a.filePath ?? "", b.filePath ?? "") ||
+		(a.line ?? -1) - (b.line ?? -1) ||
+		compareStrings(a.severity, b.severity) ||
+		compareStrings(a.message, b.message)
+	);
 }

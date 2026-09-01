@@ -20,6 +20,20 @@ normalize(indexAll(emptyDb, state))
 
 Full index reconciles removals and membership changes. Delta resolution uses backend semantics and an explicit invalidation set; it does not directly promote edges by name.
 
+## Implemented so far (AG-203)
+
+The reused-versus-clean half of the equivalence is implemented and has focused tests:
+
+```text
+normalize(indexAll(emptyDb, state)) == normalize(indexAll(previousDb, state))
+```
+
+- Membership comes from `IndexEligibility` (contracts §13); a full index retires every persisted file the current membership rejects, before Pass A, through the same `retireFile()` policy sync uses.
+- `normalizeIndex()` in `packages/core/src/testing/normalize.ts` is the comparison boundary. It drops exactly `updatedAt`, `indexedAt`, `modifiedAt`, and the autoincrement `edges.id`. It keeps `contentHash`, `state`, `nodeCount`, and the sorted `errors`, because a converged index must agree about *why* a file is incomplete, not merely that it exists.
+- Identity is written last: `configHash`, the version keys, and `passState: "complete"` land in one transaction, and `passState: "in_progress"` is set before any mutation. An interrupted pass is therefore detectable (`status.indexInterrupted`) and the next pass forces Pass A instead of trusting content hashes.
+
+The delta half — `applyDeltas` producing the same normalized graph — is AG-205. Backend-owned invalidation, which replaces name-based healing, is AG-204.
+
 ## Consequences
 
 - Clean rebuild is the executable oracle for delta behavior.

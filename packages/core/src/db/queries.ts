@@ -568,6 +568,18 @@ export class QueryBuilder {
 		return gaps.sort(compareStrings);
 	}
 
+	/**
+	 * Whether the last pass began and never finished. `configHash` and the
+	 * version keys are written in the same transaction that clears this, so a
+	 * crashed run can never present itself as a complete index.
+	 */
+	isIndexInterrupted(): boolean {
+		const row = this.db
+			.prepare("SELECT value FROM project_metadata WHERE key = 'passState'")
+			.get() as { value: string } | null | undefined;
+		return row?.value === "in_progress";
+	}
+
 	/** Project-wide diagnostic tally by category, for `status`. */
 	getDiagnosticCounts(paths?: string[]): DiagnosticCounts {
 		const scope = paths === undefined ? undefined : new Set(paths);
@@ -602,6 +614,7 @@ export class QueryBuilder {
 			// Lifecycle and trust are reported side by side, never merged.
 			diagnostics: this.getDiagnosticCounts(),
 			filesWithCoverageGap: this.getFilesWithCoverageGap(),
+			indexInterrupted: this.isIndexInterrupted() ? true : undefined,
 			pendingSync: pendingSync.length > 0 ? pendingSync : undefined,
 			dbSizeBytes: this.getDbSizeBytes(),
 			lastUpdated: this.getLastUpdated(),

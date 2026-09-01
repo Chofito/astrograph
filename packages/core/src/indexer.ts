@@ -119,13 +119,29 @@ export class Indexer {
 			total: eligible.length,
 		});
 
+		// A crashed pass leaves a half-written graph. Marking the index
+		// in-progress *before* any mutation means the next run can see it, and
+		// `configHash` is only written once the work below actually finished.
+		const previousPassInterrupted = this.lastPassInterrupted();
+		this.markPassInProgress();
+
 		this.beginPass(membership);
+
+		// Convergence: a full index over a reused database must retire whatever
+		// no longer belongs, before Pass A, using the same policy sync uses.
+		// Without this a deleted, newly-excluded, now-oversized or
+		// disabled-backend file kept answering queries forever.
+		this.retireLostMembership(membership);
 
 		// A file the graph cannot read still deserves a record saying why, but it
 		// must never reach a parser or an enricher.
 		for (const entry of membership.recordable) {
 			await this.recordIneligibleFile(entry);
 		}
+
+		// An interrupted predecessor may have left files that look current but are
+		// not, so their content hash cannot be trusted to skip work.
+		const force = options.force === true || previousPassInterrupted;
 
 		for (let i = 0; i < eligible.length; i++) {
 			const relPath = eligible[i]!;
@@ -135,7 +151,7 @@ export class Indexer {
 				total: eligible.length,
 				file: relPath,
 			});
-			await this.indexFilePassA(relPath, { force: options.force ?? false });
+			await this.indexFilePassA(relPath, { force });
 		}
 
 		// Pass B is two-phase: reconcile all nodes first (FK-safe targets), then
@@ -154,6 +170,7 @@ export class Indexer {
 			this.indexFileResolveEdges(relPath);
 		}
 
+		// Only now is the identity allowed to advance: everything above completed.
 		this.persistProjectMetadata(configHash);
 		options.onProgress?.({
 			phase: "done",
@@ -184,6 +201,34 @@ export class Indexer {
 				}
 			},
 		});
+	}
+
+	/**
+	 * Retire every persisted file the current membership no longer accepts.
+	 *
+	 * Covers deletion, a newly excluded path, a file that grew past the limit, an
+	 * extension whose backend was disabled, and a semantic configuration change
+	 * that narrowed the project. `recordable` entries are retired too: their old
+	 * nodes must go even though a record explaining the absence stays behind.
+	 */
+	private retireLostMembership(membership: Membership): void {
+		for (const file of this.queries.getAllFiles()) {
+			if (membership.isEligible(file.path)) continue;
+			this.retireFile(file.path);
+		}
+	}
+
+	/** True when the previous pass began but never recorded completion. */
+	lastPassInterrupted(): boolean {
+		return this.getProjectMetadata("passState") === "in_progress";
+	}
+
+	private markPassInProgress(): void {
+		const now = this.now();
+		const write = this.storage.transaction(() => {
+			this.upsertProjectMetadata("passState", "in_progress", now);
+		});
+		write();
 	}
 
 	/** Persist why a claimed-but-unusable file is absent from the graph. */
@@ -226,6 +271,7 @@ export class Indexer {
 		// eligible — excluded, oversized, or owned by a backend the user just
 		// disabled — is a removal, not a silent survivor.
 		const membership = await this.classifyProject();
+		this.markPassInProgress();
 		const knownFiles = this.queries.getAllFiles();
 		const knownByPath = new Map(knownFiles.map((file) => [file.path, file]));
 
@@ -255,14 +301,7 @@ export class Indexer {
 
 		const referrerFiles = this.findReferrerFilesForTargets(changedFiles);
 
-		for (const relPath of removed) {
-			const priorNodeIds = this.queries
-				.getNodesByFile(relPath)
-				.map((n) => n.id);
-			const incomingEdges = this.findIncomingEdges(priorNodeIds);
-			this.queries.deleteByFile(relPath);
-			this.markIncomingEdgesUnresolved(incomingEdges);
-		}
+		for (const relPath of removed) this.retireFile(relPath);
 
 		if (changedFiles.length > 0) {
 			this.beginPass(membership);
@@ -345,14 +384,7 @@ export class Indexer {
 		const removedFiles = uniqueStrings(removed);
 		const referrerFiles = this.findReferrerFilesForTargets(changedFiles);
 
-		for (const relPath of removedFiles) {
-			const priorNodeIds = this.queries
-				.getNodesByFile(relPath)
-				.map((n) => n.id);
-			const incomingEdges = this.findIncomingEdges(priorNodeIds);
-			this.queries.deleteByFile(relPath);
-			this.markIncomingEdgesUnresolved(incomingEdges);
-		}
+		for (const relPath of removedFiles) this.retireFile(relPath);
 
 		if (changedFiles.length > 0 || removedFiles.length > 0) {
 			this.beginPass(membership);
@@ -585,6 +617,21 @@ export class Indexer {
 		this.resolveCache.delete(relPath);
 	}
 
+	/**
+	 * Remove a file from the graph and keep the rest of it honest.
+	 *
+	 * One policy, shared by the full index and both sync paths: capture the
+	 * edges pointing at this file's nodes *before* deleting them, then mark those
+	 * edges unresolved. Deleting first would either dangle them or silently drop
+	 * a relationship that still exists in the source.
+	 */
+	private retireFile(relPath: string): void {
+		const priorNodeIds = this.queries.getNodesByFile(relPath).map((n) => n.id);
+		const incomingEdges = this.findIncomingEdges(priorNodeIds);
+		this.queries.deleteByFile(relPath);
+		this.markIncomingEdgesUnresolved(incomingEdges);
+	}
+
 	private healUnresolvedEdges(changedFiles: string[]): void {
 		const newNodes = new Map<string, string>();
 		for (const relPath of changedFiles) {
@@ -748,6 +795,10 @@ export class Indexer {
 				this.upsertProjectMetadata(`version:${key}`, value, now);
 			}
 			this.upsertProjectMetadata("configHash", configHash, now);
+			// Written last and in the same transaction as the identity: an index is
+			// only "complete" when its configHash and versions describe work that
+			// actually finished.
+			this.upsertProjectMetadata("passState", "complete", now);
 		});
 		write();
 	}
