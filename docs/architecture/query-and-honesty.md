@@ -63,6 +63,19 @@ Target-null edges are filtered out of node-shaped payloads, never out of metadat
 runs before the filter, so an empty result cannot hide unresolved calls (contracts §16). `external`
 stays a separate state: it is a complete answer about something outside the project.
 
+### Trace evidence and search boundaries
+
+`trace` presents positive evidence as its resolved path (and, on success, the destination's outgoing
+relations). For a negative result it presents inspected unresolved or ambiguous relations as
+blockers and preserves external relations as evidence without treating them as a failure; it never
+invents a blocker from a relation it did not inspect.
+
+A negative trace is **exhausted** when that bounded search has no remaining traversable candidate. It
+is **truncated** only when the `maxDepth` boundary leaves an edge of a requested kind whose target is
+non-null, exists as a graph node, and has not already been visited. An unresolved edge, an edge to a
+missing node, or a cycle back to a visited node cannot by itself produce `search_truncated`. The
+canonical envelope fields and ordering rules remain [contracts §16](../contracts.md#16-relational-evidence).
+
 ## Invariants
 
 - Sorting and limits are deterministic.
@@ -82,12 +95,12 @@ stays a separate state: it is a complete answer about something outside the proj
 
 ## Source evidence
 
-- `packages/core/src/query/graph-queries.ts`: tool orchestration and ranking.
+- `packages/core/src/query/graph-queries.ts`: tool orchestration, ranking, and `GraphQueries.trace` integration of trace evidence.
 - `packages/core/src/query/meta.ts`: envelope construction.
+- `packages/core/src/graph/path-evidence.ts`: `collectPathEvidence`, evidence traversal, and exhausted/truncated determination.
 - `packages/core/src/graph/symbol-lookup.ts`, `traversal.ts`: lookup and traversal.
 - `packages/core/src/db/queries.ts`, `search/fts-query.ts`: FTS and storage reads.
 
 ## Known deviations
 
 `DEV-004` and `DEV-005` identify false-complete and hidden-unresolved cases.
-

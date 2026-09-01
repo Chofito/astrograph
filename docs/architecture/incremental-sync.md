@@ -58,7 +58,7 @@ sequenceDiagram
     I->>DB: persist configHash, versions, passState
 ```
 
-Both paths treat a config-hash change as a project-wide fact: every eligible file is reconsidered, and an event batch stops being path-scoped because it cannot speak for files it never heard about. `syncFiles()` persists project metadata exactly like `sync()`.
+Both paths treat a config-hash change as a project-wide fact: every eligible file is reconsidered, and an event batch stops being path-scoped because it cannot speak for files it never heard about. When the hash is unchanged, `syncFiles()` remains event-scoped: it only retires an ineligible file named by that event batch. `syncFiles()` persists project metadata exactly like `sync()`.
 
 **Losing eligibility is a retirement, not an edit.** A file that crosses `maxFileSizeBytes`, leaves the scan scope, or belongs to a backend the user disabled arrives at the watcher as an ordinary `change`. It goes through `retireFile()` like any removal — incoming relations captured and demoted to `unresolved` before deletion — and only then is its evidence record written. Writing that record first would let foreign keys cascade the incoming relations away instead of demoting them.
 
@@ -117,4 +117,3 @@ A failed delta must leave affected files visibly non-authoritative and must not 
 ## Known deviations
 
 See `DEV-001`, `DEV-002`, `DEV-003`, and `DEV-011`.
-

@@ -110,6 +110,33 @@ function unresolved(source: string, targetName: string, line = 1): Edge {
 	};
 }
 
+function missingTarget(source: string, target: string): Edge {
+	return {
+		source: `id:${source}`,
+		target: `id:${target}`,
+		targetName: target,
+		kind: "calls",
+		resolutionState: "resolved",
+		confidence: "high",
+		provenance: "ts-compiler",
+	};
+}
+
+/** A minimal read port can represent a stale target that SQLite rightly refuses to persist. */
+function pathEvidenceQueries(names: string[], edges: Edge[]) {
+	const nodes = new Map<string, Node>(
+		names.map((name): [string, Node] => [`id:${name}`, node(name)]),
+	);
+	return {
+		getNode(id: string): Node | undefined {
+			return nodes.get(id);
+		},
+		getEdgesBySource(id: string): Edge[] {
+			return edges.filter((edge) => edge.source === id);
+		},
+	};
+}
+
 interface World {
 	queries: QueryBuilder;
 	graph: GraphQueries;
@@ -235,15 +262,16 @@ describe("a failed trace explains what blocked it", () => {
 		}
 	});
 
-	test("a blocker beyond maxDepth is not presented as inspected", async () => {
+	test("an unresolved edge on the depth frontier is not presented as inspected or truncated", async () => {
 		const w = world(
 			["start", "middle", "dest"],
 			[resolved("start", "middle"), unresolved("middle", "tooFarAway")],
 		);
 
 		try {
-			// maxDepth 1 expands only from `start`, so `middle`'s relations were
-			// never read. Claiming otherwise would be a fabricated observation.
+			// maxDepth 1 expands only from `start`; the frontier is checked only to
+			// decide whether a further walk was possible, not to report its relation
+			// as a blocker. Claiming otherwise would be a fabricated observation.
 			const shallow = await w.graph.trace({
 				from: "start",
 				to: "dest",
@@ -252,10 +280,11 @@ describe("a failed trace explains what blocked it", () => {
 			expect(
 				shallow.meta.evidence?.samples.map((s) => s.targetName) ?? [],
 			).not.toContain("tooFarAway");
-			// It stopped with candidates left, and says so.
-			expect(shallow.meta.reasons?.map((r) => r.kind)).toContain(
-				"search_truncated",
-			);
+			// An unresolved edge cannot advance the search, so reaching it at the
+			// frontier exhausts the traversable graph rather than truncating it.
+			expect(
+				shallow.meta.reasons?.map((r) => r.kind) ?? [],
+			).not.toContain("search_truncated");
 
 			const deep = await w.graph.trace({
 				from: "start",
@@ -265,6 +294,44 @@ describe("a failed trace explains what blocked it", () => {
 			expect(
 				deep.meta.evidence?.samples.map((s) => s.targetName) ?? [],
 			).toContain("tooFarAway");
+		} finally {
+			w.close();
+		}
+	});
+
+	test("a cycle on the depth frontier does not report search_truncated", async () => {
+		const w = world(
+			["start", "middle", "dest"],
+			[resolved("start", "middle"), resolved("middle", "start")],
+		);
+		try {
+			const result = await w.graph.trace({
+				from: "start",
+				to: "dest",
+				maxDepth: 1,
+			});
+			expect(
+				result.meta.reasons?.map((reason) => reason.kind) ?? [],
+			).not.toContain("search_truncated");
+		} finally {
+			w.close();
+		}
+	});
+
+	test("an unvisited valid target beyond maxDepth reports search_truncated", async () => {
+		const w = world(
+			["start", "middle", "later", "dest"],
+			[resolved("start", "middle"), resolved("middle", "later")],
+		);
+		try {
+			const result = await w.graph.trace({
+				from: "start",
+				to: "dest",
+				maxDepth: 1,
+			});
+			expect(result.meta.reasons?.map((reason) => reason.kind)).toContain(
+				"search_truncated",
+			);
 		} finally {
 			w.close();
 		}
@@ -326,6 +393,22 @@ describe("a failed trace explains what blocked it", () => {
 });
 
 describe("collectPathEvidence", () => {
+	test("a missing target on the depth frontier does not truncate the walk", () => {
+		const walk = collectPathEvidence(
+			pathEvidenceQueries(
+				["start", "middle"],
+				[resolved("start", "middle"), missingTarget("middle", "missing")],
+			),
+			{
+				startId: "id:start",
+				edgeKinds: ["calls"],
+				maxDepth: 1,
+				limit: 100,
+			},
+		);
+		expect(walk.truncated).toBe(false);
+	});
+
 	test("collects an edge it cannot follow, which traverseGraph never could", () => {
 		const w = world(
 			["start", "middle"],

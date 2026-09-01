@@ -49,6 +49,10 @@ sequenceDiagram
 
 An explicitly supplied `dbPath` changes only the SQLite location. `openProject` still creates `<root>/.astrograph`; therefore an eval or benchmark using a temporary/in-memory database may create that directory in the target repository.
 
+Once SQLite opens, `openProject` owns that handle until it returns an `Astrograph`. If migrations,
+registry construction, or grammar initialization fails first, it closes storage exactly once and
+rethrows the original initialization error. A cleanup failure never replaces that error.
+
 ### One-shot commands
 
 Commands open a graph, perform one action, and close it in their own cleanup path. `astrograph init` owns its progress reporter, runs an initial `indexAll`, then closes both reporter and graph. This means one-shot surfaces do not retain a watcher or database handle after command completion.
@@ -117,11 +121,14 @@ Source evidence: `packages/mcp/src/project.ts`, `packages/mcp/src/daemon.ts`, `p
 - The manager is the owner of its timer and watcher handle. `close()` cancels both and ignores future event recording, but does not await a sync already queued or running.
 - `PhpAstCache` retains no more than one live Tree and releases the previous Tree before parsing another file.
 - `Astrograph.close()` delegates to `Indexer.close()`, which currently closes SQLite only.
+- Before `Astrograph` exists, `openProject` closes an opened SQLite adapter if any later initialization
+  step fails, preserving the original failure for the caller.
 
 ## Failure and partial states
 
 | Condition | AS-IS response | Consequence |
 |---|---|---|
+| Migration, registry, or grammar initialization fails after SQLite opens | `openProject` closes the adapter once and rethrows the original error | no orphaned project-storage handle and no masked diagnostic |
 | Missing `.astrograph` for MCP | `MissingIndexError` asks for `astrograph init` | no graph is opened |
 | Watcher start failure | manager stays available as a decorator but marks results partial | caller must manually sync or restore watch support |
 | Background sync failure | events return to pending; callback logs the error | subsequent queries may force a retry through `beforeQuery()` |

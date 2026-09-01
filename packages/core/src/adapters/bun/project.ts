@@ -11,6 +11,7 @@ import {
 } from "../../extraction";
 import { Indexer } from "../../indexer";
 import { GraphQueries } from "../../query/graph-queries";
+import type { StorageAdapter } from "../../types";
 import { BunFileSystem } from "./fs";
 import { BunGlobScanner } from "./glob";
 import { BunHasher } from "./hasher";
@@ -22,16 +23,35 @@ export interface OpenProjectOptions {
 	dbPath?: string;
 }
 
+/**
+ * Adapter-local seam for exercising ownership transfer during initialization.
+ * It is intentionally not exported from the Bun adapter barrel.
+ */
+export interface OpenProjectDependencies {
+	createStorage(path: string): StorageAdapter;
+}
+
 /** Compose a Bun-backed project graph and initialize its storage and grammars. */
 export async function openProject(
 	rootPath: string,
 	opts: OpenProjectOptions = {},
 ): Promise<Astrograph> {
+	return openProjectWithDependencies(rootPath, opts, {
+		createStorage: (path) => new BunSqliteStorageAdapter(path),
+	});
+}
+
+/** @internal Adapter-local entry point used to observe initialization cleanup. */
+export async function openProjectWithDependencies(
+	rootPath: string,
+	opts: OpenProjectOptions,
+	dependencies: OpenProjectDependencies,
+): Promise<Astrograph> {
 	const root = normalizePath(rootPath);
 	const astrographDir = `${root}/.astrograph`;
 	await mkdir(astrographDir, { recursive: true });
 
-	const storage = new BunSqliteStorageAdapter(
+	const storage = dependencies.createStorage(
 		opts.dbPath ?? `${astrographDir}/graph.db`,
 	);
 

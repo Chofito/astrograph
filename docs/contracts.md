@@ -543,9 +543,11 @@ Rules:
   traced depth, gathered by a walk that inspects each node's relations *before* deciding whether
   it can advance through them — the general traversal cannot, because it discards a target-null
   edge before recording a visit.
-- A failed `trace` distinguishes an **exhausted** search from a **truncated** one. Only a walk
-  that stopped with candidates still to follow reports `search_truncated`; a blocker one hop past
-  `maxDepth` was never inspected and is deliberately absent rather than reported as examined.
+- A failed `trace` distinguishes an **exhausted** search from a **truncated** one. It reports
+  `search_truncated` only when the depth boundary leaves a requested-kind edge with a non-null,
+  existing, unvisited target still to follow. An unresolved edge, a missing target, or a cycle to an
+  already visited node is exhausted work, not truncation; a blocker one hop past `maxDepth` was
+  never inspected and is deliberately absent rather than reported as examined.
 - **`external` is not a failure.** A call into `node_modules` is a complete answer about a target
   outside the project. It is counted, but `hasUnprovenRelations` ignores it.
 - Counts are exact; samples are capped at 10 and ordered by state, kind, target name, source, then

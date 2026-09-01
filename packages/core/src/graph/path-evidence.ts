@@ -13,8 +13,13 @@
  * `impact`, `context` and `explore` too.
  */
 
-import type { QueryBuilder } from "../db/queries";
-import type { Edge, EdgeKind } from "../types";
+import type { Edge, EdgeKind, Node } from "../types";
+
+/** The narrow read port this walk needs; storage integrity is not assumed. */
+interface PathEvidenceQueries {
+	getNode(id: string): Node | undefined;
+	getEdgesBySource(id: string): Edge[];
+}
 
 export interface PathEvidenceInput {
 	startId: string;
@@ -30,10 +35,9 @@ export interface PathEvidenceResult {
 	/** Nodes whose outgoing edges were actually read. */
 	inspected: number;
 	/**
-	 * True when the walk stopped with candidates left to follow — the node cap
-	 * was hit, or a frontier node at `maxDepth` still had edges. A search that
-	 * ran out of graph is *exhausted*, and the difference is the whole point of
-	 * a negative answer.
+	 * True when the node cap leaves valid queued nodes, or `maxDepth` leaves a
+	 * requested-kind edge to an existing, unvisited, non-null target. Unresolved,
+	 * missing, and cyclic edges alone are exhausted work, not truncation.
 	 */
 	truncated: boolean;
 }
@@ -47,7 +51,7 @@ export interface PathEvidenceResult {
  * examined-and-fine.
  */
 export function collectPathEvidence(
-	queries: QueryBuilder,
+	queries: PathEvidenceQueries,
 	input: PathEvidenceInput,
 ): PathEvidenceResult {
 	const start = queries.getNode(input.startId);
@@ -74,12 +78,20 @@ export function collectPathEvidence(
 		}
 
 		if (current.distance >= input.maxDepth) {
-			// Past the frontier. Report truncation only if there was actually
-			// something further to follow; otherwise the search really did end.
-			const remaining = queries
+			// Past the frontier. A relation alone is not a remaining search
+			// candidate: unresolved targets, missing rows, and already-seen nodes
+			// cannot advance the walk. Only a valid, unvisited target means the
+			// depth limit actually cut useful search work short.
+			const hasTraversableCandidate = queries
 				.getEdgesBySource(current.id)
-				.filter((edge) => kinds.has(edge.kind));
-			if (remaining.length > 0) truncated = true;
+				.some(
+					(edge) =>
+						kinds.has(edge.kind) &&
+						edge.target !== null &&
+						!seen.has(edge.target) &&
+						queries.getNode(edge.target) !== undefined,
+				);
+			if (hasTraversableCandidate) truncated = true;
 			continue;
 		}
 

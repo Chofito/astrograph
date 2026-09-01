@@ -219,6 +219,7 @@ function memoryGlob(paths: string[]): GlobScanner {
 function openIndexer(
 	state: ProjectState,
 	storage: BunSqliteStorageAdapter,
+	options: { fs?: FileSystem } = {},
 ): { indexer: Indexer; queries: QueryBuilder } {
 	const queries = new QueryBuilder(storage);
 	const relPaths = Object.keys(state.files).sort();
@@ -229,7 +230,7 @@ function openIndexer(
 	const indexer = new Indexer({
 		queries,
 		storage,
-		fs: memoryFs(absolute),
+		fs: options.fs ?? memoryFs(absolute),
 		hasher: HASHER,
 		glob: memoryGlob(relPaths),
 		registry: new LanguageRegistry(state.backends ?? [STUB, OTHER]),
@@ -716,9 +717,26 @@ describe("an event batch retires a candidate that lost eligibility", () => {
 		// demoting it.
 		const storage = freshStorage();
 		try {
+			// Keep the configuration fixed: this must use `eventScoped`, not the
+			// global reconciliation that a configuration hash change requests.
+			const files: Record<string, string> = {
+				"/project/src/caller.stub": "caller ->target",
+				"/project/src/target.stub": "target",
+				"/project/src/untouched.stub": "untouched",
+			};
+			const state: ProjectState = {
+				files: {
+					"src/caller.stub": files["/project/src/caller.stub"] ?? "",
+					"src/target.stub": files["/project/src/target.stub"] ?? "",
+					"src/untouched.stub": files["/project/src/untouched.stub"] ?? "",
+				},
+				config: { maxFileSizeBytes: TIGHT_LIMIT },
+			};
+			const fs = memoryFs(files);
 			const first = openIndexer(
-				{ files: LINKED_PROJECT, config: { maxFileSizeBytes: LOOSE_LIMIT } },
+				state,
 				storage,
+				{ fs },
 			);
 			await first.indexer.indexAll();
 			expect(
@@ -727,15 +745,20 @@ describe("an event batch retires a candidate that lost eligibility", () => {
 					.filter((edge) => edge.resolutionState === "resolved").length,
 			).toBeGreaterThan(0);
 
-			const second = openIndexer(
-				{ files: LINKED_PROJECT, config: { maxFileSizeBytes: TIGHT_LIMIT } },
-				storage,
-			);
+			// Both files begin eligible. The same configured limit now sees both
+			// exceed twenty bytes, but the batch still names only `target`.
+			files["/project/src/target.stub"] = "target padpadpadpadpadpad";
+			files["/project/src/untouched.stub"] = "untouched padpadpadpad";
+			const second = openIndexer(state, storage, { fs });
 			const result = await second.indexer.syncFiles([
 				{ type: "change", path: "src/target.stub" },
 			]);
 
 			expect(result.removed).toEqual(["src/target.stub"]);
+			// This proves the hash was unchanged and the pass stayed event-scoped:
+			// removing `namedByBatch` would retire this newly ineligible but silent
+			// file too.
+			expect(second.queries.getFile("src/untouched.stub")?.nodeCount).toBe(1);
 
 			const demoted = second.queries
 				.getAllEdges()

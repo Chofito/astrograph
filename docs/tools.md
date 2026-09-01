@@ -90,6 +90,11 @@ Shared field types referenced below: `NodeRef` = `{ id, name, kind, qualifiedNam
 - **Offline.** Graph traversal over `calls`/`references` edges + verbatim slicing. ✅
 - **Inputs.** `from: string`, `to: string`, `maxDepth?: number`.
 - **Result.** `TracePath` = `{ found: boolean, hops: { node: NodeRef, via: EdgeRef, body: CodeBlock }[], destinationCallees?: NodeRef[], endpoints?: { node: NodeRef, body: CodeBlock }[] }`. On `found:false`, `endpoints` inlines both endpoints + their TO-file siblings (the chain broke at dynamic dispatch).
+- **Evidence and limits.** Resolved hops are positive evidence; inspected unresolved or otherwise
+  unproven relations are reported as negative evidence in the shared envelope. A failed trace reports
+  `search_truncated` only when its depth boundary leaves a real, unvisited target of a requested edge
+  kind to traverse — not for unresolved edges, missing targets, or cycles. See the canonical
+  [query honesty rules](architecture/query-and-honesty.md#trace-evidence-and-search-boundaries).
 - **Progressive.** ⚠️ partial — works once `from`, `to`, and the path are covered; otherwise demand-index them.
 - **Core method.** `trace()` (BFS over the call graph).
 

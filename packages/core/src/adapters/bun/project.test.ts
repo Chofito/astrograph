@@ -2,8 +2,9 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { runMigrations } from "../../db/migrations";
+import type { StorageAdapter } from "../../types";
 import { IncompatibleIndexError } from "../../types";
-import { openProject } from "./project";
+import { openProject, openProjectWithDependencies } from "./project";
 import { BunSqliteStorageAdapter } from "./sqlite";
 
 /**
@@ -45,39 +46,68 @@ function writeFutureIndex(dbPath: string): void {
 	}
 }
 
+class CloseSpyStorage implements StorageAdapter {
+	readonly #storage: BunSqliteStorageAdapter;
+	closeCalls = 0;
+
+	constructor(path: string) {
+		this.#storage = new BunSqliteStorageAdapter(path);
+	}
+
+	get open(): boolean {
+		return this.#storage.open;
+	}
+
+	prepare(sql: string) {
+		return this.#storage.prepare(sql);
+	}
+
+	exec(sql: string): void {
+		this.#storage.exec(sql);
+	}
+
+	transaction<T>(fn: (...a: unknown[]) => T): (...a: unknown[]) => T {
+		return this.#storage.transaction(fn);
+	}
+
+	pragma(s: string, opts?: { simple?: boolean }): unknown {
+		return this.#storage.pragma(s, opts);
+	}
+
+	close(): void {
+		this.closeCalls += 1;
+		this.#storage.close();
+	}
+}
+
 describe("openProject releases storage when initialization fails", () => {
-	test("an incompatible index surfaces its own error, unmasked", async () => {
+	test("closes exactly once and preserves the initialization error", async () => {
 		const root = await makeProjectRoot();
 		await mkdir(`${root}/.astrograph`, { recursive: true });
 		const dbPath = `${root}/.astrograph/graph.db`;
 		writeFutureIndex(dbPath);
+		let storage: CloseSpyStorage | undefined;
 
-		// The cleanup path must never replace the reason the caller needs.
-		await expect(openProject(root, { dbPath })).rejects.toThrow(
-			IncompatibleIndexError,
+		const failure = await openProjectWithDependencies(root, { dbPath }, {
+			createStorage: (path) => {
+				storage = new CloseSpyStorage(path);
+				return storage;
+			},
+		}).then(
+			() => undefined,
+			(error: unknown) => error,
 		);
-		await expect(openProject(root, { dbPath })).rejects.toThrow(
-			/delete .astrograph\/graph.db/,
-		);
+
+		expect(failure).toBeInstanceOf(IncompatibleIndexError);
+		expect(failure).toMatchObject({
+			message: expect.stringMatching(/delete .astrograph\/graph.db/),
+		});
+		expect(storage?.closeCalls).toBe(1);
 	});
 
-	test("the project opens normally once the bad index is removed", async () => {
+	test("a normal project opening still returns a usable graph", async () => {
 		const root = await makeProjectRoot();
-		await mkdir(`${root}/.astrograph`, { recursive: true });
-		const dbPath = `${root}/.astrograph/graph.db`;
-		writeFutureIndex(dbPath);
-
-		await expect(openProject(root, { dbPath })).rejects.toThrow(
-			IncompatibleIndexError,
-		);
-
-		// The documented recovery in the error message must actually work. A
-		// handle still held on the old file is what would break it.
-		await rm(dbPath, { force: true });
-		await rm(`${dbPath}-wal`, { force: true });
-		await rm(`${dbPath}-shm`, { force: true });
-
-		const graph = await openProject(root, { dbPath });
+		const graph = await openProject(root);
 		try {
 			await graph.indexAll();
 			expect(graph.queries.getAllFiles().map((f) => f.path)).toEqual([
@@ -88,23 +118,25 @@ describe("openProject releases storage when initialization fails", () => {
 		}
 	});
 
-	test("repeated failures do not accumulate handles", async () => {
+	test("each failed opening closes the storage it created", async () => {
 		const root = await makeProjectRoot();
 		await mkdir(`${root}/.astrograph`, { recursive: true });
 		const dbPath = `${root}/.astrograph/graph.db`;
 		writeFutureIndex(dbPath);
+		const storages: CloseSpyStorage[] = [];
 
-		for (let attempt = 0; attempt < 25; attempt++) {
-			await expect(openProject(root, { dbPath })).rejects.toThrow(
-				IncompatibleIndexError,
-			);
+		for (let attempt = 0; attempt < 3; attempt++) {
+			await expect(
+				openProjectWithDependencies(root, { dbPath }, {
+					createStorage: (path) => {
+						const storage = new CloseSpyStorage(path);
+						storages.push(storage);
+						return storage;
+					},
+				}),
+			).rejects.toThrow(IncompatibleIndexError);
 		}
 
-		// Twenty-five leaked connections would be twenty-five live WAL readers.
-		await rm(dbPath, { force: true });
-		await rm(`${dbPath}-wal`, { force: true });
-		await rm(`${dbPath}-shm`, { force: true });
-		const graph = await openProject(root, { dbPath });
-		graph.close();
+		expect(storages.map((storage) => storage.closeCalls)).toEqual([1, 1, 1]);
 	});
 });
