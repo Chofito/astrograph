@@ -732,11 +732,21 @@ Supported keys:
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"],
   "maxFileSizeBytes": 2000000,
-  "kinds": ["function", "class", "component"],
   "watchDebounceMs": 300,
-  "tsconfigPath": "tsconfig.json"
+  "tsconfigPath": "tsconfig.json",
+  "backends": {
+    "typescript": { "enricher": true },
+    "php": { "enabled": true }
+  }
 }
 ```
+
+The CLI first distinguishes invalid JSON from semantic configuration errors.
+Semantic errors list the stable core diagnostic code, JSON Pointer path, and
+message. Unknown keys (including the removed `kinds` field) and unknown backend
+IDs are errors. Defaults are normalized by core: omitted backend switches are
+enabled, `exclude` is empty, the size limit is `2_000_000`, and debounce is
+`300` ms.
 
 Common use cases:
 

@@ -12,7 +12,7 @@ The MCP package exposes Astrograph through the official stdio Model Context Prot
 
 `createAstrographMcpServer` creates an SDK `Server` with ten tools and server instructions. `serveMcp` connects it to `StdioServerTransport`; standard output is protocol-only. A `ProjectSession` is lazy: on the first call it resolves a path in this order — explicit `projectPath`, configured server path, first client root URI, then server cwd — and walks upward for `.astrograph/`.
 
-On opening, the session loads `.astrograph/config.json`, opens the core project, and runs a catch-up `graph.sync()` only when no active daemon is recorded. With watch enabled (the default for `serveMcp`), it starts `FreshnessManager` after opening; before each tool it applies pending changes and decorates the core result with freshness state.
+On opening, the session parses `.astrograph/config.json` through the shared core parser before opening the project, and runs a catch-up `graph.sync()` only when no active daemon is recorded. With watch enabled (the default for `serveMcp`), it starts `FreshnessManager` after opening; before each tool it applies pending changes and decorates the core result with freshness state.
 
 ```mermaid
 sequenceDiagram
@@ -72,6 +72,8 @@ The server instructions teach hosts to use graph tools before broad text search,
 |---|---|
 | Unknown tool | MCP text error `Unknown Astrograph tool` |
 | Invalid argument shape/type | MCP text error from parser |
+| Invalid JSON project config | MCP text error distinct from semantic validation |
+| Semantically invalid project config | MCP text error including every core diagnostic code, JSON path, and message |
 | Index absent | `MissingIndexError` tells the agent to run `astrograph init` |
 | Client roots unavailable | session falls back to configured path or cwd |
 | Active project daemon | no catch-up sync or in-session watcher; daemon remains freshness owner |
@@ -88,12 +90,12 @@ The server instructions teach hosts to use graph tools before broad text search,
 
 ## Target behavior (TO-BE)
 
-MCP remains a language-agnostic transport over the same core contract used by CLI. Every tool should expose the truthful coverage scope and unresolved/ambiguous evidence required by [Query and honesty](../query-and-honesty.md). Project config validation and errors must converge with CLI. Mature progressive indexing, multi-project serving, and a separate coverage tool remain outside the current baseline scope, consistent with `ROADMAP.md`.
+MCP remains a language-agnostic transport over the same core contract used by CLI. Every tool should expose the truthful coverage scope and unresolved/ambiguous evidence required by [Query and honesty](../query-and-honesty.md). Project config validation and errors converge with CLI through the shared core parser. Mature progressive indexing, multi-project serving, and a separate coverage tool remain outside the current baseline scope, consistent with `ROADMAP.md`.
 
 ## Known deviations
 
 - [DEV-004](../deviations.md) and [DEV-005](../deviations.md) — the core can under-report partiality or omit unresolved evidence for some global queries; MCP faithfully formats that incomplete envelope and cannot correct it.
-- [DEV-006](../deviations.md) — `loadConfig` uses an unchecked JSON cast, unlike the CLI's parse-error wrapping.
+- [DEV-006](../deviations.md) — semantic parsing is shared; convergence invalidation remains to be proven separately.
 - [DEV-013](../deviations.md) — close reaches the facade but backend lifecycle disposal is incomplete in core.
 
 ## Related documents

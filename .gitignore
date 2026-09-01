@@ -29,3 +29,6 @@ docs/benchmarks/latest.json
 .codex/
 .cursor/
 .opencode/
+
+# Future work tbd
+*.local.md

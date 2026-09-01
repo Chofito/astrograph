@@ -43,6 +43,15 @@ openProject(root)  →  Astrograph facade  →  @astrograph/core
 - **The MCP layer adds NO graph logic** — it only parses args, calls the facade,
   formats text, and manages the watcher/staleness (§4). Reuses `@astrograph/core/bun`.
 
+### Project configuration
+
+Before opening a project, MCP parses `.astrograph/config.json` with the same
+core parser used by the CLI. Invalid JSON is reported separately from semantic
+configuration errors. Semantic error text preserves each core diagnostic's code,
+JSON Pointer path, and message, while retaining MCP's agent-oriented formatting.
+Whitespace, object-key order, and `watchDebounceMs` do not change graph identity;
+the semantic fields do.
+
 ## 3. Tools & response formatting
 
 - Each MCP tool `astrograph_<x>` declares its input schema from the contract

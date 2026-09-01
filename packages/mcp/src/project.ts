@@ -6,10 +6,16 @@ import type {
 	Astrograph,
 	AstrographConfig,
 	AstrographCore,
+	ConfigDiagnostic,
+	NormalizedAstrographConfig,
 	ToolResult,
 	Watcher,
 } from "@astrograph/core";
-import { FreshnessManager } from "@astrograph/core";
+import {
+	FreshnessManager,
+	parseAstrographConfig,
+	SHIPPED_BACKEND_IDS,
+} from "@astrograph/core";
 import { BunWatcher, openProject } from "@astrograph/core/bun";
 import { readActiveDaemon } from "./daemon";
 
@@ -36,6 +42,25 @@ export class MissingIndexError extends Error {
 			`No Astrograph index found from ${startPath}. Run \`astrograph init\` first.`,
 		);
 		this.name = "MissingIndexError";
+	}
+}
+
+/** MCP presentation for syntactically invalid project configuration JSON. */
+export class InvalidMcpConfigJsonError extends Error {
+	constructor(message: string) {
+		super(`Cannot open project config: invalid JSON: ${message}`);
+		this.name = "InvalidMcpConfigJsonError";
+	}
+}
+
+/** MCP presentation that retains all canonical core configuration diagnostics. */
+export class InvalidMcpConfigError extends Error {
+	readonly diagnostics: readonly ConfigDiagnostic[];
+
+	constructor(diagnostics: readonly ConfigDiagnostic[]) {
+		super(formatConfigDiagnostics(diagnostics));
+		this.name = "InvalidMcpConfigError";
+		this.diagnostics = diagnostics;
 	}
 }
 
@@ -140,10 +165,35 @@ export function findProjectRoot(startPath: string): string | undefined {
 	}
 }
 
-async function loadConfig(root: string): Promise<AstrographConfig | undefined> {
+export async function loadConfig(
+	root: string,
+): Promise<NormalizedAstrographConfig | undefined> {
 	const path = `${root}/.astrograph/config.json`;
 	if (!existsSync(path)) return undefined;
-	return JSON.parse(await readFile(path, "utf8")) as AstrographConfig;
+	let input: unknown;
+	try {
+		input = JSON.parse(await readFile(path, "utf8"));
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new InvalidMcpConfigJsonError(message);
+	}
+	const result = parseAstrographConfig(input, {
+		knownBackendIds: SHIPPED_BACKEND_IDS,
+	});
+	if (!result.ok) throw new InvalidMcpConfigError(result.diagnostics);
+	return result.config;
+}
+
+function formatConfigDiagnostics(
+	diagnostics: readonly ConfigDiagnostic[],
+): string {
+	return [
+		"Project configuration is invalid:",
+		...diagnostics.map(
+			(diagnostic) =>
+				`- [${diagnostic.code}] ${diagnostic.path || "/"}: ${diagnostic.message}`,
+		),
+	].join("\n");
 }
 
 function normalizeStart(path: string): string {

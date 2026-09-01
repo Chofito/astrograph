@@ -1,8 +1,13 @@
 import { existsSync } from "node:fs";
 import type {
 	Astrograph,
-	AstrographConfig,
+	ConfigDiagnostic,
+	NormalizedAstrographConfig,
 	ToolResult,
+} from "@astrograph/core";
+import {
+	parseAstrographConfig,
+	SHIPPED_BACKEND_IDS,
 } from "@astrograph/core";
 import { openProject } from "@astrograph/core/bun";
 import {
@@ -19,6 +24,23 @@ export interface ReadFlags {
 	json?: boolean;
 	failOnPartial?: boolean;
 	path?: string;
+}
+
+/** CLI presentation for syntactically invalid project configuration JSON. */
+export class InvalidCliConfigJsonError extends CliError {
+	constructor(message: string) {
+		super(`Invalid JSON in .astrograph/config.json: ${message}`, 1);
+	}
+}
+
+/** CLI presentation that retains all canonical core configuration diagnostics. */
+export class InvalidCliConfigError extends CliError {
+	readonly diagnostics: readonly ConfigDiagnostic[];
+
+	constructor(diagnostics: readonly ConfigDiagnostic[]) {
+		super(formatConfigDiagnostics(diagnostics), 1);
+		this.diagnostics = diagnostics;
+	}
 }
 
 export async function withGraph<T>(
@@ -49,13 +71,31 @@ export async function openGraphForRead<T>(
 
 export async function loadConfig(
 	root: string,
-): Promise<AstrographConfig | undefined> {
+): Promise<NormalizedAstrographConfig | undefined> {
 	const configPath = `${root}/.astrograph/config.json`;
 	if (!existsSync(configPath)) return undefined;
+	let input: unknown;
 	try {
-		return (await Bun.file(configPath).json()) as AstrographConfig;
+		input = JSON.parse(await Bun.file(configPath).text());
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		throw new CliError(`Invalid .astrograph/config.json: ${message}`, 1);
+		throw new InvalidCliConfigJsonError(message);
 	}
+	const result = parseAstrographConfig(input, {
+		knownBackendIds: SHIPPED_BACKEND_IDS,
+	});
+	if (!result.ok) throw new InvalidCliConfigError(result.diagnostics);
+	return result.config;
+}
+
+function formatConfigDiagnostics(
+	diagnostics: readonly ConfigDiagnostic[],
+): string {
+	return [
+		"Invalid .astrograph/config.json:",
+		...diagnostics.map(
+			(diagnostic) =>
+				`  ${diagnostic.path || "/"} [${diagnostic.code}] ${diagnostic.message}`,
+		),
+	].join("\n");
 }

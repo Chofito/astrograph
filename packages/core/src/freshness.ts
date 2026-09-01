@@ -1,5 +1,8 @@
+import {
+	DEFAULT_ASTROGRAPH_CONFIG,
+	type AstrographConfig,
+} from "./config";
 import type {
-	AstrographConfig,
 	AstrographCore,
 	ToolResult,
 	WatchEvent,
@@ -54,7 +57,9 @@ export class FreshnessManager {
 		this.graph = options.graph;
 		this.watcher = options.watcher;
 		this.debounceMs =
-			options.debounceMs ?? options.config?.watchDebounceMs ?? 300;
+			options.debounceMs ??
+			options.config?.watchDebounceMs ??
+			DEFAULT_ASTROGRAPH_CONFIG.watchDebounceMs;
 		this.onSyncStart = options.onSyncStart;
 		this.onSyncComplete = options.onSyncComplete;
 		this.onSyncError = options.onSyncError;

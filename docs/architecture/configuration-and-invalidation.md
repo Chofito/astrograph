@@ -1,8 +1,8 @@
 # Configuration and invalidation
 
-Status: mixed
+Status: shared parsing adopted; convergence invalidation pending
 Baseline: `8c6e9ad004a491886fb396cddca0dd617c67f495`
-Canonical owner: project composition and indexing
+Canonical owner: `packages/core/src/config.ts`
 
 ## Purpose
 
@@ -10,28 +10,59 @@ Define configuration ownership, defaults, runtime validation, and when a persist
 
 ## Current behavior (AS-IS)
 
-`.astrograph/config.json` is optional. CLI and MCP parse JSON independently and cast it to `AstrographConfig`. The registry consumes backend `enabled`/`enricher` flags; scanner consumes include/exclude; indexer consumes max file size and TypeScript config path; freshness consumes watch debounce.
+`.astrograph/config.json` is optional. CLI and MCP parse its JSON text, then pass
+the resulting `unknown` value to the same runtime-free core parser with the
+shipped backend IDs. Both receive normalized configuration or the same structured
+diagnostics before opening a project. The registry consumes backend
+`enabled`/`enricher` flags; scanner consumes include/exclude; indexer consumes
+max file size and TypeScript config path; freshness consumes watch debounce.
 
 ```mermaid
 flowchart LR
-    JSON[".astrograph/config.json"] --> CLI["CLI loadConfig"]
-    JSON --> MCP["MCP loadConfig"]
-    CLI --> Cast["AstrographConfig cast"]
-    MCP --> Cast
-    Cast --> Registry["backend switches"]
-    Cast --> Scanner["include / exclude"]
-    Cast --> Indexer["max size / tsconfig"]
-    Cast --> Watch["debounce"]
+    JSON[".astrograph/config.json"] --> CLI["CLI JSON reader"]
+    JSON --> MCP["MCP JSON reader"]
+    CLI --> Parser["parseAstrographConfig"]
+    MCP --> Parser
+    Parser --> Registry["backend switches"]
+    Parser --> Scanner["include / exclude"]
+    Parser --> Indexer["max size / tsconfig"]
+    Parser --> Watch["debounce"]
 ```
 
-`computeConfigHash` reads relevant ts/js config, package/lock files, `.gitignore`, Astrograph config, and registry version keys. `sync()` treats a changed hash as modification of every scanned known file.
+`computeConfigHash` reads relevant ts/js config, package/lock files, `.gitignore`,
+registry version keys, and the normalized semantic configuration. It does not
+hash raw `.astrograph/config.json` text, so whitespace and object key order do
+not affect graph identity. `watchDebounceMs` is excluded from that semantic
+configuration. `sync()` treats a changed hash as modification of every scanned
+known file.
 
 ## Target behavior (TO-BE)
 
-One shared parser validates shape, ranges, enum values and unknown-policy decisions before any transport opens the project. Defaults are defined once and consumed by core and docs. Each field declares its invalidation domain.
+One shared parser validates shape, ranges, enum values and unknown-policy
+decisions before any transport opens the project. Defaults are defined once in
+`config.ts` and consumed by core. Each field declares its invalidation domain.
+
+## Canonical parser contract
+
+`parseAstrographConfig(input, { knownBackendIds })` takes `unknown` and returns
+either normalized configuration or structured diagnostics. It has no filesystem,
+database, watcher, registry-construction, or Bun dependency. Diagnostics have a
+stable code, an RFC 6901 JSON Pointer path, and a message. The parser rejects
+unknown top-level and backend keys; `kinds` is therefore an explicit error, not
+a compatibility alias.
+
+| Field | Default | Validation |
+|---|---|---|
+| include | every extension claimed by an enabled backend | array of non-empty project-relative globs |
+| exclude | `[]` | array of non-empty project-relative globs |
+| maxFileSizeBytes | `2_000_000` | safe integer from `1` to `1_073_741_824` |
+| watchDebounceMs | `300` | safe integer from `0` to `60_000` |
+| tsconfigPath | TypeScript backend discovery | non-empty project-relative string |
+| backends | every known backend enabled with its enricher | known IDs; only boolean `enabled` and `enricher` keys |
 
 | Field/input | Target consumer | Invalidation |
 |---|---|---|
+| JSON whitespace/object-key order | core parser normalization | none |
 | include/exclude/.gitignore | scanner | membership reconciliation + full affected backend reload |
 | maxFileSizeBytes | eligibility | files crossing threshold enter/leave graph |
 | tsconfigPath/tsconfig/jsconfig | TS backend | reload TS project and re-resolve owned/referrer files |
@@ -44,18 +75,21 @@ One shared parser validates shape, ranges, enum values and unknown-policy decisi
 ## Invariants
 
 - Invalid configuration fails before indexing and names the field/path.
-- CLI and MCP accept/reject the same config.
+- CLI and MCP accept/reject the same config and preserve each diagnostic's code, JSON path, and message; only their presentation differs.
 - Unimplemented fields are not public contracts.
 - Changing an extraction input cannot leave the old graph marked current.
 - Operational-only values do not cause unnecessary semantic reindexes.
 
 ## Failure and partial states
 
-Malformed JSON and semantically invalid values are different errors. Unknown backend IDs should be warnings or errors according to an explicit forward-compatibility policy. During invalidation, affected files become non-authoritative before queries can claim completeness.
+Malformed JSON and semantically invalid values are different errors. Unknown
+backend IDs are errors under the strict forward-compatibility policy. During
+invalidation, affected files become non-authoritative before queries can claim
+completeness.
 
 ## Source evidence
 
-- `packages/core/src/types.ts`: `AstrographConfig`.
+- `packages/core/src/config.ts`: parser, defaults, diagnostics, and semantic projection.
 - `packages/core/src/extraction/registry.ts`: backend switches.
 - `packages/core/src/indexer.ts`: scan, size and config hash.
 - `packages/core/src/freshness.ts`: debounce and excludes.
@@ -63,4 +97,7 @@ Malformed JSON and semantically invalid values are different errors. Unknown bac
 
 ## Known deviations
 
-`DEV-006` covers unused `kinds`, missing runtime validation, and transport drift. Legacy debounce documentation was reconciled under resolved `DEV-016`.
+AG-101 provides the core parser, defaults, diagnostics, and normalized semantic
+hash; AG-102 wires it into CLI and MCP. DEV-006 remains open only for the
+convergence/invalidation proof, which is scheduled separately. Legacy debounce
+documentation was reconciled under resolved `DEV-016`.

@@ -72,7 +72,8 @@ The installer is a separate adapter layer. Per-host `Target` implementations own
 |---|---|
 | Unknown command or malformed flags | `CliError`, exit `1` |
 | No ancestor `.astrograph/` for an existing-index command | clear init instruction, exit `2` |
-| Invalid `config.json` when opened through shared CLI path | `CliError`, exit `1` |
+| Invalid JSON in `config.json` | `CliError`, exit `1`, distinct from semantic validation |
+| Semantically invalid `config.json` | `CliError`, exit `1`, with every core diagnostic code, JSON path, and message |
 | Daemon active for `index`/`sync`/synchronous `init` | clear stop instruction, exit `1` |
 | Query envelope has `meta.partial` | formatted coverage/footer; exit `3` only with `--fail-on-partial` |
 | Existing non-Astrograph agent guide | installer skips it rather than overwriting it |
@@ -86,11 +87,11 @@ The installer is a separate adapter layer. Per-host `Target` implementations own
 
 ## Target behavior (TO-BE)
 
-The target surface remains a thin, scriptable facade over core, as defined by `ROADMAP.md` and `docs/contracts.md`. It must expose only implemented tools and language support, carry coverage information through every output mode, and keep index mutation serialized. Configuration parsing/validation should be shared with MCP so identical project config produces identical diagnostics and behavior across transports.
+The target surface remains a thin, scriptable facade over core, as defined by `ROADMAP.md` and `docs/contracts.md`. It must expose only implemented tools and language support, carry coverage information through every output mode, and keep index mutation serialized. Configuration parsing/validation is shared with MCP through `parseAstrographConfig`; identical project config produces identical normalized defaults and diagnostic facts across transports.
 
 ## Known deviations
 
-- [DEV-006](../deviations.md) — configuration is cast rather than semantically validated; CLI wraps parse errors but MCP does not provide the same diagnostic path.
+- [DEV-006](../deviations.md) — semantic parsing is shared; convergence invalidation remains to be proven separately.
 - [DEV-017](../deviations.md) — static-quality cleanup remains separate from this documentation work.
 
 ## Related documents

@@ -1,4 +1,5 @@
 export * from "./astrograph";
+export * from "./config";
 export * from "./db/migrations";
 export * from "./db/queries";
 export * from "./extraction";
