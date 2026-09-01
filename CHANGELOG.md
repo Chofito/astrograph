@@ -13,9 +13,14 @@ Astrograph is currently a **public preview**. `0.x` releases may change CLI, MCP
 - Release identity and compatibility contract: public preview surfaces, experimental surfaces, and internals that are explicitly not a public SDK ([contracts §12](docs/contracts.md#12-release-identity-and-compatibility), `ROADMAP.md` §0).
 - `CHANGELOG.md`, `SECURITY.md`, and `CONTRIBUTING.md`.
 - Index compatibility policy plus a forward-compatibility guard: a database written by a newer binary is refused with a rebuild instruction instead of being opened as current.
-- `bun run docs:check` — a static documentation drift guard (links and anchors, architecture metadata, fence balance, duplicate deviation IDs, required-document inventory), a per-PR documentation checklist, and a PR template.
+- `bun run docs:check` — a static documentation drift guard (links and anchors, architecture metadata, fence balance, duplicate deviation IDs, required-document inventory), a per-PR documentation checklist, and a PR template. It is a required gate in CI and in the release workflow.
 - Registration validation for language backends: duplicate backend IDs, an extension claimed twice, and capabilities that do not match what the configured backend can emit are rejected at construction.
 - One runtime-free configuration parser shared by core, CLI, and MCP, so all three normalize and report diagnostics identically.
+
+### Fixed
+
+- The CLI could not be imported at all. `commands/shared.ts` declared `class InvalidCliConfigJsonError extends CliError` at module scope inside the `cli.ts → commands/* → shared.ts → cli.ts` import cycle, and an `extends` clause evaluates eagerly, so every invocation died with "Cannot access 'CliError' before initialization". The result vocabulary now lives in a leaf module, `packages/cli/src/result.ts`.
+- `daemon.json` was cast to `DaemonMetadata` without validation, so a truncated or hand-edited file could surface later as `pid: undefined` in `status`. It is now validated before use.
 
 ### Changed
 
@@ -34,6 +39,5 @@ Astrograph is currently a **public preview**. `0.x` releases may change CLI, MCP
 - Static analysis limits are reported, not hidden: unresolved and ambiguous edges stay visible rather than being guessed into `resolved`.
 - macOS and Linux on x64/arm64. No Windows binary.
 - The `@astrograph/*` packages are private workspace source. There is no published npm SDK.
-- `bun run docs:check` still reports one error (a `Status:` line owned by `DEV-006`), so the documentation guard runs in warning mode in CI rather than as a gate.
 
 [Unreleased]: https://github.com/chofito/astrograph/compare/main...HEAD

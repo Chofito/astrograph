@@ -35,4 +35,4 @@ export namespace Utils {
 }
 
 const MAX_RETRIES = 3;
-let currentRetry = 0;
+const currentRetry = 0;

@@ -3,5 +3,9 @@
 	// `eval/` is not a workspace, so `bun run --filter '*' typecheck` never saw
 	// it and the harness could sit broken unnoticed. The ambient decls come along
 	// because eval imports @astrograph/core straight from source.
-	"include": ["eval", "packages/core/src/sql.d.ts", "packages/core/src/wasm.d.ts"]
+	"include": [
+		"eval",
+		"packages/core/src/sql.d.ts",
+		"packages/core/src/wasm.d.ts"
+	]
 }

@@ -151,7 +151,11 @@ export function parseAstrographConfig(
 		diagnostics,
 	);
 	const tsconfigPath = parseTsconfigPath(input.tsconfigPath, diagnostics);
-	const backends = parseBackends(input.backends, options.knownBackendIds, diagnostics);
+	const backends = parseBackends(
+		input.backends,
+		options.knownBackendIds,
+		diagnostics,
+	);
 
 	if (diagnostics.length > 0) return { ok: false, diagnostics };
 
@@ -195,7 +199,9 @@ export function normalizeAstrographConfig(
 
 	return {
 		include:
-			config.include === undefined ? undefined : normalizeStringList(config.include),
+			config.include === undefined
+				? undefined
+				: normalizeStringList(config.include),
 		exclude:
 			config.exclude === undefined
 				? [...DEFAULT_ASTROGRAPH_CONFIG.exclude]
@@ -216,9 +222,7 @@ export function normalizeAstrographConfig(
  * Extraction inputs only. Operational debounce is intentionally excluded so a
  * scheduling change cannot alter graph identity or trigger a semantic rebuild.
  */
-export function semanticAstrographConfig(
-	config: NormalizedAstrographConfig,
-): {
+export function semanticAstrographConfig(config: NormalizedAstrographConfig): {
 	include: string[] | null;
 	exclude: string[];
 	maxFileSizeBytes: number;
@@ -260,7 +264,9 @@ function parseGlobList(
 		const entry = value[index];
 		const entryPath = `${path}/${index}`;
 		if (typeof entry !== "string") {
-			diagnostics.push(diagnostic("CONFIG_GLOB_TYPE", entryPath, "Expected a string."));
+			diagnostics.push(
+				diagnostic("CONFIG_GLOB_TYPE", entryPath, "Expected a string."),
+			);
 			continue;
 		}
 		if (entry.trim().length === 0) {

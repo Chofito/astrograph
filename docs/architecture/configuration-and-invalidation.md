@@ -1,12 +1,14 @@
 # Configuration and invalidation
 
-Status: shared parsing adopted; convergence invalidation pending
+Status: mixed
 Baseline: `8c6e9ad004a491886fb396cddca0dd617c67f495`
 Canonical owner: `packages/core/src/config.ts`
 
 ## Purpose
 
 Define configuration ownership, defaults, runtime validation, and when a persisted graph must be rebuilt or re-resolved.
+
+Shared parsing is adopted and described as AS-IS. Convergence on a semantic configuration change is still target behavior, tracked by `DEV-003` and `DEV-006`.
 
 ## Current behavior (AS-IS)
 

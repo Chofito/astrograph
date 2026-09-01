@@ -1,10 +1,10 @@
+import { ArrowRight, Network, Terminal, Zap } from "lucide-react";
 import Link from "next/link";
-import { ArrowRight, Terminal, Network, Zap } from "lucide-react";
 import { HeroConstellation, Starfield } from "@/components/constellation";
+import { GitHubIcon } from "@/components/icons";
 import { PointerParallax } from "@/components/parallax";
 import { ScrollReveal } from "@/components/reveal";
 import { Term } from "@/components/term";
-import { GitHubIcon } from "@/components/icons";
 import { gitConfig } from "@/lib/shared";
 
 const repoUrl = `https://github.com/${gitConfig.user}/${gitConfig.repo}`;

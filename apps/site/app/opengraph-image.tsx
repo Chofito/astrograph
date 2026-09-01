@@ -1,5 +1,5 @@
-import { ImageResponse } from "next/og";
 import { generate as DefaultImage } from "fumadocs-ui/og";
+import { ImageResponse } from "next/og";
 import { appName } from "@/lib/shared";
 
 export const revalidate = false;

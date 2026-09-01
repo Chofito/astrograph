@@ -1,13 +1,5 @@
-import {
-	DEFAULT_ASTROGRAPH_CONFIG,
-	type AstrographConfig,
-} from "./config";
-import type {
-	AstrographCore,
-	ToolResult,
-	WatchEvent,
-	Watcher,
-} from "./types";
+import { type AstrographConfig, DEFAULT_ASTROGRAPH_CONFIG } from "./config";
+import type { AstrographCore, ToolResult, WatchEvent, Watcher } from "./types";
 
 export interface FreshnessSyncResult {
 	added: string[];

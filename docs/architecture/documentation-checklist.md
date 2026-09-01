@@ -55,22 +55,19 @@ Fix a false positive **in the checker**. If a single line genuinely must be exem
 
 Findings in `*.es.md` are reported as warnings, not errors: [the architecture index](README.md#legacy-documentation-disposition) declares the Spanish mirrors stale and non-canonical, so their drift must stay visible without blocking a change to the canonical English set. Resynchronizing them is `DEV-016`/`NEW-003` work.
 
-## CI status and the gate cutover
+## CI status
 
-The CI job runs `bun run docs:check --warn-only` and cannot fail the build today, because the repository carries pre-existing documentation debt (see below).
+`bun run docs:check` is a **required gate** in CI and in the release workflow, as of **2026-09-01**. A pull request that breaks a link, drops architecture metadata, leaves a fence open, duplicates a deviation ID, or removes a required document fails the build.
 
-**Cutover condition:** when `bun run docs:check` reports **0 errors** on `main`, remove `--warn-only` and `continue-on-error` from the `Documentation guard` step in `.github/workflows/ci.yml`. That is the whole change; the command does not move. Record the cutover date here when it happens.
+The cutover happened when the pre-existing debt reached zero errors:
 
-Known debt blocking the cutover:
-
-| Finding | Owner |
+| Former debt | Resolution |
 |---|---|
-| `docs/architecture/configuration-and-invalidation.md` `Status:` is prose, not a status word | `DEV-006` |
-| `ROADMAP.es.md`, `docs/tools.es.md` mirror drift (warnings only, never a gate) | `NEW-003` |
+| `docs/graph-model.md`, `docs/tools.md` cited `../../codegraph/src/**` | named rather than linked — that project is not vendored here (`NEW-003`) |
+| `docs/architecture/configuration-and-invalidation.md` `Status:` was prose | `Status: mixed`, with the nuance moved into the Purpose section |
+| `ROADMAP.es.md`, `docs/tools.es.md` mirror drift | still present, reported as warnings by design — the mirrors are non-canonical and must never gate the English set |
 
-Cleared by `NEW-003`: the cross-project `codegraph/src/**` references in `docs/graph-model.md` and `docs/tools.md` are now named rather than linked, since that sibling project is not vendored here.
-
-**One error remains.** The cutover is a single line in `DEV-006`'s file away.
+If you need to land a change while a finding is unavoidable, fix it in the checker or suppress the single line with `<!-- docs-check: ignore-line -->` and a reason. Do not reintroduce `--warn-only`.
 
 ## Related documents
 

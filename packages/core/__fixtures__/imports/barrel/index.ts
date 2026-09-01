@@ -1,2 +1,2 @@
-export { originFn } from "./origin";
 export * from "./extra";
+export { originFn } from "./origin";

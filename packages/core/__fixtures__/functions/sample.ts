@@ -6,9 +6,7 @@ const arrow = (x: string): string => {
 	return x.toUpperCase();
 };
 
-const fnExpr = function (items: string[]): number {
-	return items.length;
-};
+const fnExpr = (items: string[]): number => items.length;
 
 async function asyncDecl(): Promise<void> {
 	await Promise.resolve();

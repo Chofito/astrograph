@@ -1,5 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { Astrograph } from "../../astrograph";
+import type { AstrographConfig } from "../../config";
 import { runMigrations } from "../../db/migrations";
 import { QueryBuilder } from "../../db/queries";
 import {
@@ -10,7 +11,6 @@ import {
 } from "../../extraction";
 import { Indexer } from "../../indexer";
 import { GraphQueries } from "../../query/graph-queries";
-import type { AstrographConfig } from "../../config";
 import { BunFileSystem } from "./fs";
 import { BunGlobScanner } from "./glob";
 import { BunHasher } from "./hasher";

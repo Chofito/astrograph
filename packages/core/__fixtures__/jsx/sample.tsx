@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 export function Button(props: { label: string }) {
 	return <button>{props.label}</button>;

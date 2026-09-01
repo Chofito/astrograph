@@ -66,11 +66,8 @@ jobs:
       - name: Test
         run: bun test
 
-      # Warning mode, matching CI. See docs/architecture/documentation-checklist.md
-      # for the cutover that makes this a gate.
       - name: Documentation guard
-        continue-on-error: true
-        run: bun run docs:check --warn-only
+        run: bun run docs:check
 
       # The installer is piped into `sh`, so it must parse under dash.
       - name: Shellcheck installer

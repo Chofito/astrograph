@@ -18,13 +18,13 @@ import typescriptWasm from "tree-sitter-wasms/out/tree-sitter-typescript.wasm" w
 import treeSitterWasmsPkg from "tree-sitter-wasms/package.json" with {
 	type: "json",
 };
+import { Parser, Language as WasmLanguage } from "web-tree-sitter";
 // web-tree-sitter loads its own Emscripten core alongside the grammars. Without
 // this it is resolved relative to the bundle and a compiled binary dies with
 // `ENOENT /$bunfs/root/tree-sitter.wasm` before parsing anything.
 import treeSitterRuntimeWasm from "web-tree-sitter/tree-sitter.wasm" with {
 	type: "file",
 };
-import { Parser, Language as WasmLanguage } from "web-tree-sitter";
 
 export type TreeSitterLang =
 	| "typescript"
