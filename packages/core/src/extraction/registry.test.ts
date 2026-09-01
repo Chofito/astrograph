@@ -6,6 +6,7 @@ import {
 	EXTRACTION_CONTRACT_VERSION,
 	grammarsForRegistry,
 	LanguageRegistry,
+	shippedBackendExtensionOwners,
 } from "./registry";
 
 const HASHER: Hasher = { hash: (s) => String(Bun.hash(s)) };
@@ -293,5 +294,33 @@ describe("grammarsForRegistry", () => {
 
 	test("an empty registry needs no grammars", () => {
 		expect(grammarsForRegistry(new LanguageRegistry([]))).toEqual([]);
+	});
+});
+
+describe("shippedBackendExtensionOwners", () => {
+	test("matches the extensions the shipped backends actually claim", () => {
+		// The table is static so a disabled backend can still be named; this test
+		// is what keeps it from drifting away from the backend classes.
+		const registry = createDefaultRegistry({ hasher: HASHER });
+		const owners = shippedBackendExtensionOwners();
+
+		const actual = new Map<string, string>();
+		for (const backend of registry.list()) {
+			for (const ext of backend.extensions) {
+				actual.set(ext.toLowerCase(), backend.id);
+			}
+		}
+
+		expect([...owners.entries()].sort()).toEqual([...actual.entries()].sort());
+	});
+
+	test("still names a backend the configuration disabled", () => {
+		const registry = createDefaultRegistry({
+			hasher: HASHER,
+			config: { backends: { php: { enabled: false } } },
+		});
+		expect(registry.backendForPath("a.php")).toBeUndefined();
+		// The registry forgot PHP; the shipped table has not.
+		expect(shippedBackendExtensionOwners().get(".php")).toBe("php");
 	});
 });

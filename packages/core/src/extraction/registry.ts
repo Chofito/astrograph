@@ -106,6 +106,40 @@ export class LanguageRegistry {
  */
 export const EXTRACTION_CONTRACT_VERSION = "2";
 
+/**
+ * Extensions each *shipped* backend claims, enabled or not.
+ *
+ * `createDefaultRegistry` omits a disabled backend entirely, so from the
+ * registry's point of view its files look like an unsupported extension. That
+ * distinction matters to the user: "PHP is turned off" is actionable, "nothing
+ * reads .php" is not. `shippedBackendExtensionOwners()` restores it.
+ *
+ * Kept in sync with the backend classes by `registry.test.ts`, which builds the
+ * default registry and asserts the table matches.
+ */
+const SHIPPED_BACKEND_EXTENSIONS: Record<string, readonly string[]> = {
+	typescript: [
+		".ts",
+		".tsx",
+		".js",
+		".jsx",
+		".mts",
+		".cts",
+		".mjs",
+		".cjs",
+	],
+	php: [".php"],
+};
+
+/** Extension → owning shipped backend id, lower-cased, regardless of config. */
+export function shippedBackendExtensionOwners(): ReadonlyMap<string, string> {
+	const owners = new Map<string, string>();
+	for (const [id, extensions] of Object.entries(SHIPPED_BACKEND_EXTENSIONS)) {
+		for (const ext of extensions) owners.set(ext.toLowerCase(), id);
+	}
+	return owners;
+}
+
 /** Rejected backend registration: a defect in the backend, not user input. */
 export class BackendRegistrationError extends Error {
 	constructor(message: string) {

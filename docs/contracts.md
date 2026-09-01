@@ -505,6 +505,39 @@ Parse failures of a single file are **non-fatal**: record an `ExtractionError`, 
 ## 11. References
 - Data model: [docs/graph-model.md](graph-model.md) · Tools: [docs/tools.md](tools.md) · Extraction: [docs/extraction/overview.md](extraction/overview.md) (Pass A: [tree-sitter.md](extraction/tree-sitter.md), Pass B: [typescript.md](extraction/typescript.md)) · Tests/golden: [docs/testing.md](testing.md).
 
+## 13. Index membership
+
+One classification decides which files belong to the graph and which backend owns each. It is
+computed once per pass and read by the scanner boundary, `indexAll`, `sync`, `syncFiles`,
+`loadProject`, Pass A, both Pass B phases, and coverage.
+
+```ts
+type EligibilityReason =
+  | 'out_of_scope'       // the scanner did not yield it: include/exclude/.gitignore
+  | 'no_backend'         // no registered backend claims the extension
+  | 'backend_disabled'   // a shipped backend claims it, configuration turned it off
+  | 'too_large'          // over maxFileSizeBytes
+  | 'missing';           // could not be stat'ed
+
+interface IndexEligibility {
+  path: string;
+  backendId?: string;
+  language?: Language;
+  eligible: boolean;
+  reason?: EligibilityReason;
+  size?: number;
+}
+```
+
+Rules:
+
+- **A non-eligible path never reaches `extractNodes`, `loadProject`, `resolveEdges`, or reconciliation.** An oversized file is evidence, not input.
+- The scanner owns `include`/`exclude`/`.gitignore`; membership records the outcome as `out_of_scope` rather than re-implementing the matching. Two matchers would be two definitions.
+- `backend_disabled` is distinguished from `no_backend` because "PHP is turned off" is actionable and "nothing reads .php" is not.
+- Membership is sorted by path throughout and never depends on backend registration order or SQLite row order.
+- `out_of_scope` produces no file record: the project simply does not contain the file, and a row would make the graph claim knowledge of it.
+- `too_large`, `no_backend`, and `backend_disabled` produce a record carrying `FILE_TOO_LARGE` or `NO_BACKEND`, which §10.1 classifies as coverage-degrading.
+
 ## 12. Release identity and compatibility
 
 The current cut is **`v0.1.0` public preview**, not `v1.0.0`. One SemVer value identifies the tag, the release, the binary's `--version`, the stamped package manifests, the `CHANGELOG.md` entry, and this documentation snapshot. `ROADMAP.md` §0 states the same thing; if they ever disagree, `ROADMAP.md` wins on scope and this section wins on surfaces.

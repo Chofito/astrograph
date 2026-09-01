@@ -6,7 +6,17 @@ import {
 } from "./config";
 import type { QueryBuilder } from "./db/queries";
 import { type ReconcileStats, reconcileNodes } from "./extraction/reconcile";
-import type { LanguageRegistry } from "./extraction/registry";
+import {
+	type LanguageRegistry,
+	shippedBackendExtensionOwners,
+} from "./extraction/registry";
+import {
+	buildMembership,
+	eligibilityEvidence,
+	type IndexEligibility,
+	materialize,
+	type Membership,
+} from "./eligibility";
 import { languageFromPath } from "./extraction/shared/language";
 import type {
 	Edge,
@@ -63,6 +73,12 @@ export class Indexer {
 	 * parse, and both Pass B phases need the same answer.
 	 */
 	private readonly resolveCache = new Map<string, EdgeResolutionResult>();
+	/**
+	 * Membership for the pass in flight. Computed once and read by Pass A,
+	 * `loadProject`, both Pass B phases, and retirement, so no consumer can
+	 * disagree about which files belong to the graph (AG-202).
+	 */
+	private membership: Membership = emptyMembership();
 	/** Reconciliation counters for the most recent pass, for diagnostics/tests. */
 	private lastReconcileStats: ReconcileStats = {
 		matched: 0,
@@ -94,22 +110,29 @@ export class Indexer {
 
 	async indexAll(options: IndexAllOptions = {}): Promise<void> {
 		const configHash = await this.computeConfigHash();
-		const files = await this.scanFiles();
+		const membership = await this.classifyProject();
+		const eligible = membership.eligible.map((entry) => entry.path);
 
 		options.onProgress?.({
 			phase: "scan",
-			current: files.length,
-			total: files.length,
+			current: eligible.length,
+			total: eligible.length,
 		});
 
-		this.beginPass(files);
+		this.beginPass(membership);
 
-		for (let i = 0; i < files.length; i++) {
-			const relPath = files[i]!;
+		// A file the graph cannot read still deserves a record saying why, but it
+		// must never reach a parser or an enricher.
+		for (const entry of membership.recordable) {
+			await this.recordIneligibleFile(entry);
+		}
+
+		for (let i = 0; i < eligible.length; i++) {
+			const relPath = eligible[i]!;
 			options.onProgress?.({
 				phase: "parse",
 				current: i + 1,
-				total: files.length,
+				total: eligible.length,
 				file: relPath,
 			});
 			await this.indexFilePassA(relPath, { force: options.force ?? false });
@@ -117,25 +140,70 @@ export class Indexer {
 
 		// Pass B is two-phase: reconcile all nodes first (FK-safe targets), then
 		// edges. Files whose backend has no enricher are already final.
-		for (let i = 0; i < files.length; i++) {
-			const relPath = files[i]!;
+		for (let i = 0; i < eligible.length; i++) {
+			const relPath = eligible[i]!;
 			options.onProgress?.({
 				phase: "resolve",
 				current: i + 1,
-				total: files.length,
+				total: eligible.length,
 				file: relPath,
 			});
 			this.indexFileReconcile(relPath);
 		}
-		for (const relPath of files) {
+		for (const relPath of eligible) {
 			this.indexFileResolveEdges(relPath);
 		}
 
 		this.persistProjectMetadata(configHash);
 		options.onProgress?.({
 			phase: "done",
-			current: files.length,
-			total: files.length,
+			current: eligible.length,
+			total: eligible.length,
+		});
+	}
+
+	/**
+	 * The single classification every phase reads. Scanning owns
+	 * include/exclude/gitignore; this adds backend ownership, enablement, and the
+	 * size limit, and folds in already-persisted paths so a file that left the
+	 * project is visible as `out_of_scope`.
+	 */
+	private async classifyProject(): Promise<Membership> {
+		const scanned = await this.scanFiles();
+		return buildMembership({
+			registry: this.registry,
+			config: this.config,
+			shippedExtensionOwners: shippedBackendExtensionOwners(),
+			scanned,
+			known: this.queries.getAllFiles().map((file) => file.path),
+			sizeOf: async (relPath) => {
+				try {
+					return (await this.fs.stat(this.joinRoot(relPath))).size;
+				} catch {
+					return undefined;
+				}
+			},
+		});
+	}
+
+	/** Persist why a claimed-but-unusable file is absent from the graph. */
+	private async recordIneligibleFile(entry: IndexEligibility): Promise<void> {
+		const evidence = eligibilityEvidence(entry);
+		if (evidence === null) return;
+		this.writeParsedFile(entry.path, {
+			contentHash: "",
+			size: entry.size ?? 0,
+			modifiedAt: this.now(),
+			nodes: [],
+			edges: [],
+			errors: [
+				{
+					message: evidence.message,
+					filePath: entry.path,
+					severity: "warning",
+					code: evidence.code,
+				},
+			],
 		});
 	}
 
@@ -154,22 +222,22 @@ export class Indexer {
 		const configChanged =
 			storedConfigHash !== undefined && storedConfigHash !== configHash;
 
-		const scanned = await this.scanFiles();
-		const scannedSet = new Set(scanned);
+		// Same classification the full index uses. A file that stopped being
+		// eligible — excluded, oversized, or owned by a backend the user just
+		// disabled — is a removal, not a silent survivor.
+		const membership = await this.classifyProject();
 		const knownFiles = this.queries.getAllFiles();
 		const knownByPath = new Map(knownFiles.map((file) => [file.path, file]));
 
 		const added: string[] = [];
 		const modified: string[] = [];
 		const removed: string[] = [];
-		const maxFileSizeBytes = this.config.maxFileSizeBytes ?? 2_000_000;
 
-		for (const relPath of scanned) {
-			const stat = await this.fs.stat(this.joinRoot(relPath));
-			const contentHash =
-				stat.size > maxFileSizeBytes
-					? ""
-					: this.hasher.hash(await this.fs.readText(this.joinRoot(relPath)));
+		for (const entry of membership.eligible) {
+			const relPath = entry.path;
+			const contentHash = this.hasher.hash(
+				await this.fs.readText(this.joinRoot(relPath)),
+			);
 			const known = knownByPath.get(relPath);
 
 			if (known === undefined) {
@@ -180,7 +248,7 @@ export class Indexer {
 		}
 
 		for (const file of knownFiles) {
-			if (!scannedSet.has(file.path)) removed.push(file.path);
+			if (!membership.isEligible(file.path)) removed.push(file.path);
 		}
 
 		const changedFiles = [...added, ...modified];
@@ -197,7 +265,7 @@ export class Indexer {
 		}
 
 		if (changedFiles.length > 0) {
-			this.beginPass(scanned);
+			this.beginPass(membership);
 
 			for (const relPath of changedFiles) {
 				await this.indexFilePassA(relPath, { force: true });
@@ -212,6 +280,10 @@ export class Indexer {
 			}
 
 			this.healUnresolvedEdges(changedFiles);
+		}
+
+		for (const entry of membership.recordable) {
+			await this.recordIneligibleFile(entry);
 		}
 
 		this.persistProjectMetadata(configHash);
@@ -237,7 +309,10 @@ export class Indexer {
 		const added: string[] = [];
 		const modified: string[] = [];
 		const changedFiles: string[] = [];
-		const maxFileSizeBytes = this.config.maxFileSizeBytes ?? 2_000_000;
+
+		// One classification for the whole event batch, identical to the one full
+		// index and scanner sync use.
+		const membership = await this.classifyProject();
 
 		for (const relPath of changedCandidates) {
 			const absolutePath = this.joinRoot(relPath);
@@ -246,11 +321,16 @@ export class Indexer {
 				continue;
 			}
 
-			const stat = await this.fs.stat(absolutePath);
-			const contentHash =
-				stat.size > maxFileSizeBytes
-					? ""
-					: this.hasher.hash(await this.fs.readText(absolutePath));
+			// An event for a path the project does not own is not a change. Without
+			// this an oversized or excluded file re-entered Pass A on every save.
+			if (!membership.isEligible(relPath)) {
+				if (this.queries.getFile(relPath) !== undefined) removed.push(relPath);
+				continue;
+			}
+
+			const contentHash = this.hasher.hash(
+				await this.fs.readText(absolutePath),
+			);
 			const known = this.queries.getFile(relPath);
 
 			if (known === undefined) {
@@ -275,16 +355,7 @@ export class Indexer {
 		}
 
 		if (changedFiles.length > 0 || removedFiles.length > 0) {
-			const projectFiles = this.queries
-				.getAllFiles()
-				.map((file) => file.path)
-				.filter((path) => !removedFiles.includes(path));
-			for (const relPath of added) {
-				if (!projectFiles.includes(relPath)) projectFiles.push(relPath);
-			}
-			projectFiles.sort(compareStrings);
-
-			this.beginPass(projectFiles);
+			this.beginPass(membership);
 
 			for (const relPath of changedFiles) {
 				await this.indexFilePassA(relPath, { force: true });
@@ -317,29 +388,36 @@ export class Indexer {
 	 * give every enricher the slice of the project its own backend owns. The TS
 	 * program no longer sees `.php` paths in its rootNames.
 	 */
-	private beginPass(files: string[]): void {
+	private beginPass(membership: Membership): void {
 		this.resolveCache.clear();
 		this.lastReconcileStats = { matched: 0, added: 0, dropped: 0 };
+		this.membership = membership;
 
-		const byBackend = new Map<string, string[]>();
-		for (const relPath of files) {
-			const backend = this.registry.backendForPath(relPath);
-			if (!backend) continue;
-			const bucket = byBackend.get(backend.id);
-			if (bucket) bucket.push(relPath);
-			else byBackend.set(backend.id, [relPath]);
-		}
-
+		// `byBackend` already holds only eligible files, so an oversized file or a
+		// file owned by a disabled backend can never enter a backend's project.
 		for (const backend of this.registry.list()) {
 			const loadProject = backend.enricher?.loadProject;
 			if (!loadProject) continue;
 			loadProject.call(backend.enricher, {
 				rootPath: this.root,
 				tsconfigPath: this.config.tsconfigPath,
-				fileNames: byBackend.get(backend.id) ?? [],
+				fileNames: [...(membership.byBackend.get(backend.id) ?? [])],
 				loadNodesForFile: (filePath) => this.queries.getNodesByFile(filePath),
 			});
 		}
+	}
+
+	/**
+	 * The owning backend, but only for a file this pass classified as eligible.
+	 * Every Pass B entry point goes through here, so an ineligible path cannot
+	 * reach `resolveEdges` or reconciliation even if a caller passes it in.
+	 */
+	private eligibleBackendFor(relPath: string): LanguageBackend | undefined {
+		const entry = this.membership.get(relPath);
+		if (entry?.eligible !== true || entry.backendId === undefined) {
+			return undefined;
+		}
+		return this.registry.backendById(entry.backendId);
 	}
 
 	/** `resolveEdges` is expensive (a full re-parse); memoize it per pass. */
@@ -357,53 +435,27 @@ export class Indexer {
 		return result;
 	}
 
+	/**
+	 * Pass A for one file the membership snapshot already declared eligible.
+	 *
+	 * The size limit and backend ownership are not re-checked here: doing so was
+	 * the second definition of eligibility, and it let an oversized file be
+	 * excluded from Pass A while still sitting in a backend's `loadProject` set.
+	 */
 	private async indexFilePassA(
 		relPath: string,
 		options: { force: boolean },
 	): Promise<void> {
+		const entry = this.membership.get(relPath);
+		if (entry?.eligible !== true) return;
+		const backend =
+			entry.backendId === undefined
+				? undefined
+				: this.registry.backendById(entry.backendId);
+		if (backend === undefined) return;
+
 		const absolutePath = this.joinRoot(relPath);
 		const stat = await this.fs.stat(absolutePath);
-		const maxFileSizeBytes = this.config.maxFileSizeBytes ?? 2_000_000;
-		const backend = this.registry.backendForPath(relPath);
-
-		if (stat.size > maxFileSizeBytes) {
-			this.writeParsedFile(relPath, {
-				contentHash: "",
-				size: stat.size,
-				modifiedAt: stat.modifiedAt,
-				nodes: [],
-				edges: [],
-				errors: [
-					{
-						message: `File exceeds maxFileSizeBytes (${maxFileSizeBytes})`,
-						filePath: relPath,
-						severity: "warning",
-						code: "FILE_TOO_LARGE",
-					},
-				],
-			});
-			return;
-		}
-
-		if (!backend) {
-			this.writeParsedFile(relPath, {
-				contentHash: "",
-				size: stat.size,
-				modifiedAt: stat.modifiedAt,
-				nodes: [],
-				edges: [],
-				errors: [
-					{
-						message: `No language backend claims ${relPath}`,
-						filePath: relPath,
-						severity: "warning",
-						code: "NO_BACKEND",
-					},
-				],
-			});
-			return;
-		}
-
 		const source = await this.fs.readText(absolutePath);
 		const contentHash = this.hasher.hash(source);
 		const existing = this.queries.getFile(relPath);
@@ -431,7 +483,7 @@ export class Indexer {
 	 * every cross-file edge pointing at them) and are updated in place.
 	 */
 	private indexFileReconcile(relPath: string): void {
-		const backend = this.registry.backendForPath(relPath);
+		const backend = this.eligibleBackendFor(relPath);
 		if (!backend) return;
 		const enricher = backend.enricher;
 		if (!enricher) return;
@@ -491,7 +543,7 @@ export class Indexer {
 
 	/** Pass B phase 2: write edges after all reconciled nodes exist. */
 	private indexFileResolveEdges(relPath: string): void {
-		const backend = this.registry.backendForPath(relPath);
+		const backend = this.eligibleBackendFor(relPath);
 		if (!backend) return;
 		const result = this.resolveFor(relPath, backend);
 		// No enricher: Pass A already wrote the file's nodes, edges and state.
@@ -726,6 +778,10 @@ export class Indexer {
 	private joinRoot(relPath: string): string {
 		return `${this.root}/${relPath}`.replaceAll("//", "/");
 	}
+}
+
+function emptyMembership(): Membership {
+	return materialize([]);
 }
 
 function normalizePath(path: string): string {

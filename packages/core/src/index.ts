@@ -3,6 +3,7 @@ export * from "./config";
 export * from "./db/migrations";
 export * from "./db/queries";
 export * from "./diagnostics";
+export * from "./eligibility";
 export * from "./extraction";
 export * from "./freshness";
 export * from "./graph/symbol-lookup";

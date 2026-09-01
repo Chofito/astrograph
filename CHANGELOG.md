@@ -10,6 +10,7 @@ Astrograph is currently a **public preview**. `0.x` releases may change CLI, MCP
 
 ### Added
 
+- A single index-membership decision (`IndexEligibility`). Which files belong to the graph and which backend owns each is computed once per pass and reused by the scanner boundary, `indexAll`, `sync`, `syncFiles`, `loadProject`, Pass A, both Pass B phases, and coverage. A non-eligible file can no longer reach a parser or an enricher.
 - A persisted trust taxonomy, separate from lifecycle state. `pending`/`parsed`/`resolved` now mean only how far the pipeline got; every diagnostic code is classified by a versioned, exhaustive registry into `coverage_gap`, `semantic_uncertainty`, `configuration`, or `diagnostic`. A file can be `resolved` and still report a coverage gap, which is what stops a confident empty result. `status` gains `diagnostics` counts and `filesWithCoverageGap`.
 - Release identity and compatibility contract: public preview surfaces, experimental surfaces, and internals that are explicitly not a public SDK ([contracts §12](docs/contracts.md#12-release-identity-and-compatibility), `ROADMAP.md` §0).
 - `CHANGELOG.md`, `SECURITY.md`, and `CONTRIBUTING.md`.

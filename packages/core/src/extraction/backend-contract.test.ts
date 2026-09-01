@@ -294,3 +294,125 @@ describe("complement enricher reconciliation", () => {
 		}
 	});
 });
+
+describe("eligibility gates every backend entry point (AG-202)", () => {
+	interface Spy {
+		backend: LanguageBackend;
+		parsed: string[];
+		loadedFileNames: string[][];
+		resolved: string[];
+	}
+
+	function spyBackend(): Spy {
+		const parsed: string[] = [];
+		const loadedFileNames: string[][] = [];
+		const resolved: string[] = [];
+
+		return {
+			parsed,
+			loadedFileNames,
+			resolved,
+			backend: {
+				id: "stub",
+				languages: ["stub"],
+				extensions: [".stub"],
+				parser: {
+					extractNodes(filePath: string): PassAResult {
+						parsed.push(filePath);
+						return { nodes: [stubNode(filePath, "alpha")], edges: [], errors: [] };
+					},
+				},
+				enricher: {
+					mode: "complement",
+					id: "stub-enricher",
+					provenance: "synthesized:stub",
+					loadProject(opts) {
+						loadedFileNames.push([...(opts.fileNames ?? [])]);
+					},
+					resolveEdges(filePath: string): EdgeResolutionResult {
+						resolved.push(filePath);
+						return { edges: [], errors: [], externalNodes: [] };
+					},
+				},
+				capabilities: { edgeKinds: ["contains", "calls"] },
+				versionKeys: () => ({ parser: "1" }),
+			},
+		};
+	}
+
+	function makeSpyIndexer(
+		spy: Spy,
+		files: Record<string, string>,
+		config?: { maxFileSizeBytes?: number },
+	): { indexer: Indexer; queries: QueryBuilder } {
+		const storage = new BunSqliteStorageAdapter(":memory:");
+		runMigrations(storage, { now: () => NOW });
+		const queries = new QueryBuilder(storage);
+		const relPaths = Object.keys(files).sort();
+		const sized = Object.fromEntries(
+			relPaths.map((p) => [`/project/${p}`, files[p] ?? ""]),
+		);
+
+		const indexer = new Indexer({
+			queries,
+			storage,
+			fs: memoryFileSystem(sized),
+			hasher: HASHER,
+			glob: memoryGlob(relPaths),
+			registry: new LanguageRegistry([spy.backend]),
+			root: "/project",
+			now: () => NOW,
+			...(config === undefined ? {} : { config }),
+		});
+		return { indexer, queries };
+	}
+
+	test("an oversized file reaches neither the parser nor loadProject", async () => {
+		const spy = spyBackend();
+		const { indexer, queries } = makeSpyIndexer(
+			spy,
+			{ "src/small.stub": "ok", "src/huge.stub": "x".repeat(200) },
+			{ maxFileSizeBytes: 50 },
+		);
+
+		try {
+			await indexer.indexAll();
+
+			expect(spy.parsed).toEqual(["src/small.stub"]);
+			expect(spy.resolved).toEqual(["src/small.stub"]);
+			// The historical bug: excluded from Pass A but still inside the
+			// backend's project, so the enricher kept seeing it.
+			expect(spy.loadedFileNames).toEqual([["src/small.stub"]]);
+
+			// It is still recorded, with evidence, as a coverage gap.
+			const record = queries.getFile("src/huge.stub");
+			expect(record?.nodeCount).toBe(0);
+			expect((record?.errors ?? []).map((e) => e.code)).toEqual([
+				"FILE_TOO_LARGE",
+			]);
+			expect(queries.getFilesWithCoverageGap()).toEqual(["src/huge.stub"]);
+		} finally {
+			indexer.close();
+		}
+	});
+
+	test("a file no backend claims is recorded but never extracted", async () => {
+		const spy = spyBackend();
+		const { indexer, queries } = makeSpyIndexer(spy, {
+			"src/a.stub": "ok",
+			"notes.txt": "hello",
+		});
+
+		try {
+			await indexer.indexAll();
+
+			expect(spy.parsed).toEqual(["src/a.stub"]);
+			expect(spy.loadedFileNames).toEqual([["src/a.stub"]]);
+			expect((queries.getFile("notes.txt")?.errors ?? []).map((e) => e.code)).toEqual(
+				["NO_BACKEND"],
+			);
+		} finally {
+			indexer.close();
+		}
+	});
+});

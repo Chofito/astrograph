@@ -14,23 +14,20 @@ Specify how `Indexer.indexAll` converts the current filesystem/config into persi
 
 ```mermaid
 flowchart TD
-    Scan["scanFiles()"] --> Begin["beginPass(all scanned files)"]
-    Begin --> A{"For each file: Pass A"}
-    A --> Size{"size > max?"}
-    Size -- yes --> Large["Persist empty file + FILE_TOO_LARGE"]
-    Size -- no --> Backend{"backend exists?"}
-    Backend -- no --> Missing["Persist NO_BACKEND"]
-    Backend -- yes --> Hash["Read + content hash"]
+    Scan["scanFiles()"] --> Classify["buildMembership(): one classification"]
+    Classify --> Record["recordable: persist FILE_TOO_LARGE / NO_BACKEND evidence"]
+    Classify --> Begin["beginPass(membership) -> loadProject with eligible files only"]
+    Begin --> A{"For each eligible file: Pass A"}
+    A --> Hash["Read + content hash"]
     Hash --> Parse["parser.extractNodes (always)"]
     Parse --> PersistA["Persist file/nodes/edges (resolved if no enricher)"]
-    Large --> Reconcile
-    Missing --> Reconcile
-    PersistA --> Reconcile["For each file: resolve + reconcile nodes"]
-    Reconcile --> Edges["For each file: replace source edges"]
+    Record --> Reconcile
+    PersistA --> Reconcile["For each eligible file: resolve + reconcile nodes"]
+    Reconcile --> Edges["For each eligible file: replace source edges"]
     Edges --> Meta["Persist root, versions, config hash, timestamp"]
 ```
 
-`beginPass` groups all input files by backend and calls each enricher's `loadProject`. `resolveFor` memoizes one `EdgeResolutionResult` per file so the reconciliation phase and edge phase share it, and returns `undefined` when the backend has no enricher. Pass A runs for every eligible claimed file — there is no branch that skips it. A backend without an enricher reaches `resolved` during Pass A. An enriched file reaches `resolved` after its edges are written; its reconciled nodes are stamped with `Enricher.provenance`, declared by the producing backend.
+`classifyProject()` computes membership once (contracts §13) and every later phase reads it. Pass A no longer re-checks the size limit or backend ownership, and `beginPass` no longer re-groups files by walking the registry — both were second definitions of eligibility, and they were how an oversized file stayed inside a backend's `loadProject` set while being excluded from Pass A. `beginPass` now takes the membership snapshot and calls each enricher's `loadProject` with its eligible files only. `resolveFor` memoizes one `EdgeResolutionResult` per file so the reconciliation phase and edge phase share it, and returns `undefined` when the backend has no enricher. Pass A runs for every eligible claimed file — there is no branch that skips it. A backend without an enricher reaches `resolved` during Pass A. An enriched file reaches `resolved` after its edges are written; its reconciled nodes are stamped with `Enricher.provenance`, declared by the producing backend.
 
 ## Target behavior (TO-BE)
 

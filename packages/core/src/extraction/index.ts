@@ -13,6 +13,7 @@ export {
 	EXTRACTION_CONTRACT_VERSION,
 	grammarsForRegistry,
 	LanguageRegistry,
+	shippedBackendExtensionOwners,
 } from "./registry";
 export { isGenerated, isTest } from "./shared/classify";
 export { extensionsForLanguage, languageFromPath } from "./shared/language";
