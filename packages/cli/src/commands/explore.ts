@@ -1,6 +1,6 @@
-import type { CliContext, CliRunResult } from "../cli";
-import { CliError } from "../cli";
 import { formatExplore } from "../format/explore";
+import type { CliContext, CliRunResult } from "../result";
+import { CliError } from "../result";
 import { numberValue, parseCommandArgs, readFlags, readOptions } from "./parse";
 import { openGraphForRead } from "./shared";
 

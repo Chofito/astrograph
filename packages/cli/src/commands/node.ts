@@ -1,5 +1,5 @@
-import type { CliContext, CliRunResult } from "../cli";
 import { formatNode } from "../format/node";
+import type { CliContext, CliRunResult } from "../result";
 import {
 	booleanValue,
 	parseCommandArgs,

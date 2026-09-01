@@ -1,7 +1,7 @@
-import type { CliContext, CliRunResult } from "../cli";
-import { ok } from "../cli";
 import { jsonEnvelope } from "../format/json";
 import { formatStatus } from "../format/status";
+import type { CliContext, CliRunResult } from "../result";
+import { ok } from "../result";
 import { requireProjectRoot, resolveProjectPath } from "../root";
 import { peekDaemonRunning, readDaemonMetadata } from "./daemon-utils";
 import { booleanValue, parseCommandArgs } from "./parse";

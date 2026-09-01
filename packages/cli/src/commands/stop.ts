@@ -1,6 +1,6 @@
-import type { CliContext, CliRunResult } from "../cli";
-import { ok } from "../cli";
 import { style } from "../format/style";
+import type { CliContext, CliRunResult } from "../result";
+import { ok } from "../result";
 import { resolveProjectPath } from "../root";
 import {
 	isDaemonRunning,

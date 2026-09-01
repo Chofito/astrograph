@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { CliError } from "../cli";
+import { CliError } from "../result";
 
 type OptionConfig = Record<
 	string,

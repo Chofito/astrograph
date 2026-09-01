@@ -1,5 +1,5 @@
-import type { CliContext, CliRunResult } from "../cli";
 import { formatTrace } from "../format/trace";
+import type { CliContext, CliRunResult } from "../result";
 import {
 	numberValue,
 	parseCommandArgs,

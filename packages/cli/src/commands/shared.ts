@@ -5,19 +5,16 @@ import type {
 	NormalizedAstrographConfig,
 	ToolResult,
 } from "@astrograph/core";
-import {
-	parseAstrographConfig,
-	SHIPPED_BACKEND_IDS,
-} from "@astrograph/core";
+import { parseAstrographConfig, SHIPPED_BACKEND_IDS } from "@astrograph/core";
 import { openProject } from "@astrograph/core/bun";
+import { jsonEnvelope } from "../format/json";
 import {
 	type CliContext,
 	CliError,
 	type CliRunResult,
 	failOnPartial,
 	ok,
-} from "../cli";
-import { jsonEnvelope } from "../format/json";
+} from "../result";
 import { requireProjectRoot, resolveProjectPath } from "../root";
 
 export interface ReadFlags {

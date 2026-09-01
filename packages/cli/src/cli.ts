@@ -19,26 +19,17 @@ import { runUninit } from "./commands/uninit";
 import { runUninstall } from "./commands/uninstall";
 import { runUnlock } from "./commands/unlock";
 import { commandHelp, globalHelp, versionText } from "./help";
+import { type CliContext, CliError, type CliRunResult, ok } from "./result";
 
-export interface CliContext {
-	cwd: string;
-}
-
-export interface CliRunResult {
-	exitCode: number;
-	stdout: string;
-	stderr: string;
-}
-
-export class CliError extends Error {
-	readonly exitCode: number;
-
-	constructor(message: string, exitCode = 1) {
-		super(message);
-		this.name = "CliError";
-		this.exitCode = exitCode;
-	}
-}
+// The vocabulary lives in a leaf module (see result.ts); re-exported here so
+// `import { CliError } from "../cli"` keeps working across the commands.
+export {
+	type CliContext,
+	CliError,
+	type CliRunResult,
+	failOnPartial,
+	ok,
+} from "./result";
 
 type CommandHandler = (
 	args: string[],
@@ -106,20 +97,4 @@ export async function runCli(
 		const message = error instanceof Error ? error.message : String(error);
 		return { exitCode: 1, stdout: "", stderr: `${message}\n` };
 	}
-}
-
-export function ok(stdout = ""): CliRunResult {
-	return {
-		exitCode: 0,
-		stdout: stdout === "" || stdout.endsWith("\n") ? stdout : `${stdout}\n`,
-		stderr: "",
-	};
-}
-
-export function failOnPartial(stdout: string, partial: boolean): CliRunResult {
-	return {
-		exitCode: partial ? 3 : 0,
-		stdout: stdout.endsWith("\n") ? stdout : `${stdout}\n`,
-		stderr: "",
-	};
 }

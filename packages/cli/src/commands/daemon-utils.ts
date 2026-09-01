@@ -23,11 +23,29 @@ export function getDaemonLogPath(root: string): string {
 	return `${root}/.astrograph/daemon.log`;
 }
 
+/**
+ * `daemon.json` is a file on disk, so its contents are input, not a promise.
+ * Casting the parse result would let a truncated or hand-edited file flow in as
+ * a `DaemonMetadata` and surface later as `pid: undefined` in `status`.
+ */
+function isDaemonMetadata(value: unknown): value is DaemonMetadata {
+	if (typeof value !== "object" || value === null) return false;
+	const candidate = value as Record<string, unknown>;
+	return (
+		typeof candidate.pid === "number" &&
+		Number.isInteger(candidate.pid) &&
+		typeof candidate.startedAt === "number" &&
+		typeof candidate.root === "string" &&
+		candidate.mode === "watch"
+	);
+}
+
 export function readDaemonMetadata(root: string): DaemonMetadata | undefined {
 	const path = getDaemonMetadataPath(root);
 	if (!existsSync(path)) return undefined;
 	try {
-		return JSON.parse(readFileSync(path, "utf8")) as DaemonMetadata;
+		const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+		return isDaemonMetadata(parsed) ? parsed : undefined;
 	} catch {
 		return undefined;
 	}

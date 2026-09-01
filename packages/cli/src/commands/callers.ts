@@ -1,5 +1,5 @@
-import type { CliContext, CliRunResult } from "../cli";
 import { formatCallers } from "../format/callers";
+import type { CliContext, CliRunResult } from "../result";
 import {
 	booleanValue,
 	numberValue,

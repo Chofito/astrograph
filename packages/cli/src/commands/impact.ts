@@ -1,5 +1,5 @@
-import type { CliContext, CliRunResult } from "../cli";
 import { formatImpact } from "../format/impact";
+import type { CliContext, CliRunResult } from "../result";
 import {
 	booleanValue,
 	numberValue,

@@ -1,6 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { CliError } from "./cli";
+import { CliError } from "./result";
 
 export function findProjectRoot(startPath: string): string | undefined {
 	let current = normalizeStart(startPath);

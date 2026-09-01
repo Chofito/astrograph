@@ -1,6 +1,6 @@
 import type { Language, NodeKind } from "@astrograph/core";
-import type { CliContext, CliRunResult } from "../cli";
 import { formatSearch } from "../format/search";
+import type { CliContext, CliRunResult } from "../result";
 import {
 	booleanValue,
 	numberValue,

@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
-import type { CliContext, CliRunResult } from "../cli";
-import { ok } from "../cli";
 import { style } from "../format/style";
+import type { CliContext, CliRunResult } from "../result";
+import { ok } from "../result";
 import { requireProjectRoot, resolveProjectPath } from "../root";
 import { parseCommandArgs } from "./parse";
 

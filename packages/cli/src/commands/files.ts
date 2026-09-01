@@ -1,7 +1,7 @@
 import type { FilesInput } from "@astrograph/core";
-import type { CliContext, CliRunResult } from "../cli";
-import { CliError } from "../cli";
 import { formatFiles } from "../format/files";
+import type { CliContext, CliRunResult } from "../result";
+import { CliError } from "../result";
 import {
 	booleanValue,
 	numberValue,

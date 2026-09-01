@@ -2,8 +2,6 @@ import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname } from "node:path";
-import type { CliContext, CliRunResult } from "../cli";
-import { CliError, ok } from "../cli";
 import { style, symbols } from "../format/style";
 import {
 	type AgentGuideResult,
@@ -20,6 +18,8 @@ import type {
 	Target,
 } from "../install/target";
 import { ALL_TARGET_IDS, ALL_TARGETS, getTarget } from "../install/targets/all";
+import type { CliContext, CliRunResult } from "../result";
+import { CliError, ok } from "../result";
 import { booleanValue, parseCommandArgs, stringValue } from "./parse";
 
 interface Plan {

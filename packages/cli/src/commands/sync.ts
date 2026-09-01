@@ -1,6 +1,6 @@
-import type { CliContext, CliRunResult } from "../cli";
-import { CliError, ok } from "../cli";
 import { style, symbols } from "../format/style";
+import type { CliContext, CliRunResult } from "../result";
+import { CliError, ok } from "../result";
 import { requireProjectRoot, resolveProjectPath } from "../root";
 import { isDaemonRunning, readDaemonMetadata } from "./daemon-utils";
 import { booleanValue, parseCommandArgs } from "./parse";

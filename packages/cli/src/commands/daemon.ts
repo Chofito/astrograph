@@ -4,8 +4,8 @@ import {
 	type WatchEvent,
 } from "@astrograph/core";
 import { BunWatcher, openProject } from "@astrograph/core/bun";
-import type { CliContext, CliRunResult } from "../cli";
-import { ok } from "../cli";
+import type { CliContext, CliRunResult } from "../result";
+import { ok } from "../result";
 import { requireProjectRoot, resolveProjectPath } from "../root";
 import {
 	createInitReporter,

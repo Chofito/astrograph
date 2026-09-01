@@ -1,7 +1,7 @@
-import type { CliContext, CliRunResult } from "../cli";
-import { CliError } from "../cli";
 import { formatContext } from "../format/context";
 import { jsonEnvelope } from "../format/json";
+import type { CliContext, CliRunResult } from "../result";
+import { CliError } from "../result";
 import {
 	booleanValue,
 	numberValue,

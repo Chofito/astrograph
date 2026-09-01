@@ -1,9 +1,9 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { openProject } from "@astrograph/core/bun";
-import type { CliContext, CliRunResult } from "../cli";
-import { CliError, ok } from "../cli";
 import { style, symbols } from "../format/style";
+import type { CliContext, CliRunResult } from "../result";
+import { CliError, ok } from "../result";
 import {
 	createInitReporter,
 	formatInitReceipt,
