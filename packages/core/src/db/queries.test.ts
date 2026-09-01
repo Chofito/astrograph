@@ -244,11 +244,16 @@ describe("core storage", () => {
 		expect(
 			query.getEdgesByTarget(target.id).map((edge) => edge.source),
 		).toEqual([source.id]);
-		expect(
-			query
-				.getEdgesByResolutionStateAndTargetName("unresolved", "LaterSymbol")
-				.map((edge) => edge.targetName),
-		).toEqual(["LaterSymbol"]);
+
+		// The unresolved edge keeps its textual `targetName` as evidence, but
+		// storage deliberately offers no way to look edges up by that name: doing
+		// so was how a bare identifier got promoted across files and languages
+		// (AG-204). Only a backend may decide that two symbols are the same.
+		const unresolved = query
+			.getAllEdges()
+			.filter((edge) => edge.resolutionState === "unresolved");
+		expect(unresolved.map((edge) => edge.targetName)).toEqual(["LaterSymbol"]);
+		expect(unresolved.every((edge) => edge.target === null)).toBe(true);
 	});
 });
 

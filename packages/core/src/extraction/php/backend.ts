@@ -3,6 +3,8 @@ import type {
 	EdgeResolutionResult,
 	Enricher,
 	Hasher,
+	InvalidationInput,
+	InvalidationResult,
 	Language,
 	LanguageBackend,
 	LoadProjectOptions,
@@ -80,6 +82,7 @@ export class PhpLanguageBackend implements LanguageBackend {
 				provenance: "tree-sitter",
 				loadProject: (o) => this.loadProject(o),
 				resolveEdges: (filePath) => this.resolveEdges(filePath),
+				invalidate: (input) => this.invalidate(input),
 			};
 			this.capabilities = ENRICHED_CAPABILITIES;
 		}
@@ -125,6 +128,47 @@ export class PhpLanguageBackend implements LanguageBackend {
 		}
 	}
 
+	/**
+	 * Which PHP files must be resolved again.
+	 *
+	 * PHP dependency is name resolution: a file is affected when it changed, or
+	 * when it holds a recorded `extends`/`implements`/`imports`/`calls`/type edge
+	 * into a file that changed or was removed. The name index is rebuilt on the
+	 * next `loadProject`, so a re-resolved file sees the new FQNs, `use` aliases
+	 * and inheritance without anyone matching bare method names.
+	 *
+	 * The bug this replaces: adding a `save()` method anywhere could promote an
+	 * unresolved `save()` call in an unrelated class — or in TypeScript. A PHP
+	 * declaration only affects a PHP file that actually references it through a
+	 * resolvable name, and this method never returns a non-PHP path.
+	 */
+	private invalidate(input: InvalidationInput): InvalidationResult {
+		const affected = new Set<string>();
+		const changed = [...input.added, ...input.modified];
+
+		for (const filePath of changed) {
+			affected.add(filePath);
+			for (const dependent of input.dependentsOf(filePath)) {
+				affected.add(dependent);
+			}
+		}
+		for (const filePath of input.removed) {
+			for (const dependent of input.dependentsOf(filePath)) {
+				affected.add(dependent);
+			}
+		}
+		// Identities captured before deletion: whoever extended or called a class
+		// that no longer exists must be recomputed, not left pointing at a ghost.
+		for (const identity of input.priorIdentities) {
+			if (!isPhpPath(identity.filePath)) continue;
+			for (const dependent of input.dependentsOf(identity.filePath)) {
+				affected.add(dependent);
+			}
+		}
+
+		return { resolveFiles: [...affected].filter(isPhpPath).sort() };
+	}
+
 	private ensureNameIndex(): void {
 		if (this.nameIndex !== null) return;
 		this.nameIndex = buildPhpNameIndex({
@@ -137,4 +181,9 @@ export class PhpLanguageBackend implements LanguageBackend {
 
 export function createPhpBackend(opts: PhpBackendOptions): LanguageBackend {
 	return new PhpLanguageBackend(opts);
+}
+
+/** PHP owns exactly `.php`; nothing else may enter its invalidation set. */
+function isPhpPath(filePath: string): boolean {
+	return filePath.toLowerCase().endsWith(".php");
 }

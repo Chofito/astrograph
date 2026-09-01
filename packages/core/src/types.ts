@@ -255,6 +255,57 @@ export type EnricherMode = "complement";
  */
 export type EnricherStatus = EnricherMode | "none";
 
+/** A node identity that existed before this pass, for removed/changed files. */
+export interface PriorIdentity {
+	nodeId: string;
+	filePath: string;
+	kind: NodeKind;
+	name: string;
+	qualifiedName: string;
+	language: Language;
+}
+
+/**
+ * What changed in this pass, handed to a backend so it can name its own
+ * dependents.
+ *
+ * Core does not know what makes a file depend on another: for TypeScript it is
+ * module and type semantics, for PHP it is FQNs, `use` aliases and inheritance.
+ * The one thing core must never do is guess — matching a bare `name` across the
+ * whole graph is how a PHP `save()` "resolved" a TypeScript call.
+ */
+export interface InvalidationInput {
+	added: readonly string[];
+	modified: readonly string[];
+	removed: readonly string[];
+	/**
+	 * Identities that existed before this pass for removed and modified files.
+	 * Captured *before* deletion, because after it the evidence is gone.
+	 */
+	priorIdentities: readonly PriorIdentity[];
+	/** True when configuration or a backend version key changed this pass. */
+	configurationChanged: boolean;
+	/**
+	 * Files holding edges that point into `filePath`'s nodes, from the persisted
+	 * graph. Real recorded relationships, never name similarity.
+	 */
+	dependentsOf(filePath: string): string[];
+	/** Files `filePath`'s nodes point at. */
+	dependenciesOf(filePath: string): string[];
+}
+
+/** The files a backend claims must be resolved again. */
+export interface InvalidationResult {
+	/**
+	 * Paths this backend owns. Core filters the returned set through membership
+	 * and ownership, so a backend cannot schedule work on another language's
+	 * files even by accident.
+	 */
+	resolveFiles: readonly string[];
+	/** Optional evidence explaining a non-obvious invalidation. */
+	notes?: readonly ExtractionError[];
+}
+
 /**
  * Optional backend-specific semantic pass. It may update nodes whose ids match
  * Pass A, insert declarations Pass A intentionally omitted, and add semantic
@@ -268,6 +319,14 @@ export interface Enricher {
 	readonly provenance: Provenance;
 	loadProject?(opts: LoadProjectOptions): void;
 	resolveEdges(filePath: string): EdgeResolutionResult;
+	/**
+	 * Which of *this backend's* files must be resolved again after a change.
+	 *
+	 * Omitting it selects the conservative default: the changed files this
+	 * backend owns, plus the files that hold recorded edges into them. A backend
+	 * that understands its own dependency semantics should implement it.
+	 */
+	invalidate?(input: InvalidationInput): InvalidationResult;
 }
 
 /** Semantic pass output, including honest external targets and extraction evidence. */

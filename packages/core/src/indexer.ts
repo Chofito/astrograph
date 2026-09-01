@@ -27,8 +27,10 @@ import type {
 	GlobScanner,
 	Hasher,
 	IndexProgress,
+	InvalidationInput,
 	LanguageBackend,
 	Node,
+	PriorIdentity,
 	StorageAdapter,
 	WatchEvent,
 } from "./types";
@@ -299,18 +301,29 @@ export class Indexer {
 
 		const changedFiles = [...added, ...modified];
 
-		const referrerFiles = this.findReferrerFilesForTargets(changedFiles);
+		// Evidence first: once a file is retired its identities are gone, and a
+		// backend cannot reason about what the removal broke.
+		const invalidation = this.invalidationInput({
+			added,
+			modified,
+			removed: removed,
+			priorIdentities: this.captureIdentities([...removed, ...modified]),
+			configurationChanged: configChanged,
+		});
+		const affected = this.collectAffectedFiles(invalidation, membership);
 
 		for (const relPath of removed) this.retireFile(relPath);
 
-		if (changedFiles.length > 0) {
+		if (changedFiles.length > 0 || affected.length > 0) {
 			this.beginPass(membership);
 
 			for (const relPath of changedFiles) {
 				await this.indexFilePassA(relPath, { force: true });
 			}
 
-			const resolveSet = [...new Set([...changedFiles, ...referrerFiles])];
+			const resolveSet = [...new Set([...changedFiles, ...affected])].sort(
+				compareStrings,
+			);
 			for (const relPath of resolveSet) {
 				this.indexFileReconcile(relPath);
 			}
@@ -318,7 +331,6 @@ export class Indexer {
 				this.indexFileResolveEdges(relPath);
 			}
 
-			this.healUnresolvedEdges(changedFiles);
 		}
 
 		for (const entry of membership.recordable) {
@@ -382,18 +394,29 @@ export class Indexer {
 		}
 
 		const removedFiles = uniqueStrings(removed);
-		const referrerFiles = this.findReferrerFilesForTargets(changedFiles);
+		// Evidence first: once a file is retired its identities are gone, and a
+		// backend cannot reason about what the removal broke.
+		const invalidation = this.invalidationInput({
+			added,
+			modified,
+			removed: removedFiles,
+			priorIdentities: this.captureIdentities([...removedFiles, ...modified]),
+			configurationChanged: false,
+		});
+		const affected = this.collectAffectedFiles(invalidation, membership);
 
 		for (const relPath of removedFiles) this.retireFile(relPath);
 
-		if (changedFiles.length > 0 || removedFiles.length > 0) {
+		if (changedFiles.length > 0 || removedFiles.length > 0 || affected.length > 0) {
 			this.beginPass(membership);
 
 			for (const relPath of changedFiles) {
 				await this.indexFilePassA(relPath, { force: true });
 			}
 
-			const resolveSet = [...new Set([...changedFiles, ...referrerFiles])];
+			const resolveSet = [...new Set([...changedFiles, ...affected])].sort(
+				compareStrings,
+			);
 			for (const relPath of resolveSet) {
 				this.indexFileReconcile(relPath);
 			}
@@ -401,7 +424,6 @@ export class Indexer {
 				this.indexFileResolveEdges(relPath);
 			}
 
-			this.healUnresolvedEdges(changedFiles);
 		}
 
 		return {
@@ -618,6 +640,110 @@ export class Indexer {
 	}
 
 	/**
+	 * Ask every backend which of *its* files must be resolved again.
+	 *
+	 * This replaces `healUnresolvedEdges`, which matched a bare `node.name`
+	 * against every unresolved edge in the graph and promoted whatever it found.
+	 * That could link a PHP `save()` to a TypeScript call, and two same-named
+	 * symbols in different namespaces to each other — a wrong edge presented with
+	 * `resolutionState: "resolved"`, which is worse than no edge at all.
+	 *
+	 * Core supplies facts (what changed, what identities existed, which files
+	 * hold recorded edges into them) and never decides. Whatever a backend
+	 * returns is filtered back through membership and ownership, so a backend
+	 * cannot schedule work on another language's files even by accident.
+	 */
+	private collectAffectedFiles(
+		input: InvalidationInput,
+		membership: Membership,
+	): string[] {
+		const affected = new Set<string>();
+		const changed = [...input.added, ...input.modified];
+
+		for (const backend of this.registry.list()) {
+			const owns = (path: string) =>
+				membership.get(path)?.backendId === backend.id;
+
+			const result = backend.enricher?.invalidate?.(input) ?? {
+				// Conservative default for a backend that does not model its own
+				// dependencies: its changed files plus the files holding recorded
+				// edges into them. Recorded edges, never name similarity.
+				resolveFiles: [
+					...changed,
+					...changed.flatMap((path) => input.dependentsOf(path)),
+					...input.removed.flatMap((path) => input.dependentsOf(path)),
+				],
+			};
+
+			for (const path of result.resolveFiles) {
+				// Ownership is enforced here, not trusted from the backend.
+				if (!owns(path)) continue;
+				if (!membership.isEligible(path)) continue;
+				affected.add(path);
+			}
+		}
+
+		return [...affected].sort(compareStrings);
+	}
+
+	/** Facts about this pass, for the backends to reason over. */
+	private invalidationInput(input: {
+		added: readonly string[];
+		modified: readonly string[];
+		removed: readonly string[];
+		priorIdentities: readonly PriorIdentity[];
+		configurationChanged: boolean;
+	}): InvalidationInput {
+		return {
+			...input,
+			dependentsOf: (filePath) => {
+				const files = new Set<string>();
+				for (const node of this.queries.getNodesByFile(filePath)) {
+					for (const edge of this.queries.getEdgesByTarget(node.id)) {
+						const source = this.queries.getNode(edge.source);
+						if (source) files.add(source.filePath);
+					}
+				}
+				files.delete(filePath);
+				return [...files].sort(compareStrings);
+			},
+			dependenciesOf: (filePath) => {
+				const files = new Set<string>();
+				for (const node of this.queries.getNodesByFile(filePath)) {
+					for (const edge of this.queries.getEdgesBySource(node.id)) {
+						if (edge.target === null) continue;
+						const target = this.queries.getNode(edge.target);
+						if (target) files.add(target.filePath);
+					}
+				}
+				files.delete(filePath);
+				return [...files].sort(compareStrings);
+			},
+		};
+	}
+
+	/**
+	 * Identities a file held before this pass. Captured before deletion, because
+	 * a backend cannot reason about what a removal broke once the rows are gone.
+	 */
+	private captureIdentities(paths: readonly string[]): PriorIdentity[] {
+		const identities: PriorIdentity[] = [];
+		for (const path of paths) {
+			for (const node of this.queries.getNodesByFile(path)) {
+				identities.push({
+					nodeId: node.id,
+					filePath: node.filePath,
+					kind: node.kind,
+					name: node.name,
+					qualifiedName: node.qualifiedName,
+					language: node.language,
+				});
+			}
+		}
+		return identities;
+	}
+
+	/**
 	 * Remove a file from the graph and keep the rest of it honest.
 	 *
 	 * One policy, shared by the full index and both sync paths: capture the
@@ -630,52 +756,6 @@ export class Indexer {
 		const incomingEdges = this.findIncomingEdges(priorNodeIds);
 		this.queries.deleteByFile(relPath);
 		this.markIncomingEdgesUnresolved(incomingEdges);
-	}
-
-	private healUnresolvedEdges(changedFiles: string[]): void {
-		const newNodes = new Map<string, string>();
-		for (const relPath of changedFiles) {
-			for (const node of this.queries.getNodesByFile(relPath)) {
-				newNodes.set(node.name, node.id);
-			}
-		}
-
-		for (const [name, nodeId] of newNodes) {
-			const unresolvedEdges =
-				this.queries.getEdgesByResolutionStateAndTargetName("unresolved", name);
-			for (const edge of unresolvedEdges) {
-				if (edge.id !== undefined) {
-					this.queries.upsertEdge({
-						...edge,
-						target: nodeId,
-						resolutionState: "resolved",
-						confidence: "medium",
-					});
-				}
-			}
-		}
-	}
-
-	private findReferrerFilesForTargets(changedFiles: string[]): string[] {
-		const changedNodeIds = new Set<string>();
-		for (const relPath of changedFiles) {
-			for (const node of this.queries.getNodesByFile(relPath)) {
-				changedNodeIds.add(node.id);
-			}
-		}
-
-		const referrerFiles = new Set<string>();
-		for (const nodeId of changedNodeIds) {
-			const incomingEdges = this.queries.getEdgesByTarget(nodeId);
-			for (const edge of incomingEdges) {
-				const sourceNode = this.queries.getNode(edge.source);
-				if (sourceNode) {
-					referrerFiles.add(sourceNode.filePath);
-				}
-			}
-		}
-
-		return [...referrerFiles].filter((f) => !changedFiles.includes(f));
 	}
 
 	private findIncomingEdges(

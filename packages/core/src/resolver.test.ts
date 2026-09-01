@@ -1390,7 +1390,11 @@ describe("Pass B: edge resolution", () => {
 		}
 	});
 
-	test("sync heals unresolved edges when a matching symbol is added", async () => {
+	test("adding a same-named symbol elsewhere does NOT resolve an unproven call", async () => {
+		// This replaces the old name-based healing behavior (DEV-001). A bare
+		// `laterFn()` with no import is not proven to reach `src/later.ts`; the
+		// compiler cannot connect them, so neither may Astrograph. Promoting it
+		// would present a fabricated edge as `resolved`, which is worse than none.
 		const root = await makeTempProject();
 		await writeProjectFile(
 			root,
@@ -1431,19 +1435,73 @@ describe("Pass B: edge resolution", () => {
 				.find((node) => node.name === "laterFn");
 			expect(laterNode).toBeDefined();
 
-			const healed = indexer.queries
+			// The declaration exists, and the unproven call still says so.
+			const toLater = indexer.queries
+				.getAllEdges()
+				.filter((edge) => edge.target === laterNode?.id);
+			expect(toLater).toEqual([]);
+
+			const stillUnresolved = indexer.queries
 				.getAllEdges()
 				.filter(
 					(edge) =>
-						edge.targetName === "laterFn" || edge.target === laterNode!.id,
+						edge.targetName === "laterFn" &&
+						edge.resolutionState === "unresolved",
 				);
-			expect(
-				healed.some(
+			expect(stillUnresolved.length).toBeGreaterThan(0);
+
+			assertGraphIntegrity({
+				nodes: indexer.queries.getAllNodes(),
+				edges: indexer.queries.getAllEdges(),
+			});
+		} finally {
+			indexer.close();
+		}
+	});
+
+	test("an imported symbol added later does resolve, because the module proves it", async () => {
+		const root = await makeTempProject();
+		await writeProjectFile(
+			root,
+			"src/consumer.ts",
+			`
+      import { laterFn } from './later';
+      export function run() {
+        return laterFn();
+      }
+    `,
+		);
+
+		const indexer = await openProject(root, {
+			dbPath: ":memory:",
+			now: () => 100,
+		});
+		try {
+			await indexer.indexAll();
+
+			await writeProjectFile(
+				root,
+				"src/later.ts",
+				`export function laterFn() { return 42; }`,
+			);
+
+			await indexer.sync();
+
+			const laterNode = indexer.queries
+				.getNodesByFile("src/later.ts")
+				.find((node) => node.name === "laterFn");
+			expect(laterNode).toBeDefined();
+
+			// The importer was re-resolved by the TypeScript backend, not promoted
+			// by a name match in core.
+			const resolved = indexer.queries
+				.getAllEdges()
+				.filter(
 					(edge) =>
-						edge.resolutionState === "resolved" &&
-						edge.target === laterNode!.id,
-				),
-			).toBe(true);
+						edge.target === laterNode?.id &&
+						edge.resolutionState === "resolved",
+				);
+			expect(resolved.length).toBeGreaterThan(0);
 
 			assertGraphIntegrity({
 				nodes: indexer.queries.getAllNodes(),

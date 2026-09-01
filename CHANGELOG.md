@@ -25,6 +25,12 @@ Astrograph is currently a **public preview**. `0.x` releases may change CLI, MCP
 - The CLI could not be imported at all. `commands/shared.ts` declared `class InvalidCliConfigJsonError extends CliError` at module scope inside the `cli.ts → commands/* → shared.ts → cli.ts` import cycle, and an `extends` clause evaluates eagerly, so every invocation died with "Cannot access 'CliError' before initialization". The result vocabulary now lives in a leaf module, `packages/cli/src/result.ts`.
 - `daemon.json` was cast to `DaemonMetadata` without validation, so a truncated or hand-edited file could surface later as `pid: undefined` in `status`. It is now validated before use.
 
+### Removed
+
+- Name-based edge healing. `healUnresolvedEdges` matched a bare `node.name` against every unresolved edge in the graph and promoted whatever it found, which could link a PHP `save()` to a TypeScript call, or two same-named symbols in different namespaces to each other, and present the result as `resolved`. Invalidation is now owned by the producing backend, and storage no longer offers a lookup from a target name to edges.
+
+  **Behavior change:** adding a declaration named `laterFn` no longer resolves an unproven `laterFn()` call elsewhere. Only a real module or name-resolution relationship does. Some edges that previously read `resolved` will now correctly read `unresolved`; per contracts §12.4 that is a correctness fix, not a breaking promise.
+
 ### Changed
 
 - Version language is unified on `v0.1.0` preview. The roadmap previously described the same cut as both "v1.0 stabilization" and a `v0.1.0` tag; `v1.0.0` is now explicitly reserved for the first stable public contract.

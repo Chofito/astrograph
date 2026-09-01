@@ -341,19 +341,6 @@ export class QueryBuilder {
 			.map((row) => mapEdge(row as EdgeRow));
 	}
 
-	getEdgesByResolutionStateAndTargetName(
-		resolutionState: ResolutionState,
-		targetName: string,
-	): Edge[] {
-		return this.db
-			.prepare(
-				`SELECT * FROM edges
-       WHERE resolution_state = ? AND target_name = ?
-       ORDER BY source ASC, kind ASC, COALESCE(target, '') ASC, COALESCE(line, -1) ASC, id ASC`,
-			)
-			.all(resolutionState, targetName)
-			.map((row) => mapEdge(row as EdgeRow));
-	}
 
 	getDanglingEdges(): Edge[] {
 		return this.db

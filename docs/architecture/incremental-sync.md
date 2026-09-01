@@ -10,7 +10,9 @@ Define how filesystem/config deltas update the graph and the equivalence expecte
 
 ## Current behavior (AS-IS)
 
-`sync()` performs a scan and content-hash comparison. `syncFiles(events)` merges watcher events and inspects only event paths. Both identify changed files, discover referrers for changed targets, delete removed files, run Pass A on changed files, reconcile/resolve changed files plus known referrers, then heal unresolved edges against new names.
+`sync()` performs a scan and content-hash comparison. `syncFiles(events)` merges watcher events and inspects only event paths. Both classify membership once (contracts §13), capture the identities of removed and modified files **before** retiring anything, ask every backend which of its own files the change affects (contracts §14), retire what no longer belongs, run Pass A on changed files, then reconcile and resolve the affected set.
+
+Name-based healing is gone. It matched a bare `node.name` against every unresolved edge and promoted whatever it found, which could link a PHP `save()` to a TypeScript call and two same-named symbols in different namespaces to each other. Storage no longer offers a lookup from a target name to edges, so the behavior cannot return by accident. An edge whose target cannot be proven stays `unresolved` — a correct answer, not a gap.
 
 ```mermaid
 sequenceDiagram
@@ -21,7 +23,7 @@ sequenceDiagram
 
     Caller->>I: sync() / syncFiles(events)
     I->>I: classify added, modified, removed
-    I->>DB: find referrers for changed target IDs
+    I->>DB: capture prior identities, find recorded dependents for changed target IDs
     loop removed files
         I->>DB: capture incoming edges
         I->>DB: delete file/nodes/outgoing edges

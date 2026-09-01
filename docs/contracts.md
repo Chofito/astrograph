@@ -505,6 +505,42 @@ Parse failures of a single file are **non-fatal**: record an `ExtractionError`, 
 ## 11. References
 - Data model: [docs/graph-model.md](graph-model.md) · Tools: [docs/tools.md](tools.md) · Extraction: [docs/extraction/overview.md](extraction/overview.md) (Pass A: [tree-sitter.md](extraction/tree-sitter.md), Pass B: [typescript.md](extraction/typescript.md)) · Tests/golden: [docs/testing.md](testing.md).
 
+## 14. Invalidation is backend-owned
+
+Core never decides that two symbols are the same. When files change it supplies facts and asks
+each backend which of *its own* files must be resolved again.
+
+```ts
+interface InvalidationInput {
+  added: readonly string[];
+  modified: readonly string[];
+  removed: readonly string[];
+  /** Identities captured BEFORE deletion; afterwards the evidence is gone. */
+  priorIdentities: readonly PriorIdentity[];
+  configurationChanged: boolean;
+  /** Files holding recorded edges into this file. Never name similarity. */
+  dependentsOf(filePath: string): string[];
+  dependenciesOf(filePath: string): string[];
+}
+
+interface InvalidationResult {
+  resolveFiles: readonly string[];
+  notes?: readonly ExtractionError[];
+}
+```
+
+Rules:
+
+- **No production code may promote an edge using only `node.name` or `targetName`.** Storage offers no lookup from a target name to edges, so the behavior cannot be rebuilt by accident.
+- Core filters `resolveFiles` through membership and ownership. A backend that returns another language's paths gets them dropped; ownership is enforced, not trusted.
+- TypeScript derives dependents from module and type semantics; PHP from FQNs, `use` aliases, inheritance, and known types. Neither may return a path it does not own.
+- A backend that cannot prove a single target leaves the edge `unresolved` or `ambiguous`. That is a correct answer, not a failure.
+- Omitting `invalidate` selects a conservative default: the changed files the backend owns plus the files holding recorded edges into them.
+
+Consequence worth stating plainly: adding a declaration named `laterFn` somewhere no longer
+resolves an unproven `laterFn()` call elsewhere. Only a real module or name-resolution
+relationship does, and the owning backend decides.
+
 ## 13. Index membership
 
 One classification decides which files belong to the graph and which backend owns each. It is

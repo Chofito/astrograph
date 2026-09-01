@@ -3,6 +3,8 @@ import type {
 	BackendCapabilities,
 	EdgeResolutionResult,
 	Enricher,
+	InvalidationInput,
+	InvalidationResult,
 	Language,
 	LanguageBackend,
 	LoadProjectOptions,
@@ -84,6 +86,7 @@ export class TypescriptLanguageBackend
 						provenance: "ts-compiler",
 						loadProject: (o) => this.loadProject(o),
 						resolveEdges: (filePath) => this.resolveEdges(filePath),
+						invalidate: (input) => this.invalidate(input),
 					};
 		this.capabilities =
 			this.enricher === undefined
@@ -105,6 +108,59 @@ export class TypescriptLanguageBackend
 	/** Pass A — tree-sitter structural nodes and `contains` edges. */
 	extractNodes(filePath: string, source: string): PassAResult {
 		return this.parser.extractNodes(filePath, source);
+	}
+
+	/**
+	 * Which JS/TS files must be resolved again.
+	 *
+	 * Module semantics, expressed through recorded edges: a file is affected when
+	 * it changed, or when it holds a real `imports`/`calls`/type edge into a file
+	 * that changed or was removed. A removal additionally re-resolves the
+	 * importers named by the identities that existed before it, so an edge that
+	 * pointed at a deleted declaration is recomputed rather than left pointing at
+	 * a ghost.
+	 *
+	 * What it deliberately does not do is search by name. `laterFn` appearing in
+	 * a new file proves nothing about a `laterFn()` call elsewhere unless a module
+	 * relationship connects them; the compiler decides that during resolution,
+	 * not this method by string equality.
+	 */
+	private invalidate(input: InvalidationInput): InvalidationResult {
+		const affected = new Set<string>();
+		const changed = [...input.added, ...input.modified];
+
+		for (const filePath of changed) {
+			affected.add(filePath);
+			for (const dependent of input.dependentsOf(filePath)) {
+				affected.add(dependent);
+			}
+		}
+
+		// A removed file's importers must be re-resolved, and the identities were
+		// captured before deletion precisely so this is still answerable.
+		for (const filePath of input.removed) {
+			for (const dependent of input.dependentsOf(filePath)) {
+				affected.add(dependent);
+			}
+		}
+		for (const identity of input.priorIdentities) {
+			if (!this.owns(identity.filePath)) continue;
+			for (const dependent of input.dependentsOf(identity.filePath)) {
+				affected.add(dependent);
+			}
+		}
+
+		// A configuration or version change invalidates the whole program: the
+		// compiler's view of every file may differ.
+		return {
+			resolveFiles: [...affected].filter((path) => this.owns(path)).sort(),
+		};
+	}
+
+	private owns(filePath: string): boolean {
+		const dot = filePath.lastIndexOf(".");
+		if (dot === -1) return false;
+		return this.extensions.includes(filePath.slice(dot).toLowerCase());
 	}
 
 	/** Pass B — compiler nodes (inserts allowed) plus resolved edges. */
