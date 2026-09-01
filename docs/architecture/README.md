@@ -57,7 +57,7 @@ When current code conflicts with the target, the architecture document describes
 - [Extension guide](extension-guide.md)
 - Extraction: [backend contract](extraction/backend-contract.md), [Pass A](extraction/tree-sitter-pass-a.md), [TypeScript](extraction/typescript-enricher.md), [PHP](extraction/php-enricher.md)
 - Surfaces: [CLI](surfaces/cli.md), [MCP](surfaces/mcp.md), [agent skill](surfaces/agent-skill.md)
-- Operations: [resources](operations/lifecycle-and-resources.md), [testing/eval](operations/testing-and-evaluation.md), [distribution](operations/distribution.md)
+- Operations: [resources](operations/lifecycle-and-resources.md), [testing/eval](operations/testing-and-evaluation.md), [distribution](operations/distribution.md), [0.1-B review and gate](operations/0.1-b-review.md)
 - Decisions: [ADR index](decisions/README.md)
 - Process: [document template](document-template.md), [documentation checklist](documentation-checklist.md)
 

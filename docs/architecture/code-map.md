@@ -17,6 +17,8 @@ Every row assigns one canonical document. “Reusable” means language/runtime 
 | `packages/core/src/index.ts`, `packages/core/src/types.ts` | Public core exports and graph/tool/adapter contracts | core / reusable | public contract; process lifetime | [System](system-overview.md) |
 | `packages/core/src/diagnostics.ts` | Versioned, exhaustive diagnostic-code taxonomy: category plus completeness impact, kept separate from lifecycle state | core / reusable | public contract; consulted by storage trust primitives and `status` | [Contracts §10.1](../contracts.md#101-diagnostic-taxonomy-trust-not-lifecycle) |
 | `packages/core/src/eligibility.ts` | Single membership decision: which files belong to the graph and which backend owns each | core / reusable | computed once per pass, read by scan, Pass A, Pass B, loadProject and coverage | [Contracts §13](../contracts.md#13-index-membership) |
+| `packages/core/src/query/domains.ts` | Completeness domain descriptors and structured partiality reasons | core / reusable | consulted per query by `buildMeta` | [Contracts §15](../contracts.md#15-completeness-domains) |
+| `packages/core/src/query/evidence.ts` | Bounded projection of unresolved/ambiguous relations, collected before target-null filtering | core / reusable | per query, travels in `ToolMeta.evidence` | [Contracts §16](../contracts.md#16-relational-evidence) |
 | `packages/core/src/astrograph.ts` | Facade delegating index/sync/query operations | core / reusable | public facade; closes indexer | [Lifecycle](project-lifecycle.md) |
 | `packages/core/src/ids.ts` | Deterministic node identity hashing | core / reusable | internal invariant | [Backend contract](extraction/backend-contract.md) |
 | `packages/core/src/indexer.ts` | Full and delta orchestration, persistence and reconciliation | core / reusable | internal seam; owns storage close | [Indexing](indexing-pipeline.md) |
@@ -178,6 +180,8 @@ The tables above group files by architectural responsibility. This manifest make
 - `apps/site/app/global.css`
 - `packages/core/src/diagnostics.ts`
 - `packages/core/src/eligibility.ts`
+- `packages/core/src/query/domains.ts`
+- `packages/core/src/query/evidence.ts`
 - `apps/site/app/layout.config.tsx`
 - `apps/site/app/layout.tsx`
 - `apps/site/app/llms-full.txt/route.ts`
