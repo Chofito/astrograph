@@ -567,6 +567,23 @@ export class QueryBuilder {
 		return row?.value === "in_progress";
 	}
 
+	/**
+	 * Languages that actually have files in this project.
+	 *
+	 * A backend with no files cannot change any answer, so it must not make one
+	 * look partial: disabling PHP in a pure TypeScript repository should not
+	 * degrade every `callers` result.
+	 */
+	getLanguagesWithFiles(): Language[] {
+		return (
+			this.db
+				.prepare(
+					"SELECT DISTINCT language FROM files WHERE node_count > 0 ORDER BY language ASC",
+				)
+				.all() as { language: Language }[]
+		).map((row) => row.language);
+	}
+
 	/** Project-wide diagnostic tally by category, for `status`. */
 	getDiagnosticCounts(paths?: string[]): DiagnosticCounts {
 		const scope = paths === undefined ? undefined : new Set(paths);

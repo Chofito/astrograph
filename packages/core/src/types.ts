@@ -2,6 +2,7 @@ import type {
 	DiagnosticCounts,
 	ExtractionDiagnosticCode,
 } from "./diagnostics";
+import type { CompletenessDomain, PartialReason } from "./query/domains";
 
 /** Stable persisted categories for graph nodes across all language backends. */
 export type NodeKind =
@@ -381,7 +382,20 @@ export interface Coverage {
 /** Trust envelope returned with every graph-tool payload. */
 export interface ToolMeta {
 	coverage: Coverage;
+	/**
+	 * True when something could materially change the presented claim.
+	 * Evaluated over the query's completeness domain, not over the files that
+	 * happened to be returned (ADR-003, AG-206).
+	 */
 	partial: boolean;
+	/** Which completeness rule produced `partial`. */
+	domain?: CompletenessDomain;
+	/**
+	 * Structured causes, so a consumer can distinguish incomplete coverage from
+	 * an unsupported capability, a truncated search, or semantic uncertainty
+	 * without parsing prose. `notes` carries the same facts as text.
+	 */
+	reasons?: PartialReason[];
 	pendingFiles?: string[];
 	notes?: string[];
 }

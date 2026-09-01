@@ -36,7 +36,7 @@ import type {
 } from "../types";
 import { AstrographError as CoreError } from "../types";
 import { CodeBlockSlicer } from "./code-blocks";
-import { buildMeta } from "./meta";
+import { type BuildMetaOptions, buildMeta } from "./meta";
 
 export interface GraphQueriesOptions {
 	queries: QueryBuilder;
@@ -63,12 +63,19 @@ export class GraphQueries {
 	}
 
 	async search(input: SearchInput): Promise<ToolResult<SearchOutput>> {
-		const data = this.queries.search({ ...input, limit: input.limit ?? 10 });
+		const limit = input.limit ?? 10;
+		const data = this.queries.search({ ...input, limit });
 		const notes = ambiguityNotes(
 			[],
 			data.map((result) => result.node.name),
 		);
-		return { data, meta: this.meta({ notes }) };
+		return {
+			data,
+			meta: this.meta({
+				domain: { domain: "global_discovery", truncated: data.length >= limit },
+				notes,
+			}),
+		};
 	}
 
 	async context(input: ContextInput): Promise<ToolResult<ContextOutput>> {
@@ -187,7 +194,10 @@ export class GraphQueries {
 				},
 			},
 			meta: this.meta({
-				scopeFiles: relatedFiles,
+				// Deliberately NOT scoped to relatedFiles: a context answer is a
+				// discovery result, and scoping coverage to what it happened to find
+				// makes an incomplete answer look complete.
+				domain: { domain: "global_discovery" },
 				notes: edgeNotes(edgeRows),
 			}),
 		};
@@ -225,7 +235,12 @@ export class GraphQueries {
 		return {
 			data,
 			meta: this.meta({
-				scopeFiles: [node.filePath],
+				// The callers preview is a reverse claim: a relation from any file
+				// could belong in it, so this cannot be scoped to the node's file.
+				domain: {
+					domain: "global_reverse",
+					requiredEdgeKinds: ["calls"],
+				},
 				notes: [
 					...this.ambiguityLookupNotes(lookup),
 					...edgeNotes([...callersEdges, ...calleesEdges]),
@@ -237,9 +252,6 @@ export class GraphQueries {
 	async callers(input: CallersInput): Promise<ToolResult<CallersOutput>> {
 		const lookup = this.resolveOrThrow(input.symbol);
 		const limit = input.limit ?? 20;
-		const capabilityNotes = this.capabilityNotes(lookup.best, ["calls"], {
-			callLabel: true,
-		});
 		const edges = this.queries.getEdgesByTarget(lookup.best.id, "calls");
 		const includedEdges: Edge[] = [];
 		const data = sortCallerOutputs(
@@ -260,9 +272,11 @@ export class GraphQueries {
 		return {
 			data,
 			meta: this.meta({
-				forcePartial: capabilityNotes.length > 0 || !this.isFullyResolved(),
+				domain: {
+					domain: "global_reverse",
+					requiredEdgeKinds: ["calls"],
+				},
 				notes: [
-					...capabilityNotes,
 					...this.ambiguityLookupNotes(lookup),
 					...edgeNotes(includedEdges),
 				],
@@ -273,11 +287,6 @@ export class GraphQueries {
 	async callees(input: CalleesInput): Promise<ToolResult<CalleesOutput>> {
 		const lookup = this.resolveOrThrow(input.symbol);
 		const limit = input.limit ?? 20;
-		const capabilityNotes = this.capabilityNotes(
-			lookup.best,
-			["calls", "instantiates"],
-			{ callLabel: true },
-		);
 		const edges = [
 			...this.queries.getEdgesBySource(lookup.best.id, "calls"),
 			...this.queries.getEdgesBySource(lookup.best.id, "instantiates"),
@@ -302,10 +311,16 @@ export class GraphQueries {
 		return {
 			data,
 			meta: this.meta({
-				scopeFiles: [lookup.best.filePath],
-				forcePartial: capabilityNotes.length > 0,
+				// Outgoing from one symbol: only its own file and its own backend
+				// can change the answer. An unrelated problem elsewhere must not
+				// make this partial.
+				domain: {
+					domain: "local_outgoing",
+					scopeFiles: [lookup.best.filePath],
+					requiredEdgeKinds: ["calls", "instantiates"],
+					sourceLanguage: lookup.best.language,
+				},
 				notes: [
-					...capabilityNotes,
 					...this.ambiguityLookupNotes(lookup),
 					...edgeNotes(includedEdges),
 				],
@@ -322,7 +337,6 @@ export class GraphQueries {
 			"extends",
 			"implements",
 		];
-		const capabilityNotes = this.capabilityNotes(lookup.best, impactKinds);
 		const visits = traverseGraph(this.queries, {
 			startId: lookup.best.id,
 			direction: "incoming",
@@ -346,9 +360,11 @@ export class GraphQueries {
 		return {
 			data,
 			meta: this.meta({
-				forcePartial: capabilityNotes.length > 0 || !this.isFullyResolved(),
+				domain: {
+					domain: "global_reverse",
+					requiredEdgeKinds: ["calls", "references"],
+				},
 				notes: [
-					...capabilityNotes,
 					...this.ambiguityLookupNotes(lookup),
 					...edgeNotes(visits.flatMap((visit) => visit.path)),
 				],
@@ -360,10 +376,6 @@ export class GraphQueries {
 		const from = this.resolveOrThrow(input.from);
 		const to = this.resolveOrThrow(input.to);
 		const traceKinds: EdgeKind[] = ["calls", "references"];
-		const capabilityNotes = [
-			...this.capabilityNotes(from.best, traceKinds),
-			...this.capabilityNotes(to.best, traceKinds),
-		].filter((note, index, all) => all.indexOf(note) === index);
 		const path = findPath(this.queries, {
 			startId: from.best.id,
 			targetId: to.best.id,
@@ -401,14 +413,11 @@ export class GraphQueries {
 					destinationCallees,
 				},
 				meta: this.meta({
-					scopeFiles: filesForNodes([
-						from.best,
-						to.best,
-						...this.nodesForEdges(path),
-					]),
-					forcePartial: capabilityNotes.length > 0,
+					domain: {
+						domain: "global_path",
+						requiredEdgeKinds: traceKinds,
+					},
 					notes: [
-						...capabilityNotes,
 						...this.ambiguityLookupNotes(from, "from"),
 						...this.ambiguityLookupNotes(to, "to"),
 						...edgeNotes(path),
@@ -428,13 +437,15 @@ export class GraphQueries {
 		return {
 			data: { found: false, hops: [], endpoints },
 			meta: this.meta({
-				scopeFiles: filesForNodes(inlineNodes),
-				forcePartial: capabilityNotes.length > 0,
+				domain: {
+					domain: "global_path",
+					requiredEdgeKinds: traceKinds,
+					// A bounded traversal that found nothing is not the same claim as
+					// an exhausted one, and a negative answer is where that matters.
+					truncated: true,
+				},
 				notes: [
-					...capabilityNotes,
-					...(capabilityNotes.length === 0
-						? ["No calls/references path found within maxDepth"]
-						: []),
+					"No calls/references path found within maxDepth",
 					...this.ambiguityLookupNotes(from, "from"),
 					...this.ambiguityLookupNotes(to, "to"),
 				],
@@ -471,7 +482,10 @@ export class GraphQueries {
 				relationshipMap,
 			},
 			meta: this.meta({
-				scopeFiles: [...nodesByFile.keys()],
+				domain: {
+					domain: "global_discovery",
+					truncated: nodesByFile.size >= maxFiles,
+				},
 				notes: terms.length === 0 ? ["Empty explore query"] : undefined,
 			}),
 		};
@@ -508,7 +522,15 @@ export class GraphQueries {
 			)
 			.sort(compareFileEntries);
 
-		return { data: { format, entries }, meta: this.meta() };
+		return {
+			data: { format, entries },
+			meta: this.meta({
+				domain: {
+					domain: "explicit_scope",
+					scopeFiles: entries.map((entry) => entry.filePath),
+				},
+			}),
+		};
 	}
 
 	async getStats(_input: StatusInput): Promise<ToolResult<StatusOutput>> {
@@ -516,7 +538,8 @@ export class GraphQueries {
 		if (this.backends.length > 0) {
 			data.backends = this.backends;
 		}
-		return { data, meta: this.meta() };
+		// `status` reports global state instead of hiding it behind partiality.
+		return { data, meta: this.meta({ domain: { domain: "descriptive" } }) };
 	}
 
 	private resolveOrThrow(symbol: string): SymbolLookupResult & { best: Node } {
@@ -647,36 +670,16 @@ export class GraphQueries {
 	 * needs, say so — an empty list under a clean banner would look like
 	 * "nothing calls this" rather than "this backend has no call edges".
 	 */
-	private capabilityNotes(
-		node: Node,
-		required: EdgeKind[],
-		opts: { callLabel?: boolean } = {},
-	): string[] {
-		const backend = this.backends.find((entry) =>
-			entry.languages.includes(node.language),
-		);
-		if (backend === undefined) return [];
-		const supported = new Set(backend.capabilities.edgeKinds);
-		const missing = required.filter((kind) => !supported.has(kind));
-		if (missing.length === 0) return [];
-		if (
-			opts.callLabel === true &&
-			missing.includes("calls") &&
-			missing.every((kind) => kind === "calls" || kind === "instantiates")
-		) {
-			return [`${backend.id} backend produces no call edges`];
-		}
-		return [`${backend.id} backend produces no ${missing.join("/")} edges`];
+
+	/**
+	 * Every envelope declares its completeness domain. `buildMeta` needs the
+	 * registered backends to decide which of them could originate a relation
+	 * relevant to the question (ADR-003, AG-206).
+	 */
+	private meta(options: BuildMetaOptions = {}): ToolMeta {
+		return buildMeta(this.queries, { backends: this.backends, ...options });
 	}
 
-	private meta(options: Parameters<typeof buildMeta>[1] = {}): ToolMeta {
-		return buildMeta(this.queries, options);
-	}
-
-	private isFullyResolved(): boolean {
-		const coverage = this.queries.getCoverage();
-		return coverage.total === coverage.resolved;
-	}
 }
 
 const CONTEXT_EDGE_KINDS: EdgeKind[] = [

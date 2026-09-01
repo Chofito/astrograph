@@ -39,6 +39,19 @@ Consequences that bind the rest of this ADR:
 | Explicit file scope | files with path/pattern | Coverage over the selected membership domain. |
 | Status | status | Reports global state rather than hiding it behind partiality. |
 
+## Implemented (AG-206)
+
+Domains are explicit descriptors passed into `buildMeta`, and the payload no longer decides its
+own completeness. Two evaluators became one: the old per-node `capabilityNotes`, which consulted
+whichever backend claimed the node's language, is replaced by domain-directed evaluation that
+consults every backend with files for incoming questions and only the source's backend for
+outgoing ones. Causes are structured (`PartialReason`), so CLI and MCP stop substring-matching
+prose to detect a capability gap, and `notes` is derived from `reasons` so both surfaces carry the
+same facts.
+
+A backend registered but holding no files in the project contributes nothing: an unused backend
+must not make every answer look partial.
+
 ## Consequences
 
 - Negative answers often remain partial longer than positive answers.

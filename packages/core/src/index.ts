@@ -12,5 +12,6 @@ export * from "./ids";
 export * from "./indexer";
 export * from "./query/code-blocks";
 export * from "./query/graph-queries";
+export * from "./query/domains";
 export * from "./query/meta";
 export * from "./types";

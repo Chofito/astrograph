@@ -505,6 +505,42 @@ Parse failures of a single file are **non-fatal**: record an `ExtractionError`, 
 ## 11. References
 - Data model: [docs/graph-model.md](graph-model.md) · Tools: [docs/tools.md](tools.md) · Extraction: [docs/extraction/overview.md](extraction/overview.md) (Pass A: [tree-sitter.md](extraction/tree-sitter.md), Pass B: [typescript.md](extraction/typescript.md)) · Tests/golden: [docs/testing.md](testing.md).
 
+## 15. Completeness domains
+
+`ToolMeta.partial` is evaluated over the query's **completeness domain**, not over the files the
+payload happened to return. Scoping to the payload is circular: a reverse lookup that finds
+nothing returns no files, so it would report complete coverage over the empty set and present
+"nothing calls this" with `partial: false`.
+
+| Domain | Tools | Completeness rule |
+|---|---|---|
+| `global_discovery` | `search`, `context`, `explore` | any file may qualify; project coverage decides |
+| `global_reverse` | `callers`, `impact`, `getNode` previews | any file may hold an incoming relation |
+| `global_path` | `trace` | any file may hold a hop; a negative answer is `truncated` by `maxDepth` |
+| `local_outgoing` | `callees` | only the source's own file and its own backend |
+| `explicit_scope` | `files` | coverage over the selected membership |
+| `descriptive` | `status` | reports global state instead of hiding it behind partiality |
+
+Causes are structured, so a consumer never parses prose:
+
+```ts
+type PartialReasonKind =
+  | 'coverage_incomplete'      // files unresolved, or resolved with a §10.1 coverage gap
+  | 'capability_unsupported'   // a backend that could originate the relation cannot emit it
+  | 'search_truncated'         // a limit cut the search short
+  | 'semantic_uncertainty';    // a relation exists but its target is unproven
+
+interface PartialReason { kind: PartialReasonKind; detail: string; files?: string[] }
+```
+
+Rules:
+
+- **A `resolved` file with a coverage gap (§10.1) still makes a global answer partial.** Lifecycle completion is not trust.
+- Incoming questions evaluate every backend that owns files in this project; outgoing questions evaluate only the source's backend.
+- **A backend with no eligible files penalizes nothing.** Disabling PHP in a pure TypeScript repository must not degrade every `callers` result.
+- `notes` mirrors `reasons` in order, so CLI and MCP render identical facts from one source.
+- Reasons are sorted deterministically: coverage, capability, semantic, truncation.
+
 ## 14. Invalidation is backend-owned
 
 Core never decides that two symbols are the same. When files change it supplies facts and asks
