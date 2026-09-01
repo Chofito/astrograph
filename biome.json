@@ -62,8 +62,11 @@
 		},
 		{
 			"includes": ["packages/core/__fixtures__/**"],
+			"formatter": { "enabled": false },
+			"assist": { "enabled": false },
 			"linter": {
 				"rules": {
+					"recommended": false,
 					"suspicious": { "noDuplicateClassMembers": "off" },
 					"a11y": { "useButtonType": "off" }
 				}

@@ -479,7 +479,10 @@ export class Indexer {
 					...file,
 					nodeCount: kept.length,
 					state: "parsed",
-					errors: mergeErrors(file.errors, plan.errors),
+					// Reconciliation recomputes the dropped-node set from scratch.
+					errors: mergeErrors(file.errors, plan.errors, {
+						replaces: ["PASS_A_NODE_DROPPED"],
+					}),
 				});
 			}
 		});
@@ -733,15 +736,43 @@ function compareStrings(a: string, b: string): number {
 	return a < b ? -1 : a > b ? 1 : 0;
 }
 
-/** Keep a file's Pass A errors and append reconciliation warnings, de-duped. */
+/**
+ * Merge a phase's evidence into a file record.
+ *
+ * `replaces` names the codes the incoming batch fully recomputes, so a re-run
+ * refreshes them instead of stacking duplicates. Codes outside that list are
+ * preserved: Pass B phase 2 must not erase the `PASS_A_NODE_DROPPED` warnings
+ * phase 1 produced, because they are the only persisted evidence that a backend
+ * broke the subset contract.
+ */
 function mergeErrors(
 	existing: ExtractionError[] | undefined,
 	added: ExtractionError[],
+	options: { replaces?: readonly string[] } = {},
 ): ExtractionError[] | undefined {
+	const replaces = new Set(options.replaces ?? []);
 	const kept = (existing ?? []).filter(
-		(error) => error.code !== "PASS_A_NODE_DROPPED",
+		(error) => error.code === undefined || !replaces.has(error.code),
 	);
-	const merged = [...kept, ...added];
+
+	// Both Pass B phases can run again for the same file within one pass (a
+	// changed file is also a referrer), so identical evidence must not stack.
+	const merged: ExtractionError[] = [];
+	const seen = new Set<string>();
+	for (const error of [...kept, ...added]) {
+		const key = [
+			error.code ?? "",
+			error.filePath ?? "",
+			error.line ?? "",
+			error.column ?? "",
+			error.severity,
+			error.message,
+		].join("\u001f");
+		if (seen.has(key)) continue;
+		seen.add(key);
+		merged.push(error);
+	}
+
 	return merged.length > 0 ? merged : undefined;
 }
 
