@@ -616,9 +616,17 @@ describe("event coalescing is deterministic", () => {
  * routes agree.
  */
 const LINKED_PROJECT: Record<string, string> = {
+	// 15 bytes. Stays eligible under the tight limit below.
 	"src/caller.stub": "caller ->target",
-	"src/target.stub": "target",
+	// 25 bytes. The padding exists so a size limit can single this file out;
+	// with the caller as the larger file the tests would retire the wrong end of
+	// the relation and prove nothing.
+	"src/target.stub": "target padpadpadpadpadpad",
 };
+
+/** Between the two file sizes above: the target is out, the caller is in. */
+const TIGHT_LIMIT = 20;
+const LOOSE_LIMIT = 1_000;
 
 function edgesTo(index: NormalizedIndex, targetName: string) {
 	return index.edges.filter((edge) => edge.targetName === targetName);
@@ -638,11 +646,11 @@ describe("crossing the eligibility boundary converges on every route", () => {
 	test("a file that grows past the size limit", async () => {
 		const before: ProjectState = {
 			files: LINKED_PROJECT,
-			config: { maxFileSizeBytes: 1_000 },
+			config: { maxFileSizeBytes: LOOSE_LIMIT },
 		};
 		const after: ProjectState = {
 			files: LINKED_PROJECT,
-			config: { maxFileSizeBytes: 8 },
+			config: { maxFileSizeBytes: TIGHT_LIMIT },
 		};
 		await expectAllFourAgree(before, after);
 
@@ -686,11 +694,11 @@ describe("crossing the eligibility boundary converges on every route", () => {
 	test("a file that becomes eligible again", async () => {
 		const tight: ProjectState = {
 			files: LINKED_PROJECT,
-			config: { maxFileSizeBytes: 8 },
+			config: { maxFileSizeBytes: TIGHT_LIMIT },
 		};
 		const loose: ProjectState = {
 			files: LINKED_PROJECT,
-			config: { maxFileSizeBytes: 1_000 },
+			config: { maxFileSizeBytes: LOOSE_LIMIT },
 		};
 		await expectAllFourAgree(tight, loose);
 
@@ -709,7 +717,7 @@ describe("an event batch retires a candidate that lost eligibility", () => {
 		const storage = freshStorage();
 		try {
 			const first = openIndexer(
-				{ files: LINKED_PROJECT, config: { maxFileSizeBytes: 1_000 } },
+				{ files: LINKED_PROJECT, config: { maxFileSizeBytes: LOOSE_LIMIT } },
 				storage,
 			);
 			await first.indexer.indexAll();
@@ -720,7 +728,7 @@ describe("an event batch retires a candidate that lost eligibility", () => {
 			).toBeGreaterThan(0);
 
 			const second = openIndexer(
-				{ files: LINKED_PROJECT, config: { maxFileSizeBytes: 8 } },
+				{ files: LINKED_PROJECT, config: { maxFileSizeBytes: TIGHT_LIMIT } },
 				storage,
 			);
 			const result = await second.indexer.syncFiles([
@@ -778,20 +786,41 @@ describe("an event batch retires a candidate that lost eligibility", () => {
 
 describe("retirement keeps a textual identity, never a node id", () => {
 	test("an incoming edge without targetName gets the retired node's name", async () => {
+		// A backend that invalidates nothing, so the referrer is not re-resolved
+		// and its edges are not rewritten. That isolates what is under test: the
+		// value retirement itself writes into `targetName`. With the normal
+		// backend the enricher would replace the edge and prove nothing.
+		const inert: LanguageBackend = {
+			id: STUB.id,
+			languages: STUB.languages,
+			extensions: STUB.extensions,
+			parser: STUB.parser,
+			capabilities: STUB.capabilities,
+			versionKeys: STUB.versionKeys,
+			enricher: {
+				mode: "complement",
+				id: "inert-enricher",
+				provenance: "synthesized:stub",
+				loadProject: () => {},
+				resolveEdges: () => ({ edges: [], errors: [], externalNodes: [] }),
+				invalidate: () => ({ resolveFiles: [] }),
+			},
+		};
+
 		const storage = freshStorage();
 		try {
 			const { indexer, queries } = openIndexer(
-				{ files: LINKED_PROJECT },
+				{ files: LINKED_PROJECT, backends: [inert] },
 				storage,
 			);
 			await indexer.indexAll();
 
 			const targetNode = queries
 				.getNodesByFile("src/target.stub")
-				.find((n) => n.kind === "function");
+				.find((n) => n.name === "target");
 			const caller = queries
 				.getNodesByFile("src/caller.stub")
-				.find((n) => n.kind === "function");
+				.find((n) => n.name === "caller");
 			expect(targetNode).toBeDefined();
 			expect(caller).toBeDefined();
 
@@ -807,7 +836,7 @@ describe("retirement keeps a textual identity, never a node id", () => {
 			});
 
 			const shrunk = openIndexer(
-				{ files: { "src/caller.stub": "caller ->target" } },
+				{ files: { "src/caller.stub": LINKED_PROJECT["src/caller.stub"] ?? "" }, backends: [inert] },
 				storage,
 			);
 			await shrunk.indexer.sync();
@@ -817,6 +846,7 @@ describe("retirement keeps a textual identity, never a node id", () => {
 				.filter((edge) => edge.kind === "references");
 			expect(demoted.length).toBe(1);
 			expect(demoted[0]?.resolutionState).toBe("unresolved");
+			expect(demoted[0]?.target).toBeNull();
 			expect(demoted[0]?.targetName).toBe("src/target.stub::target");
 			// Never the internal id.
 			expect(demoted[0]?.targetName).not.toBe(targetNode?.id);
