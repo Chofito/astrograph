@@ -1,3 +1,11 @@
+import {
+	categoryOf,
+	countByCategory,
+	type DiagnosticCategory,
+	type DiagnosticCounts,
+	emptyDiagnosticCounts,
+	hasCoverageGap,
+} from "../diagnostics";
 import { toExactNameBoostToken, toFtsMatchQuery } from "../search/fts-query";
 import type {
 	Confidence,
@@ -76,6 +84,17 @@ interface FileRow {
 	node_count: number;
 	state: string;
 	errors: string | null;
+}
+
+/** Bounded per-file trust projection: lifecycle state and diagnostics, separately. */
+export interface FileDiagnosticSummary {
+	path: string;
+	/** Lifecycle only. Never a trust signal on its own. */
+	state: CoverageState;
+	category: DiagnosticCategory;
+	/** Distinct codes in this category on this file, sorted. */
+	codes: string[];
+	count: number;
 }
 
 export class QueryBuilder {
@@ -494,6 +513,75 @@ export class QueryBuilder {
 		return coverage;
 	}
 
+	/**
+	 * Files carrying diagnostics of a given category, regardless of lifecycle
+	 * state. This is the primitive that lets a caller ask "is this trustworthy"
+	 * without asking "did the pipeline finish": a `resolved` file whose grammar
+	 * was missing is returned here.
+	 *
+	 * Filtering happens in TypeScript rather than SQL because `files.errors` is a
+	 * JSON blob and the category lives in the versioned registry, not in a
+	 * column. Keeping the mapping out of the schema is deliberate — re-classifying
+	 * a code must not need a migration.
+	 */
+	getFilesWithDiagnosticCategory(
+		category: DiagnosticCategory,
+		paths?: string[],
+	): FileDiagnosticSummary[] {
+		const scope = paths === undefined ? undefined : new Set(paths);
+		const summaries: FileDiagnosticSummary[] = [];
+
+		for (const file of this.getAllFiles()) {
+			if (scope !== undefined && !scope.has(file.path)) continue;
+			const matching = (file.errors ?? []).filter(
+				(error) => categoryOf(error.code) === category,
+			);
+			if (matching.length === 0) continue;
+			summaries.push({
+				path: file.path,
+				state: file.state,
+				category,
+				codes: [
+					...new Set(
+						matching.map((error) => error.code ?? "UNKNOWN"),
+					),
+				].sort(compareStrings),
+				count: matching.length,
+			});
+		}
+
+		return summaries.sort((a, b) => compareStrings(a.path, b.path));
+	}
+
+	/**
+	 * Files whose diagnostics say content is missing, whatever their lifecycle
+	 * state. `resolved` no longer implies a complete answer, and this is how a
+	 * caller finds out.
+	 */
+	getFilesWithCoverageGap(paths?: string[]): string[] {
+		const scope = paths === undefined ? undefined : new Set(paths);
+		const gaps: string[] = [];
+		for (const file of this.getAllFiles()) {
+			if (scope !== undefined && !scope.has(file.path)) continue;
+			if (hasCoverageGap(file.errors)) gaps.push(file.path);
+		}
+		return gaps.sort(compareStrings);
+	}
+
+	/** Project-wide diagnostic tally by category, for `status`. */
+	getDiagnosticCounts(paths?: string[]): DiagnosticCounts {
+		const scope = paths === undefined ? undefined : new Set(paths);
+		const totals = emptyDiagnosticCounts();
+		for (const file of this.getAllFiles()) {
+			if (scope !== undefined && !scope.has(file.path)) continue;
+			const counts = countByCategory(file.errors);
+			for (const key of Object.keys(totals) as DiagnosticCategory[]) {
+				totals[key] += counts[key];
+			}
+		}
+		return totals;
+	}
+
 	getStats(): StatusOutput {
 		const coverage = this.getCoverage();
 		const pendingSync = this.db
@@ -511,6 +599,9 @@ export class QueryBuilder {
 			edgesByKind: this.countBy("edges", "kind"),
 			filesByLanguage: this.countBy("files", "language"),
 			coverage,
+			// Lifecycle and trust are reported side by side, never merged.
+			diagnostics: this.getDiagnosticCounts(),
+			filesWithCoverageGap: this.getFilesWithCoverageGap(),
 			pendingSync: pendingSync.length > 0 ? pendingSync : undefined,
 			dbSizeBytes: this.getDbSizeBytes(),
 			lastUpdated: this.getLastUpdated(),

@@ -456,6 +456,50 @@ export class ExtractionFailedError extends AstrographError { filePath: string; }
 export class StorageError extends AstrographError {}
 ```
 
+### 10.1 Diagnostic taxonomy (trust, not lifecycle)
+
+`FileRecord.state` (`pending` | `parsed` | `resolved`) is **lifecycle only**: how far the pipeline
+got. It never means "this answer is complete". A file can be `resolved` and still be missing
+content, for example when its grammar was unavailable.
+
+Trust is carried by `ExtractionError.code`. **The code is the contract; the message is for
+humans and must never be parsed.** Every code is classified by the versioned, exhaustive
+registry in `packages/core/src/diagnostics.ts`:
+
+```ts
+type DiagnosticCategory =
+  | 'coverage_gap'          // content that should be in the graph is missing or partial
+  | 'semantic_uncertainty'  // the content exists; a relationship could not be proven
+  | 'configuration'         // configuration or environment kept the work from happening
+  | 'diagnostic';           // internal defect evidence, no completeness cost
+```
+
+| Code | Category | Degrades completeness |
+|---|---|---|
+| `PARSE_ERROR` | `coverage_gap` | yes |
+| `TREE_SITTER_PARSE_ERROR` | `coverage_gap` | yes |
+| `RESOLVE_ERROR` | `coverage_gap` | yes |
+| `PHP_CALL_UNRESOLVED` | `semantic_uncertainty` | yes |
+| `FILE_TOO_LARGE` | `configuration` | yes |
+| `NO_BACKEND` | `configuration` | yes |
+| `TREE_SITTER_UNAVAILABLE` | `configuration` | yes |
+| `TREE_SITTER_GRAMMAR_MISSING` | `configuration` | yes |
+| `PASS_A_NODE_DROPPED` | `diagnostic` | no |
+| every `ConfigDiagnosticCode` | `configuration` | no |
+
+`degradesCompleteness` is a separate axis from `category` on purpose. `PASS_A_NODE_DROPPED` is a
+real backend defect that costs the user nothing, because the Pass A row is kept. A configuration
+exclusion is not a defect, but it does hide content. Whether a gap actually reaches a given query
+is the query domain's decision, not this table's.
+
+`DIAGNOSTIC_REGISTRY_VERSION` participates in index identity, so re-categorizing a code rebuilds
+rather than leaving persisted rows meaning something else. An unregistered code read from an index
+written by another build is reported as `diagnostic` and never counts as complete coverage.
+
+Storage exposes the two axes separately: `getCoverage()` for lifecycle,
+`getFilesWithCoverageGap()`, `getFilesWithDiagnosticCategory()`, and `getDiagnosticCounts()` for
+trust. `status` returns both.
+
 Parse failures of a single file are **non-fatal**: record an `ExtractionError`, leave the file `parsed` with whatever nodes succeeded (or `pending` with an error), and continue. Never abort a whole index for one bad file.
 
 ## 11. References

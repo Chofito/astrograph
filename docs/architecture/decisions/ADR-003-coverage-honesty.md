@@ -14,6 +14,20 @@ Each tool defines a completeness domain and required backend capabilities. `Tool
 
 Payload omission does not permit evidence omission: target-null edges may be absent from node-shaped results, but their relevance must be explained in metadata.
 
+## Lifecycle is not trust (AG-201)
+
+`pending`, `parsed`, and `resolved` are lifecycle states and nothing else. Trust is carried by
+diagnostic codes, classified by a single versioned, exhaustive registry into `coverage_gap`,
+`semantic_uncertainty`, `configuration`, and `diagnostic`, plus an independent
+`degradesCompleteness` flag.
+
+Consequences that bind the rest of this ADR:
+
+- A `resolved` file may carry a `coverage_gap`. `partial` may therefore be true at 100% resolved coverage.
+- No code path may infer behavior from an error `message`. The code is the contract.
+- The registry version is part of index identity, so re-categorizing rebuilds instead of leaving persisted rows meaning something else.
+- The registry says a code *can* matter; the query domain below decides whether it *does* for a given question.
+
 ## Domain rules
 
 | Domain | Examples | Coverage rule |

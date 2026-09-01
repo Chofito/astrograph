@@ -1,3 +1,8 @@
+import type {
+	DiagnosticCounts,
+	ExtractionDiagnosticCode,
+} from "./diagnostics";
+
 /** Stable persisted categories for graph nodes across all language backends. */
 export type NodeKind =
 	| "file"
@@ -120,14 +125,20 @@ export interface FileRecord {
 	errors?: ExtractionError[];
 }
 
-/** Non-fatal or fatal extraction evidence attached to a file record. */
+/**
+ * Non-fatal or fatal extraction evidence attached to a file record.
+ *
+ * `code` is the contract; `message` is for humans. Nothing may infer behavior
+ * from the message text. Every code is classified by the versioned registry in
+ * `diagnostics.ts`, which is what separates lifecycle state from trust.
+ */
 export interface ExtractionError {
 	message: string;
 	filePath?: string;
 	line?: number;
 	column?: number;
 	severity: "error" | "warning";
-	code?: string;
+	code?: ExtractionDiagnosticCode;
 }
 
 /** Bounded node projection returned by public graph tools. */
@@ -460,6 +471,14 @@ export interface StatusOutput {
 	edgesByKind: Record<string, number>;
 	filesByLanguage: Record<string, number>;
 	coverage: Coverage;
+	/**
+	 * Diagnostic tally by trust category. Independent of `coverage`, which only
+	 * reports lifecycle: a project can be 100% `resolved` and still report a
+	 * non-zero `coverage_gap` here (AG-201).
+	 */
+	diagnostics?: DiagnosticCounts;
+	/** Files whose diagnostics say content is missing, whatever their state. */
+	filesWithCoverageGap?: string[];
 	pendingSync?: string[];
 	dbSizeBytes: number;
 	lastUpdated: number;

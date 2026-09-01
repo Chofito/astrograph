@@ -78,7 +78,32 @@ flowchart LR
 - External nodes cannot persist unsafe absolute paths outside the project boundary.
 - Deleting a project file removes its owned nodes/outgoing edges transactionally.
 - Coverage counts come from `files.state`, not inferred node/edge totals.
-- `configHash` includes every behavior-affecting backend/grammar version key.
+- `files.state` is lifecycle only. It is never read as a trust signal, and `resolved` does not imply a complete answer.
+- Every persisted diagnostic carries a code from the versioned registry; no code of behavior reads an error `message`.
+- `configHash` includes every behavior-affecting backend/grammar version key, plus the diagnostic registry version.
+
+## Lifecycle state versus trust
+
+Two independent axes are persisted on the same `files` row, and they answer different questions.
+
+| Axis | Column | Question | Primitive |
+|---|---|---|---|
+| Lifecycle | `files.state` | How far did the pipeline get? | `getCoverage()` |
+| Trust | `files.errors` (JSON) | Is what we know good enough? | `getFilesWithCoverageGap()`, `getFilesWithDiagnosticCategory()`, `getDiagnosticCounts()` |
+
+A `resolved` file with a `TREE_SITTER_GRAMMAR_MISSING` diagnostic is the canonical case: every
+phase ran to completion and the file's symbols are still absent. Reporting it as complete is how a
+graph produces a confident empty result.
+
+The category is **derived, not stored in a column**. `packages/core/src/diagnostics.ts` holds the
+exhaustive `code → { category, degradesCompleteness }` table, and
+`DIAGNOSTIC_REGISTRY_VERSION` feeds `configHash`. Deriving keeps re-categorization out of the
+migration path: changing what a code means bumps the identity and rebuilds, rather than requiring a
+schema change and a data migration over historical rows.
+
+Stale diagnostics are cleared by re-derivation, not by a separate sweep. `Indexer.writeParsedFile`
+deletes and rewrites the whole file record whenever Pass A runs, so a file that stops being
+oversized loses its `FILE_TOO_LARGE` evidence in the same transaction that gives it real nodes.
 
 ## Resolution representation
 

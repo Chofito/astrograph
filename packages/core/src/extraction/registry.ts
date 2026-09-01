@@ -1,4 +1,5 @@
 import { type AstrographConfig, SHIPPED_BACKEND_IDS } from "../config";
+import { DIAGNOSTIC_REGISTRY_VERSION } from "../diagnostics";
 import type {
 	BackendStatus,
 	EdgeKind,
@@ -63,6 +64,9 @@ export class LanguageRegistry {
 	versionKeys(): Record<string, string> {
 		const merged: Record<string, string> = {
 			"extraction:contract": EXTRACTION_CONTRACT_VERSION,
+			// Re-categorizing a diagnostic changes what persisted rows mean, so the
+			// taxonomy is part of the index identity (AG-201).
+			"diagnostics:registry": DIAGNOSTIC_REGISTRY_VERSION,
 		};
 		for (const backend of this.backends.values()) {
 			for (const [key, value] of Object.entries(backend.versionKeys())) {
