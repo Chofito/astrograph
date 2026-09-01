@@ -3,6 +3,7 @@ import type {
 	ExtractionDiagnosticCode,
 } from "./diagnostics";
 import type { CompletenessDomain, PartialReason } from "./query/domains";
+import type { RelationEvidence } from "./query/evidence";
 
 /** Stable persisted categories for graph nodes across all language backends. */
 export type NodeKind =
@@ -396,6 +397,12 @@ export interface ToolMeta {
 	 * without parsing prose. `notes` carries the same facts as text.
 	 */
 	reasons?: PartialReason[];
+	/**
+	 * Relations the answer considered but could not show as nodes. Collected
+	 * before target-null edges are filtered out of node-shaped payloads, so an
+	 * empty result cannot hide unresolved calls (AG-207).
+	 */
+	evidence?: RelationEvidence;
 	pendingFiles?: string[];
 	notes?: string[];
 }

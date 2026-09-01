@@ -36,6 +36,11 @@ import type {
 } from "../types";
 import { AstrographError as CoreError } from "../types";
 import { CodeBlockSlicer } from "./code-blocks";
+import {
+	collectEvidence,
+	hasUnprovenRelations,
+	type RelationEvidence,
+} from "./evidence";
 import { type BuildMetaOptions, buildMeta } from "./meta";
 
 export interface GraphQueriesOptions {
@@ -198,6 +203,7 @@ export class GraphQueries {
 				// discovery result, and scoping coverage to what it happened to find
 				// makes an incomplete answer look complete.
 				domain: { domain: "global_discovery" },
+				evidence: collectEvidence(edgeRows),
 				notes: edgeNotes(edgeRows),
 			}),
 		};
@@ -212,6 +218,7 @@ export class GraphQueries {
 			...this.queries.getEdgesBySource(node.id, "instantiates"),
 		];
 
+		const evidence = collectEvidence([...callersEdges, ...calleesEdges]);
 		const callersPreview = this.refsForEdgeNodes(callersEdges, "source").slice(
 			0,
 			5,
@@ -241,6 +248,8 @@ export class GraphQueries {
 					domain: "global_reverse",
 					requiredEdgeKinds: ["calls"],
 				},
+				evidence,
+				evidenceIsMaterial: true,
 				notes: [
 					...this.ambiguityLookupNotes(lookup),
 					...edgeNotes([...callersEdges, ...calleesEdges]),
@@ -253,6 +262,7 @@ export class GraphQueries {
 		const lookup = this.resolveOrThrow(input.symbol);
 		const limit = input.limit ?? 20;
 		const edges = this.queries.getEdgesByTarget(lookup.best.id, "calls");
+		const evidence = collectEvidence(edges);
 		const includedEdges: Edge[] = [];
 		const data = sortCallerOutputs(
 			edges
@@ -276,6 +286,8 @@ export class GraphQueries {
 					domain: "global_reverse",
 					requiredEdgeKinds: ["calls"],
 				},
+				evidence,
+				evidenceIsMaterial: true,
 				notes: [
 					...this.ambiguityLookupNotes(lookup),
 					...edgeNotes(includedEdges),
@@ -291,6 +303,10 @@ export class GraphQueries {
 			...this.queries.getEdgesBySource(lookup.best.id, "calls"),
 			...this.queries.getEdgesBySource(lookup.best.id, "instantiates"),
 		];
+		// Collected before the target-null filter below. Afterwards the unresolved
+		// calls are gone and an empty result is indistinguishable from "calls
+		// nothing", which is the failure this exists to prevent.
+		const evidence = collectEvidence(edges);
 		const includedEdges: Edge[] = [];
 		const data = sortCalleeOutputs(
 			edges
@@ -320,6 +336,9 @@ export class GraphQueries {
 					requiredEdgeKinds: ["calls", "instantiates"],
 					sourceLanguage: lookup.best.language,
 				},
+				evidence,
+				// An unresolved callee changes what "this calls nothing" means.
+				evidenceIsMaterial: true,
 				notes: [
 					...this.ambiguityLookupNotes(lookup),
 					...edgeNotes(includedEdges),
@@ -364,6 +383,8 @@ export class GraphQueries {
 					domain: "global_reverse",
 					requiredEdgeKinds: ["calls", "references"],
 				},
+				evidence: collectEvidence(visits.flatMap((visit) => visit.path)),
+				evidenceIsMaterial: true,
 				notes: [
 					...this.ambiguityLookupNotes(lookup),
 					...edgeNotes(visits.flatMap((visit) => visit.path)),
@@ -417,6 +438,7 @@ export class GraphQueries {
 						domain: "global_path",
 						requiredEdgeKinds: traceKinds,
 					},
+					evidence: collectEvidence(path),
 					notes: [
 						...this.ambiguityLookupNotes(from, "from"),
 						...this.ambiguityLookupNotes(to, "to"),
@@ -444,6 +466,10 @@ export class GraphQueries {
 					// an exhausted one, and a negative answer is where that matters.
 					truncated: true,
 				},
+				// "No path found" must explain what blocked it: an unresolved hop
+				// inside the traversed depth is the most likely reason.
+				evidence: this.blockerEvidence(from.best.id, traceKinds, input.maxDepth),
+				evidenceIsMaterial: true,
 				notes: [
 					"No calls/references path found within maxDepth",
 					...this.ambiguityLookupNotes(from, "from"),
@@ -676,6 +702,31 @@ export class GraphQueries {
 	 * registered backends to decide which of them could originate a relation
 	 * relevant to the question (ADR-003, AG-206).
 	 */
+	/**
+	 * Unproven relations reachable from `startId` within the traced depth.
+	 *
+	 * A "no path found" answer is only honest if it says what stopped it. An
+	 * unresolved call inside the traversed region is the most common reason a
+	 * path that exists in the source does not exist in the graph.
+	 */
+	private blockerEvidence(
+		startId: string,
+		kinds: EdgeKind[],
+		maxDepth: number | undefined,
+	): RelationEvidence | undefined {
+		const visits = traverseGraph(this.queries, {
+			startId,
+			direction: "outgoing",
+			edgeKinds: kinds,
+			maxDepth: maxDepth ?? 6,
+			limit: 250,
+		});
+		const edges = visits.flatMap((visit) => visit.path);
+		const evidence = collectEvidence(edges);
+		// Only the blockers are relevant here; a resolved hop is not a blocker.
+		return hasUnprovenRelations(evidence) ? evidence : undefined;
+	}
+
 	private meta(options: BuildMetaOptions = {}): ToolMeta {
 		return buildMeta(this.queries, { backends: this.backends, ...options });
 	}

@@ -505,6 +505,49 @@ Parse failures of a single file are **non-fatal**: record an `ExtractionError`, 
 ## 11. References
 - Data model: [docs/graph-model.md](graph-model.md) · Tools: [docs/tools.md](tools.md) · Extraction: [docs/extraction/overview.md](extraction/overview.md) (Pass A: [tree-sitter.md](extraction/tree-sitter.md), Pass B: [typescript.md](extraction/typescript.md)) · Tests/golden: [docs/testing.md](testing.md).
 
+## 16. Relational evidence
+
+Node-shaped payloads drop edges whose `target` is null, because there is no node to show. That is
+a payload decision and it used to delete the most important fact in the answer: an empty `callees`
+looked identical whether the symbol calls nothing or calls three things nobody could resolve.
+
+Evidence is collected **before** that filter and travels in `ToolMeta.evidence`:
+
+```ts
+interface RelationEvidence {
+  /** Exact totals by resolution state and edge kind. Never truncated. */
+  counts: { resolutionState: ResolutionState; kind: EdgeKind; count: number }[];
+  /** Bounded, deterministically ordered sample. */
+  samples: UnprovenRelation[];
+  truncated: boolean;
+}
+
+interface UnprovenRelation {
+  source: string;                                       // node id
+  kind: EdgeKind;
+  resolutionState: 'unresolved' | 'ambiguous' | 'external';
+  targetName?: string;
+  line?: number;
+  col?: number;
+  provenance: Provenance;
+  reason?: string;                                      // when the producer recorded one
+}
+```
+
+Rules:
+
+- Applied to `callees`, `callers`, `getNode` previews, `impact`, `context`, and both `trace`
+  branches. A "no path found" carries the unproven relations reachable within the traced depth,
+  because a negative answer that does not say what blocked it is not honest.
+- **`external` is not a failure.** A call into `node_modules` is a complete answer about a target
+  outside the project. It is counted, but `hasUnprovenRelations` ignores it.
+- Counts are exact; samples are capped at 10 and ordered by state, kind, target name, source, then
+  location. Truncation is stated explicitly, never implied.
+- No source text and nothing beyond the declared fields ever enters metadata.
+- Unproven relations make an answer partial only where the caller declares them material
+  (`semantic_uncertainty` in §15). An unresolved edge is not automatically a defect in every
+  question.
+
 ## 15. Completeness domains
 
 `ToolMeta.partial` is evaluated over the query's **completeness domain**, not over the files the

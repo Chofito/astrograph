@@ -1,6 +1,11 @@
 import type { QueryBuilder } from "../db/queries";
 import type { BackendStatus, ToolMeta } from "../types";
 import {
+	evidenceNotes,
+	hasUnprovenRelations,
+	type RelationEvidence,
+} from "./evidence";
+import {
 	type DomainDescriptor,
 	isGlobalDomain,
 	needsAllBackends,
@@ -23,6 +28,14 @@ export interface BuildMetaOptions {
 	notes?: string[];
 	/** Extra structured reasons the caller already computed. */
 	reasons?: PartialReason[];
+	/**
+	 * Relations the answer could not follow. Unresolved or ambiguous evidence
+	 * makes an answer partial only when the caller says it is material — an
+	 * unresolved call is not automatically a defect in every question.
+	 */
+	evidence?: RelationEvidence;
+	/** Whether unproven relations in `evidence` can change this answer. */
+	evidenceIsMaterial?: boolean;
 }
 
 const MAX_LISTED_FILES = 25;
@@ -55,6 +68,17 @@ export function buildMeta(
 		reasons.push(...capabilityReasons(queries, domain, options.backends));
 	}
 
+	if (
+		options.evidenceIsMaterial === true &&
+		hasUnprovenRelations(options.evidence)
+	) {
+		reasons.push({
+			kind: "semantic_uncertainty",
+			detail:
+				"Relations exist that could not be proven to a target; see meta.evidence.",
+		});
+	}
+
 	if (domain.truncated === true) {
 		reasons.push({
 			kind: "search_truncated",
@@ -70,6 +94,7 @@ export function buildMeta(
 
 	const notes = [
 		...sorted.map((reason) => reason.detail),
+		...evidenceNotes(options.evidence),
 		...(options.notes ?? []),
 	].filter((note) => note.trim() !== "");
 
@@ -77,6 +102,7 @@ export function buildMeta(
 		coverage,
 		partial,
 		domain: domain.domain,
+		...(options.evidence === undefined ? {} : { evidence: options.evidence }),
 		reasons: sorted.length > 0 ? sorted : undefined,
 		pendingFiles:
 			pendingFiles.length > 0

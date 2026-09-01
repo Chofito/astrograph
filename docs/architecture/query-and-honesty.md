@@ -57,6 +57,12 @@ flowchart TD
 
 A negative answer such as “no callers” or “no path” has a higher honesty burden than a positive answer. If pending files or unresolved edges could change it, it is partial.
 
+## Relational evidence
+
+Target-null edges are filtered out of node-shaped payloads, never out of metadata. `collectEvidence`
+runs before the filter, so an empty result cannot hide unresolved calls (contracts §16). `external`
+stays a separate state: it is a complete answer about something outside the project.
+
 ## Invariants
 
 - Sorting and limits are deterministic.
