@@ -2,7 +2,7 @@
 
 > 🌐 Languages: **English** (this file) · [Español](tools.es.md)
 
-> Design document. Defines the **transport-agnostic tool contract** that Astrograph exposes to consumers. The contract (name, inputs, **structured result**) lives in `packages/core`; the **CLI** and **MCP** are thin formatters over the same structured results. See [ROADMAP stages 1–3](../ROADMAP.md#46-stages-13-shipped-not-v10-complete).
+> Design document. Defines the **transport-agnostic tool contract** that Astrograph exposes to consumers. The contract (name, inputs, **structured result**) lives in `packages/core`; the **CLI** and **MCP** are thin formatters over the same structured results. See [ROADMAP stages 1–3](../ROADMAP.md#46-stages-13-shipped-not-preview-complete).
 >
 > The Stage 3 **website is not a consumer of this contract** — it is a static export with no server runtime, decoupled from the binary ([docs/site.md](site.md) §1). It documents the tools; it does not call them.
 
@@ -152,7 +152,7 @@ Shared field types referenced below: `NodeRef` = `{ id, name, kind, qualifiedNam
 - **Utility.** Verify freshness; see what's pending; see whether the language you're asking about is even indexed. This is *how you inspect coverage*.
 - **Offline.** Stats queries + the in-process backend registry. ✅
 - **Inputs.** `projectPath?: string`.
-- **Result.** `StatusOutput` = `{ nodeCount, edgeCount, fileCount, nodesByKind, edgesByKind, filesByLanguage, dbSizeBytes, lastUpdated }` + `coverage` summary + `pendingSync?: string[]` + `backend`/`journalMode` (storage, not language) + **`backends?: BackendStatus[]`** — per registered language backend: `id`, `languages`, `extensions`, `versions`, and loaded vs unavailable grammars. Canonical shape: [contracts §6](contracts.md#6-tool-io-the-10--see-docstoolsmd-for-behavior).
+- **Result.** `StatusOutput` = `{ nodeCount, edgeCount, fileCount, nodesByKind, edgesByKind, filesByLanguage, dbSizeBytes, lastUpdated }` + `coverage` summary + `pendingSync?: string[]` + `backend`/`journalMode` (storage, not language) + **`backends?: BackendStatus[]`** — per registered language backend: `id`, `languages`, `extensions`, `versions`, `enricher` (`complement` or `none`), `capabilities.edgeKinds`, and loaded vs unavailable grammars. The human-readable `status` output summarizes only `id[languages]`; `--json` carries the full record. Canonical shape: [contracts §6](contracts.md#6-tool-io-the-10--see-docstoolsmd-for-behavior).
 - **Note.** `backends` is the honest answer to "why is my `.php` file missing?" — either no backend claims the extension, or its grammar failed to load and is listed as unavailable.
 - **Progressive.** ✅ the introspection tool for coverage itself.
 - **Core method.** `getStats()` + coverage query.
@@ -188,7 +188,7 @@ These only get added if they clear the same two bars (utility + offline viabilit
 Anything requiring generated prose, embeddings, or network stays out while Astrograph is local-first.
 
 ## 7. References
-- Tool shapes/descriptions to mirror: [`codegraph/src/mcp/tools.ts`](../../codegraph/src/mcp/tools.ts), [`server-instructions.ts`](../../codegraph/src/mcp/server-instructions.ts).
-- Historical comparison: sibling `codegraph/src/index.ts`, `src/context/`, `src/graph/`, and `src/search/` paths are not vendored as Astrograph documentation dependencies.
+- Tool shapes/descriptions to mirror: `codegraph/src/mcp/tools.ts` and `codegraph/src/mcp/server-instructions.ts` in the sibling project.
+- Historical comparison: sibling `codegraph/src/index.ts`, `src/context/`, `src/graph/`, and `src/search/` paths are not vendored as Astrograph documentation dependencies, so none of them are linked here.
 - Progressive behavior + coverage envelope: [docs/progressive-indexing.md](progressive-indexing.md).
-- Shipped CLI/MCP framing: [ROADMAP stages 1–3](../ROADMAP.md#46-stages-13-shipped-not-v10-complete).
+- Shipped CLI/MCP framing: [ROADMAP stages 1–3](../ROADMAP.md#46-stages-13-shipped-not-preview-complete).

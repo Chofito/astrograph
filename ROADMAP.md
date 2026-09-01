@@ -2,9 +2,26 @@
 
 > **Local-first code graph** — tree-sitter for structural extraction + language-specific enrichers (JS/TS: TypeScript Compiler; PHP: name resolution including calls) — exposed through CLI, MCP, and agent skills.
 >
-> 🌐 Languages: **English** (this file) · [Español](ROADMAP.es.md) (STALE — do not trust for v1.0 decisions)
+> 🌐 Languages: **English** (this file) · [Español](ROADMAP.es.md) (STALE — do not trust for release decisions)
 
-This document is the project's **source of truth**. Stages 1–3 (core, MCP, promo site) are **functionally built**. **v1.0 is the stabilization cut** in §10 — not a new product surface.
+This document is the project's **source of truth**. Stages 1–3 (core, MCP, promo site) are **functionally built**. **`v0.1.0` is a public preview** — the stabilization cut in §10, not a new product surface.
+
+## 0. Release identity
+
+There is one interpretation of the version, and it is `v0.1.0` **public preview**. `v1.0.0` is reserved for the first stable public contract and is not what §10 ships.
+
+| | `v0.1.0` preview |
+|---|---|
+| Scope | JS/TS and PHP, **single-app** repositories |
+| Public preview surfaces | CLI commands and JSON envelope, MCP tools, `.astrograph/config.json`, the graph vocabulary users see |
+| Not a public SDK | the `@astrograph/*` TypeScript packages, the SQLite schema, and backend/enricher internals |
+| Locality | 100% local. No network, no API keys, no LLM calls |
+| Index compatibility | the index format may change in any release; an incompatible index is rebuilt or refused, never read as current |
+| Out of the 0.1 and 0.2 roadmap | LLM calls, PDF or Markdown ingestion, AstroDocs |
+
+Preview means CLI, MCP, and config may change deliberately between 0.x releases with a changelog entry. It does **not** waive correctness, honesty, local-only, or source-safety requirements. The full surface inventory and compatibility rules live in [contracts §12](docs/contracts.md#12-release-identity-and-compatibility); what changed in each release is in [CHANGELOG.md](CHANGELOG.md).
+
+`v1.0.0` requires: real team usage evidence from the preview, every release-blocking deviation closed, implemented and documented upgrade/rebuild behavior, and at least one release candidate installed from the exact published artifacts.
 
 ---
 
@@ -73,7 +90,7 @@ Coverage column on `files`: `pending → parsed → resolved`. See [docs/progres
 
 ---
 
-## 4–6. Stages 1–3 (shipped, not v1.0-complete)
+## 4–6. Stages 1–3 (shipped, not preview-complete)
 
 | Stage | Surface | Status |
 |---|---|---|
@@ -105,11 +122,11 @@ Per-project index: **`.astrograph/`** → `graph.db`, `config.json`, lock, daemo
 
 ---
 
-## 8. Non-goals (v1.0)
+## 8. Non-goals (`v0.1.0` preview)
 
 Monorepos / multi-`tsconfig` / project references · frameworks-aware routes · embeddings · Windows installer · Spanish doc resync · mature progressive indexing (demand-boost, workers, LRU) · 3D constellation · `explain-context` · `astrograph_coverage` tool (listed in tools.md historically; **not implemented**).
 
-Eval vs grep/ripgrep is the **post-v1.0 quality gate**, not a ship blocker.
+Eval vs grep/ripgrep is the **post-preview quality gate**, not a ship blocker.
 
 ---
 
@@ -119,7 +136,7 @@ tree-sitter **base** (breadth) + **enrichers** (depth). JS/TS gets a real type c
 
 ---
 
-## 10. v1.0 stabilization (current source of truth)
+## 10. `v0.1.0` preview cut (current source of truth)
 
 Work lives on `refactor/tree-sitter-enrichers` until this cut lands on `main`. PHP retains at most one live Tree (the old Magento-scale all-trees cache is gone). Tag **`v0.1.0` after merge**.
 
@@ -157,7 +174,7 @@ Documented target ([docs/testing.md](docs/testing.md) §6): **peak RSS &lt; 1.5 
 
 **PHP:** parse → extract nodes / contribute FQN → emit that file's edges → `tree.delete()`. Peak = O(1 tree) + O(FQN map). Up to **two parses per file** is acceptable. No global tree map. LRU is Stage 5.
 
-**JS/TS:** no whole-project node warm. `createProgram` stays in v1.0; `LanguageService` is Stage 4 unless RSS still blows the budget after the warm removal.
+**JS/TS:** no whole-project node warm. `createProgram` stays in 0.1; `LanguageService` is Stage 4 unless RSS still blows the budget after the warm removal.
 
 **Measure:** `bun run bench -- <repo>` records RSS around `indexAll` into `docs/benchmarks/`. Gate: fail if peak &gt; 2× target.
 
@@ -178,11 +195,11 @@ Align **after** capabilities match code:
 4. JS/TS CommonJS / `export *` + fixture backlog trim.
 5. Docs / site / SKILL.
 6. Merge to `main` when RAM is in budget → tag `v0.1.0`.
-7. After v1.0: eval vs grep, `LanguageService`, stricter token budgets, Stage 4.
+7. After the preview: eval vs grep, `LanguageService`, stricter token budgets, Stage 4.
 
 ---
 
-## 11. After v1.0 (Stage 4 / v1.5, Stage 5 / v2)
+## 11. After the `v0.1.0` preview (Stage 4, Stage 5)
 
 **Stage 4:** monorepos / multi-tsconfig · `LanguageService` · diff-aware graph · richer index debt · context recipes.
 
@@ -192,7 +209,7 @@ Align **after** capabilities match code:
 
 ---
 
-## 12. Premortem (v1.0)
+## 12. Premortem (`v0.1.0` preview)
 
 - **#1 — Agents trust a graph that deletes Pass A nodes** → subset contract + no-delete reconcile.
 - **#2 — Magento-scale RAM** → stream PHP trees; bench RSS; do not merge until &lt; 1.5 GB on ~2k files (or &lt; 2× that gate).

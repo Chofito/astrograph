@@ -39,8 +39,72 @@ jobs:
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
 
-  build:
+  # Every gate runs against the exact tagged commit. A green run on `main` is
+  # not evidence about a tag: the tag may point somewhere else, and CI does not
+  # trigger on tag pushes. Nothing is built or published until this job passes.
+  gates:
     needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint and format check
+        run: bun run check
+
+      - name: Test
+        run: bun test
+
+      # Warning mode, matching CI. See docs/architecture/documentation-checklist.md
+      # for the cutover that makes this a gate.
+      - name: Documentation guard
+        continue-on-error: true
+        run: bun run docs:check --warn-only
+
+      # The installer is piped into `sh`, so it must parse under dash.
+      - name: Shellcheck installer
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq dash shellcheck
+          dash -n apps/site/public/install.sh
+          shellcheck --shell=sh apps/site/public/install.sh
+
+      # One SemVer value must identify the tag, the manifests, and the changelog.
+      # A release whose changelog does not mention it is an unrecorded release.
+      - name: Verify version identity
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+          RELEASE_TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if ! grep -Eq "^## \[?${RELEASE_VERSION}\]?" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## ${RELEASE_VERSION}' section for ${RELEASE_TAG}. Move the [Unreleased] entries under it before tagging." >&2
+            exit 1
+          fi
+          echo "CHANGELOG.md documents ${RELEASE_VERSION}."
+
+          # The in-tree manifests stay at a placeholder and are stamped from the
+          # tag at build time; assert they are at least valid semver so a typo
+          # cannot ride along into the released artifact.
+          root_version="$(bun -e 'console.log((await Bun.file("package.json").json()).version)')"
+          printf '%s' "${root_version}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+' \
+            || { echo "::error::Root package.json version '${root_version}' is not semver." >&2; exit 1; }
+          echo "In-tree manifest version: ${root_version} (stamped to ${RELEASE_VERSION} at build time)."
+
+  build:
+    needs: [version, gates]
     strategy:
       fail-fast: false
       matrix:
@@ -114,7 +178,7 @@ jobs:
           path: dist/${{ matrix.asset }}
 
   release:
-    needs: [version, build]
+    needs: [version, gates, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write

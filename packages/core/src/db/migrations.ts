@@ -1,4 +1,4 @@
-import type { StorageAdapter } from "../types";
+import { IncompatibleIndexError, type StorageAdapter } from "../types";
 import schemaSql from "./schema.sql" with { type: "text" };
 
 export const LATEST_SCHEMA_VERSION = 1;
@@ -37,6 +37,15 @@ export function runMigrations(
 ): void {
 	const now = options.now ?? Date.now;
 	const applied = new Set(getAppliedMigrationVersions(db));
+
+	// Forward incompatibility: a newer binary wrote this database. Migrations
+	// only move forward, so there is nothing to apply — without this check the
+	// index would silently open and be read as current. See contracts §12.4.
+	const found = Math.max(0, ...applied);
+	if (found > LATEST_SCHEMA_VERSION) {
+		throw new IncompatibleIndexError(found, LATEST_SCHEMA_VERSION);
+	}
+
 	const migrate = db.transaction(() => {
 		for (const migration of MIGRATIONS) {
 			if (applied.has(migration.version)) continue;

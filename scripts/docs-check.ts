@@ -61,6 +61,9 @@ function report(finding: Finding): void {
 const REQUIRED_DOCS = [
 	"README.md",
 	"ROADMAP.md",
+	"CHANGELOG.md",
+	"SECURITY.md",
+	"CONTRIBUTING.md",
 	"docs/contracts.md",
 	"docs/tools.md",
 	"docs/cli.md",

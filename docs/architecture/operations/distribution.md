@@ -25,12 +25,16 @@ The root package exposes a host build (`bun run build`) and an all-target build 
 
 ### Release workflow
 
-The release workflow starts on a `v*` tag or a manually supplied existing tag. It validates a `v`-prefixed semver form, checks out that exact tag in a native four-platform matrix, installs with the frozen lockfile, stamps package versions from the tag in the CI workspace, compiles one binary per runner, and verifies its exact `astrograph --version` output.
+The release workflow starts on a `v*` tag or a manually supplied existing tag. It validates a `v`-prefixed semver form, runs every quality gate against that tag, then checks it out in a native four-platform matrix, installs with the frozen lockfile, stamps package versions from the tag in the CI workspace, compiles one binary per runner, and verifies its exact `astrograph --version` output.
 
 ```mermaid
 flowchart LR
     A[v-prefixed tag] --> B[validate and resolve tag]
-    B --> C{four native targets}
+    B --> G0[gates on the exact tag]
+    G0 --> G1[typecheck, biome, tests]
+    G1 --> G2[docs guard, installer shellcheck]
+    G2 --> G3[version identity vs CHANGELOG]
+    G3 --> C{four native targets}
     C --> D[checkout exact tag]
     D --> E[bun install frozen lockfile]
     E --> F[stamp package versions in CI workspace]
@@ -41,9 +45,11 @@ flowchart LR
     J --> K[publish GitHub Release]
 ```
 
-Artifacts lose their executable bit during upload, so the release job restores mode `755` before generating checksums and publishing. The workflow does not independently run typecheck, Biome, or tests at tag time; it relies on the tag having passed normal CI beforehand.
+Before anything is built, a `gates` job checks out the same tag and runs typecheck, Biome, the test suite, the documentation guard, the installer shell checks, and a version-identity check that refuses to proceed unless `CHANGELOG.md` contains a section for the tagged version. `build` and `release` both depend on it, so no artifact is produced or published from a commit that has not passed its own gates. This replaces the earlier assumption that a green `main` run vouched for a tag — CI does not trigger on tag pushes, and a tag can point at a different commit than the branch that was verified.
 
-Source evidence: `.github/workflows/release.yml`, `package.json`.
+Artifacts lose their executable bit during upload, so the release job restores mode `755` before generating checksums and publishing.
+
+Source evidence: `.github/workflows/release.yml`, `.github/workflows/ci.yml`, `CHANGELOG.md`, `package.json`.
 
 ### Installer
 
@@ -76,6 +82,33 @@ Source evidence: `apps/site/public/install.sh`, `docs/install.md`.
 The static documentation/landing site is built from `apps/site` and deployed to GitHub Pages. Its workflow runs on `main` when site/workflow/root-lockfile inputs change, runs `bun install` without `--frozen-lockfile`, builds the site, ensures `out/.nojekyll`, uploads the static output, and deploys it through GitHub Pages.
 
 The site delivers `public/install.sh`, so the site deployment and the installer source share one tracked file. Publishing the site does not create a binary release; releasing a binary does not deploy the site.
+
+### Index compatibility, upgrade, and rollback
+
+`.astrograph/graph.db` is **disposable local state**, never a public contract ([contracts §12.4](../../contracts.md#124-compatibility-rules)). Two independent identities decide whether an existing index is still usable:
+
+| Identity | Where it lives | Effect when it changes |
+|---|---|---|
+| SQLite schema version | `schema_versions` table, `LATEST_SCHEMA_VERSION` in `db/migrations.ts` | forward migrations apply; a **newer** version than the binary knows is refused |
+| Extraction identity + config hash | `project_metadata` `version:*` and `configHash`, from `LanguageRegistry.versionKeys()` | the next `astrograph sync` treats every file as modified and re-derives the graph |
+
+**Upgrade.** Install the new binary, then run `astrograph sync` (or `astrograph index --force` to be explicit). A changed grammar, enricher, or `extraction:contract` version changes the config hash, so the affected files are re-extracted. The project source is never modified.
+
+**Downgrade to a binary that cannot read the index.** `runMigrations` throws `IncompatibleIndexError` (`code: "INCOMPATIBLE_INDEX"`) when the database reports a schema version above `LATEST_SCHEMA_VERSION`. Migrations only move forward, so there is nothing to apply and a best-effort open would read rows whose meaning has changed while the coverage banner still looked clean. The error names both versions and tells the user to upgrade again or delete `.astrograph/graph.db` and re-index.
+
+**Recovery is always a rebuild.** For the preview there is no semantic migration path, deliberately: `rm -rf .astrograph/graph.db && astrograph index`. Because the index is derived entirely from source that Astrograph never writes to, a rebuild cannot lose user data — only time.
+
+```mermaid
+flowchart TD
+    A[open .astrograph/graph.db] --> B{schema version > binary?}
+    B -->|yes| C[IncompatibleIndexError: upgrade or rebuild]
+    B -->|no| D[apply forward migrations]
+    D --> E{configHash or version keys changed?}
+    E -->|yes| F[sync re-extracts affected files]
+    E -->|no| G[index reused as current]
+```
+
+Not yet implemented, and owned by `NEW-007`: rebuilding into a temporary database and swapping only after the replacement validates, so a failed rebuild cannot leave a project without a working index. Today the rebuild is destructive-then-rebuild, which is safe for correctness but costs a full re-index if it is interrupted.
 
 ### Delivery invariants
 
@@ -110,7 +143,6 @@ flowchart LR
 
 Recommended target controls are:
 
-- run or require successful typecheck, static check, tests, and compile evidence for the exact tag before publishing;
 - smoke-test the downloaded temporary binary before replacing the final path, then perform an atomic rename or preserve a rollback copy;
 - pin or otherwise govern third-party GitHub Action revisions as part of supply-chain policy;
 - make the site installation page and `docs/install.md` part of a link/content consistency check.
@@ -119,13 +151,15 @@ These controls are recommendations, not current behavior. They must not be repre
 
 ## Known deviations
 
-- **DEV-017 — static quality:** a distribution workflow declares a Biome gate through normal CI, but baseline static checks are not green; tag publishing does not re-run that gate.
+- **DEV-017 — static quality:** baseline static checks are not green. Tag publishing now re-runs `bun run check` on the exact tag, so this is a blocker for the first release rather than an unenforced claim.
 - **DEV-013 — resource lifecycle:** distribution invokes a compiled process which must still follow the core close/cleanup contract; backend disposal remains incomplete in the current runtime.
 - **DEV-015 — eval validity:** release/installer confidence is independent from the current eval harness. Eval output is not release certification.
 
 ## Related documents
 
 - [Installation guide](../../install.md)
+- [Release identity and compatibility](../../contracts.md#12-release-identity-and-compatibility)
+- [Changelog](../../../CHANGELOG.md)
 - [Site design](../../site.md) — supporting design history
 - [Testing and evaluation](testing-and-evaluation.md)
 - [Lifecycle and resources](lifecycle-and-resources.md)

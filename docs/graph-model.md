@@ -327,5 +327,5 @@ Deliberately **omitted**: source-only / target-only edge indexes (the composites
 ## 13. References
 - Tool contract this serves: [docs/tools.md](tools.md).
 - Progressive coverage model: [docs/progressive-indexing.md](progressive-indexing.md).
-- Roadmap data contract and future scope: [ROADMAP §3](../ROADMAP.md#3-graph-model-short), [§11](../ROADMAP.md#11-after-v10-stage-4--v15-stage-5--v2).
-- codegraph for contrast: [`src/db/schema.sql`](../../codegraph/src/db/schema.sql), [`src/db/queries.ts`](../../codegraph/src/db/queries.ts), [`src/db/migrations.ts`](../../codegraph/src/db/migrations.ts), [`src/types.ts`](../../codegraph/src/types.ts).
+- Roadmap data contract and future scope: [ROADMAP §3](../ROADMAP.md#3-graph-model-short), [§11](../ROADMAP.md#11-after-the-v010-preview-stage-4-stage-5).
+- codegraph for contrast: `src/db/schema.sql`, `src/db/queries.ts`, `src/db/migrations.ts`, `src/types.ts` in the sibling `codegraph` project. Those paths are not vendored into this repository, so they are named rather than linked.

@@ -542,3 +542,28 @@ export class StorageError extends AstrographError {
 		super(message, "STORAGE_ERROR");
 	}
 }
+
+/**
+ * The index on disk was written by a build this binary cannot understand.
+ *
+ * The index format is disposable (contracts §12.4), so the answer is always a
+ * rebuild — never a best-effort open. Reading rows whose meaning has changed
+ * would make the graph lie with a clean coverage banner, which is the one
+ * failure mode Astrograph must not have.
+ */
+export class IncompatibleIndexError extends AstrographError {
+	/** Schema version found in the database. */
+	readonly found: number;
+	/** Highest schema version this binary knows how to read. */
+	readonly supported: number;
+
+	constructor(found: number, supported: number) {
+		super(
+			`This .astrograph index was written by a newer Astrograph (schema v${found}); this binary supports up to v${supported}. ` +
+				"Upgrade Astrograph, or delete .astrograph/graph.db and re-run `astrograph index` to rebuild. Your project source is never modified by either.",
+			"INCOMPATIBLE_INDEX",
+		);
+		this.found = found;
+		this.supported = supported;
+	}
+}

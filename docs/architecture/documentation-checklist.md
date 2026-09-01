@@ -61,13 +61,16 @@ The CI job runs `bun run docs:check --warn-only` and cannot fail the build today
 
 **Cutover condition:** when `bun run docs:check` reports **0 errors** on `main`, remove `--warn-only` and `continue-on-error` from the `Documentation guard` step in `.github/workflows/ci.yml`. That is the whole change; the command does not move. Record the cutover date here when it happens.
 
-Known debt blocking the cutover at the time this guard was added:
+Known debt blocking the cutover:
 
 | Finding | Owner |
 |---|---|
-| `docs/graph-model.md` and `docs/tools.md` cite pre-rename `../../codegraph/src/**` paths | `NEW-003` (version and public contract reconciliation) |
 | `docs/architecture/configuration-and-invalidation.md` `Status:` is prose, not a status word | `DEV-006` |
-| `ROADMAP.es.md`, `docs/tools.es.md` mirror drift (warnings) | `NEW-003` |
+| `ROADMAP.es.md`, `docs/tools.es.md` mirror drift (warnings only, never a gate) | `NEW-003` |
+
+Cleared by `NEW-003`: the cross-project `codegraph/src/**` references in `docs/graph-model.md` and `docs/tools.md` are now named rather than linked, since that sibling project is not vendored here.
+
+**One error remains.** The cutover is a single line in `DEV-006`'s file away.
 
 ## Related documents
 

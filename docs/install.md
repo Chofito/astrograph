@@ -96,15 +96,66 @@ sha256sum --ignore-missing -c SHA256SUMS
 
 ---
 
-## Upgrade
+## Upgrade, pinning, and rollback
 
-Re-run the installer script to upgrade to the latest version:
+Astrograph is a **public preview** (`v0.1.0`). CLI, MCP, and config surfaces may change deliberately between `0.x` releases; every change is listed in [CHANGELOG.md](../CHANGELOG.md). Read the changelog before upgrading a machine other people depend on.
+
+### Upgrade
 
 ```bash
 curl -fsSL https://www.chofito.dev/astrograph/install.sh | sh
+astrograph --version          # confirm the new version
+cd your/project && astrograph sync
 ```
 
-It replaces the existing binary in `~/.local/bin`.
+The installer replaces the existing binary in `~/.local/bin`. Run `astrograph sync` in each indexed project afterwards: a new grammar, enricher, or extraction-contract version changes the index identity, and `sync` re-extracts the affected files. `astrograph index --force` does the same thing explicitly. **Your project source is never modified.**
+
+If the changelog for the release carries an *Index compatibility* note, do a full rebuild instead:
+
+```bash
+rm -f .astrograph/graph.db && astrograph index
+```
+
+### Pin a version
+
+Pin whenever you need two machines to behave identically, or you want a known-good fallback:
+
+```bash
+ASTROGRAPH_VERSION=v0.1.0 curl -fsSL https://www.chofito.dev/astrograph/install.sh | sh
+```
+
+Keep a copy of the binary you trust before upgrading, so rollback needs no network:
+
+```bash
+cp ~/.local/bin/astrograph ~/.local/bin/astrograph-known-good
+```
+
+### Roll back
+
+```bash
+ASTROGRAPH_VERSION=v0.1.0 curl -fsSL https://www.chofito.dev/astrograph/install.sh | sh
+# or, from the copy you kept:
+install -m 755 ~/.local/bin/astrograph-known-good ~/.local/bin/astrograph
+```
+
+### Incompatible index after a downgrade
+
+The index is disposable local state, not a contract. If you roll back to a binary that cannot read an index a newer one wrote, Astrograph **refuses to open it** rather than guessing:
+
+```text
+This .astrograph index was written by a newer Astrograph (schema v2); this binary
+supports up to v1. Upgrade Astrograph, or delete .astrograph/graph.db and re-run
+`astrograph index` to rebuild.
+```
+
+That is deliberate: reading rows whose meaning changed would produce confident, wrong answers. Two ways out — reinstall the newer version, or rebuild:
+
+```bash
+rm -f .astrograph/graph.db
+astrograph index
+```
+
+Rebuilding costs time, never data: the graph is derived entirely from source files that Astrograph only ever reads. Only `.astrograph/graph.db` is removed; `.astrograph/config.json` is yours and is left alone.
 
 ---
 
@@ -279,12 +330,14 @@ The installer script downloads a ~15–30 MB binary depending on platform. If it
 - **Linux** — glibc 2.28+ (x86-64 and ARM64)
 
 **Not yet supported:**
-- Windows — defer to Stage 4 / v1.5
+- Windows — out of scope for the `0.1` and `0.2` roadmap
 
 ---
 
 ## See also
 
+- [CHANGELOG.md](../CHANGELOG.md) — what changed, and when a rebuild is required
+- [contracts §12](contracts.md#12-release-identity-and-compatibility) — what is a public preview surface and what is internal
 - [docs/cli.md](cli.md) — full CLI command reference
 - [ROADMAP.md](../ROADMAP.md) — project roadmap and staged plan
 - [README.md](../README.md) — overview and quick start

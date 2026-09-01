@@ -460,3 +460,44 @@ Parse failures of a single file are **non-fatal**: record an `ExtractionError`, 
 
 ## 11. References
 - Data model: [docs/graph-model.md](graph-model.md) · Tools: [docs/tools.md](tools.md) · Extraction: [docs/extraction/overview.md](extraction/overview.md) (Pass A: [tree-sitter.md](extraction/tree-sitter.md), Pass B: [typescript.md](extraction/typescript.md)) · Tests/golden: [docs/testing.md](testing.md).
+
+## 12. Release identity and compatibility
+
+The current cut is **`v0.1.0` public preview**, not `v1.0.0`. One SemVer value identifies the tag, the release, the binary's `--version`, the stamped package manifests, the `CHANGELOG.md` entry, and this documentation snapshot. `ROADMAP.md` §0 states the same thing; if they ever disagree, `ROADMAP.md` wins on scope and this section wins on surfaces.
+
+### 12.1 Public preview surfaces
+
+Changes here are deliberate, documented, and get a `CHANGELOG.md` entry:
+
+- CLI command names, required positional arguments, documented flags, exit-code categories, and the JSON `ToolResult` envelope (§6).
+- MCP tool names, input schemas, structured result semantics, and project-root behavior.
+- `.astrograph/config.json` fields, defaults, validation diagnostics, and invalidation meaning (§9).
+- The graph vocabulary users see: `NodeKind`, `EdgeKind`, `ResolutionState`, `Confidence`, `Provenance`, and the meaning of coverage and partiality (§1–§3).
+- The supported JS/TS and PHP extension and capability matrix, within documented static-analysis limits.
+- Install, uninstall, and upgrade behavior on the supported macOS/Linux architecture matrix.
+- The rule that project source stays local and is never modified by indexing.
+
+### 12.2 Experimental — may change without a major bump
+
+- Ranking weights and result ordering beyond the deterministic tie-breaks in §8.
+- Performance work that preserves output semantics.
+- Tool options explicitly labelled experimental.
+
+### 12.3 Internal — not a public contract
+
+- The SQLite schema, its indexes, the FTS implementation, internal row IDs, and the `.astrograph` lock and daemon metadata formats.
+- The `@astrograph/*` TypeScript packages. They are `private` workspace source, not a published SDK. Importing them is unsupported.
+- `LanguageBackend`, `Parser`, `Enricher`, and reconciliation internals (§5). They are documented so the system is navigable, not so third parties can ship a backend against a frozen shape; that would need its own decision.
+
+### 12.4 Compatibility rules
+
+| Release | May do |
+|---|---|
+| Patch | fix incorrect edges or ranking while preserving the schema and every public preview surface |
+| Minor | add optional fields, tools, node/edge kinds, or language capability. Consumers must ignore additive fields they do not know |
+| Major | remove or rename public fields, commands, tools, or config keys, or change their meaning |
+
+Two rules apply at any level:
+
+- **The index format is disposable.** The SQLite schema and the extraction identity (`LanguageRegistry.versionKeys()`, including `extraction:contract`) may change in any release. The binary must detect incompatibility and rebuild or refuse — it must never read incompatible rows as current. See [distribution §index compatibility](architecture/operations/distribution.md#index-compatibility-upgrade-and-rollback).
+- **Removing a wrong edge is a fix, not a break.** Dropping a previously `resolved` edge because it was incorrect is a correctness fix. It gets a changelog entry when material, not a major bump.

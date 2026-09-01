@@ -8,6 +8,21 @@ The goal is simple: help humans and coding agents understand a codebase without 
 
 > Local first. No network. No LLM calls. No API keys.
 
+## Status: public preview (`v0.1.0`)
+
+This is a **preview**, not a stable 1.0. It is meant to be used on real repositories and to be honest about what it does not know.
+
+| | |
+|---|---|
+| **Scope** | JS/TS and PHP, **single-app** repositories. Monorepos and multiple `tsconfig.json` files are not supported yet |
+| **Public preview surfaces** | CLI, MCP tools, `.astrograph/config.json`, and the graph vocabulary. They may change deliberately between `0.x` releases — each change is in [CHANGELOG.md](CHANGELOG.md) |
+| **Not a public SDK** | the `@astrograph/*` TypeScript packages, the SQLite schema, and backend internals ([contracts §12](docs/contracts.md#12-release-identity-and-compatibility)) |
+| **Platforms** | macOS and Linux, x64 and arm64. No Windows binary |
+| **Your index** | `.astrograph/graph.db` is disposable. Upgrades may require a rebuild; an index a newer binary wrote is refused, never misread. [Upgrade and rollback](docs/install.md#upgrade-pinning-and-rollback) |
+| **Your source** | read-only. Indexing never modifies the repository it indexes |
+
+Preview is not a licence to be wrong: unresolved and ambiguous edges stay visible, and every answer carries coverage so you can tell a complete result from a partial one. `v1.0.0` is reserved for the first stable public contract — see `ROADMAP.md` §0.
+
 ## What It Does
 
 Astrograph turns a code repo into a queryable graph:
