@@ -6,6 +6,7 @@ export * from "./diagnostics";
 export * from "./eligibility";
 export * from "./extraction";
 export * from "./freshness";
+export * from "./graph/path-evidence";
 export * from "./graph/symbol-lookup";
 export * from "./graph/traversal";
 export * from "./ids";

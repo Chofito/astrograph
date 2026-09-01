@@ -41,22 +41,28 @@ sequenceDiagram
     Caller->>I: sync() / syncFiles(events)
     I->>I: classify added, modified, removed
     I->>DB: capture prior identities, find recorded dependents for changed target IDs
-    loop removed files
-        I->>DB: capture incoming edges
+    I->>B: invalidate(added, modified, removed, priorIdentities, ownedFiles)
+    B-->>I: resolveFiles (own language only)
+    loop retired files
+        I->>DB: capture incoming edges and target names
         I->>DB: delete file/nodes/outgoing edges
         I->>DB: rewrite captured incoming edges unresolved
     end
-    I->>B: loadProject(current project files)
     loop changed files
         I->>DB: persist Pass A
     end
-    loop changed + direct referrers
+    I->>B: loadBackendProjects(eligible files per backend)
+    loop changed + affected set
         I->>DB: reconcile nodes; replace edges
     end
-    I->>DB: heal unresolved edges by targetName
+    I->>DB: persist configHash, versions, passState
 ```
 
-Full `sync()` treats a config-hash change as modification of every scanned known file. `syncFiles()` does not persist project metadata and calculates its current project set from DB plus additions.
+Both paths treat a config-hash change as a project-wide fact: every eligible file is reconsidered, and an event batch stops being path-scoped because it cannot speak for files it never heard about. `syncFiles()` persists project metadata exactly like `sync()`.
+
+**Losing eligibility is a retirement, not an edit.** A file that crosses `maxFileSizeBytes`, leaves the scan scope, or belongs to a backend the user disabled arrives at the watcher as an ordinary `change`. It goes through `retireFile()` like any removal — incoming relations captured and demoted to `unresolved` before deletion — and only then is its evidence record written. Writing that record first would let foreign keys cascade the incoming relations away instead of demoting them.
+
+**A demoted edge keeps a textual identity.** `targetName` is preserved when the extractor recorded one, and otherwise filled from the retired node's `qualifiedName`, captured before deletion. It is never filled from `edge.target`, which is a content hash and not a name.
 
 ## Target behavior (TO-BE)
 
@@ -104,7 +110,7 @@ A failed delta must leave affected files visibly non-authoritative and must not 
 
 ## Source evidence
 
-- `packages/core/src/indexer.ts`: `sync`, `syncFiles`, referrer lookup, removal downgrade and healing.
+- `packages/core/src/indexer.ts`: `sync`, `syncFiles`, `runPass`, `collectAffectedFiles`, `captureIdentities`, `retireFile`, `markIncomingEdgesUnresolved`.
 - `packages/core/src/freshness.ts`: event filtering, debounce, queue and close.
 - `packages/core/src/adapters/bun/watcher.ts`: concrete watcher.
 

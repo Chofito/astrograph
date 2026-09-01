@@ -42,7 +42,7 @@ Add tests next to what they cover, using `bun:test`. New backend or contract beh
 
 A behavior change is incomplete until its canonical document is updated in the same review. That is enforced in two halves:
 
-- The mechanical half is `bun run docs:check` — links and anchors, architecture metadata, fence balance, duplicate deviation IDs, required-document inventory. It runs in CI in warning mode while pre-existing debt is cleared.
+- The mechanical half is `bun run docs:check` — links and anchors, architecture metadata, fence balance, duplicate deviation IDs, required-document inventory. It is a **required gate** in CI and in the release workflow: a pull request that breaks a link or drops architecture metadata fails the build.
 - The judgement half is the [documentation checklist](docs/architecture/documentation-checklist.md): which document owns your change, and whether your claims still cite real evidence.
 
 An AS-IS statement cites a path or a symbol. A TO-BE statement cites `ROADMAP.md`, `docs/contracts.md`, an accepted ADR, or an approved spec. If you change a public preview surface ([contracts §12.1](docs/contracts.md#121-public-preview-surfaces)), add a `CHANGELOG.md` entry under `Unreleased`. If you change the SQLite schema or the extraction identity, add an *Index compatibility* note saying users must rebuild.

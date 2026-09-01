@@ -36,9 +36,11 @@ import type {
 } from "../types";
 import { AstrographError as CoreError } from "../types";
 import { CodeBlockSlicer } from "./code-blocks";
+import { collectPathEvidence } from "../graph/path-evidence";
 import {
 	collectEvidence,
 	hasUnprovenRelations,
+	mergeEdgeSets,
 	type RelationEvidence,
 } from "./evidence";
 import { type BuildMetaOptions, buildMeta } from "./meta";
@@ -417,11 +419,15 @@ export class GraphQueries {
 					};
 				}),
 			);
+			// Read once, then project. `refsForEdgeNodes` drops target-null edges
+			// because there is no node to name — which silently deleted the
+			// destination's unresolved callees from a `found: true` answer.
+			const destinationEdges = [
+				...this.queries.getEdgesBySource(to.best.id, "calls"),
+				...this.queries.getEdgesBySource(to.best.id, "instantiates"),
+			];
 			const destinationCallees = this.refsForEdgeNodes(
-				[
-					...this.queries.getEdgesBySource(to.best.id, "calls"),
-					...this.queries.getEdgesBySource(to.best.id, "instantiates"),
-				],
+				destinationEdges,
 				"target",
 			);
 
@@ -438,7 +444,10 @@ export class GraphQueries {
 						domain: "global_path",
 						requiredEdgeKinds: traceKinds,
 					},
-					evidence: collectEvidence(path),
+					// The path plus what the destination could not reach. Merged
+					// rather than concatenated: the destination is often also a hop.
+					evidence: collectEvidence(mergeEdgeSets(path, destinationEdges)),
+					evidenceIsMaterial: true,
 					notes: [
 						...this.ambiguityLookupNotes(from, "from"),
 						...this.ambiguityLookupNotes(to, "to"),
@@ -448,6 +457,11 @@ export class GraphQueries {
 			};
 		}
 
+		const blockers = this.blockerEvidence(
+			from.best.id,
+			traceKinds,
+			input.maxDepth,
+		);
 		const inlineNodes = this.traceFallbackNodes(from.best, to.best);
 		const endpoints = await Promise.all(
 			inlineNodes.map(async (node) => ({
@@ -462,16 +476,19 @@ export class GraphQueries {
 				domain: {
 					domain: "global_path",
 					requiredEdgeKinds: traceKinds,
-					// A bounded traversal that found nothing is not the same claim as
-					// an exhausted one, and a negative answer is where that matters.
-					truncated: true,
+					// Only claim truncation when the walk really stopped with
+					// candidates left. A search that ran out of graph is exhausted,
+					// and conflating the two makes every negative answer look equally
+					// uncertain.
+					truncated: blockers.truncated,
 				},
-				// "No path found" must explain what blocked it: an unresolved hop
-				// inside the traversed depth is the most likely reason.
-				evidence: this.blockerEvidence(from.best.id, traceKinds, input.maxDepth),
+				// "No path found" must explain what blocked it.
+				evidence: blockers.evidence,
 				evidenceIsMaterial: true,
 				notes: [
-					"No calls/references path found within maxDepth",
+					blockers.truncated
+						? "No calls/references path found within maxDepth; the search was cut short"
+						: "No calls/references path found; the reachable graph was fully searched",
 					...this.ambiguityLookupNotes(from, "from"),
 					...this.ambiguityLookupNotes(to, "to"),
 				],
@@ -713,18 +730,20 @@ export class GraphQueries {
 		startId: string,
 		kinds: EdgeKind[],
 		maxDepth: number | undefined,
-	): RelationEvidence | undefined {
-		const visits = traverseGraph(this.queries, {
+	): { evidence: RelationEvidence | undefined; truncated: boolean } {
+		const walk = collectPathEvidence(this.queries, {
 			startId,
-			direction: "outgoing",
 			edgeKinds: kinds,
 			maxDepth: maxDepth ?? 6,
-			limit: 250,
+			limit: TRACE_EVIDENCE_NODE_LIMIT,
 		});
-		const edges = visits.flatMap((visit) => visit.path);
-		const evidence = collectEvidence(edges);
-		// Only the blockers are relevant here; a resolved hop is not a blocker.
-		return hasUnprovenRelations(evidence) ? evidence : undefined;
+		const evidence = collectEvidence(walk.edges);
+		// A resolved hop is not a blocker; only report evidence that can explain
+		// the absence of a path.
+		return {
+			evidence: hasUnprovenRelations(evidence) ? evidence : undefined,
+			truncated: walk.truncated,
+		};
 	}
 
 	private meta(options: BuildMetaOptions = {}): ToolMeta {
@@ -732,6 +751,9 @@ export class GraphQueries {
 	}
 
 }
+
+/** Nodes whose relations a negative `trace` will read before giving up. */
+const TRACE_EVIDENCE_NODE_LIMIT = 250;
 
 const CONTEXT_EDGE_KINDS: EdgeKind[] = [
 	"contains",

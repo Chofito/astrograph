@@ -25,6 +25,10 @@ Astrograph is currently a **public preview**. `0.x` releases may change CLI, MCP
 
 ### Fixed
 
+- A file that crossed the eligibility boundary through the file watcher — growing past `maxFileSizeBytes`, leaving the scan scope, or belonging to a backend that was just disabled — had its rows deleted directly instead of retired, so relations pointing into it disappeared rather than becoming `unresolved`. Watch, scanner and full index now agree on what such a transition means. A configuration change is treated as a project-wide fact, so a watch batch stops being path-scoped when the identity moves.
+- A demoted relation could report an internal node id as its `targetName`. It now keeps whatever the extractor recorded, and otherwise the retired node's qualified name, captured before deletion.
+- A successful `trace` dropped the destination's unresolved callees from `meta.evidence`, and a failed `trace` gathered blockers through a traversal that discards target-null edges — so it could never see the hop that blocked the path. Both now collect evidence before filtering, and a failed trace distinguishes an exhausted search from one that was cut short.
+- `openProject` leaked its SQLite handle when initialization failed after the database was opened — most visibly when refusing an index written by a newer build. The handle is released exactly once, without masking the original error.
 - The CLI could not be imported at all. `commands/shared.ts` declared `class InvalidCliConfigJsonError extends CliError` at module scope inside the `cli.ts → commands/* → shared.ts → cli.ts` import cycle, and an `extends` clause evaluates eagerly, so every invocation died with "Cannot access 'CliError' before initialization". The result vocabulary now lives in a leaf module, `packages/cli/src/result.ts`.
 - `daemon.json` was cast to `DaemonMetadata` without validation, so a truncated or hand-edited file could surface later as `pid: undefined` in `status`. It is now validated before use.
 

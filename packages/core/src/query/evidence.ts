@@ -104,6 +104,35 @@ export function collectEvidence(
 	};
 }
 
+/**
+ * Combine edge sets without double-counting.
+ *
+ * `trace` merges the resolved path with the destination's outgoing relations,
+ * and the two overlap whenever the destination is also a hop. Counts must stay
+ * exact, so identity is the persisted row id when there is one and the
+ * structural tuple otherwise.
+ */
+export function mergeEdgeSets(...sets: readonly (readonly Edge[])[]): Edge[] {
+	const byKey = new Map<string, Edge>();
+	for (const set of sets) {
+		for (const edge of set) {
+			const key =
+				edge.id !== undefined
+					? `id:${edge.id}`
+					: [
+							edge.source,
+							edge.kind,
+							edge.target ?? "",
+							edge.targetName ?? "",
+							edge.line ?? "",
+							edge.col ?? "",
+						].join("\u001f");
+			if (!byKey.has(key)) byKey.set(key, edge);
+		}
+	}
+	return [...byKey.values()];
+}
+
 /** Human-facing lines mirroring the evidence, for `ToolMeta.notes`. */
 export function evidenceNotes(
 	evidence: RelationEvidence | undefined,

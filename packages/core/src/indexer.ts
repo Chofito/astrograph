@@ -172,6 +172,14 @@ export class Indexer {
 	private async recordIneligibleFile(entry: IndexEligibility): Promise<void> {
 		const evidence = eligibilityEvidence(entry);
 		if (evidence === null) return;
+
+		// Retire through the one policy before writing evidence. `writeParsedFile`
+		// deletes the file's rows itself, and doing that directly let foreign keys
+		// cascade a file's incoming relations away instead of demoting them to
+		// unresolved. Idempotent: when the caller already retired this path the
+		// node set is empty and nothing further happens.
+		this.retireFile(entry.path);
+
 		this.writeParsedFile(entry.path, {
 			contentHash: "",
 			size: entry.size ?? 0,
@@ -226,15 +234,23 @@ export class Indexer {
 			candidates.push(event.path);
 		}
 
+		// syncFiles refreshes metadata exactly like sync(); a watch-driven index
+		// that never updated its identity was a second kind of index.
+		const configChanged = this.configHashChanged(await this.computeConfigHash());
+
 		return this.runPass({
 			membership,
-			candidates,
+			// A configuration change is a project-wide fact, not a per-path one.
+			// The batch cannot speak for files it never heard about, so when the
+			// identity moved we reconsider the whole membership exactly as `sync()`
+			// would; otherwise path scoping stands.
+			candidates: configChanged
+				? membership.eligible.map((entry) => entry.path)
+				: candidates,
 			removedHint,
-			// syncFiles refreshes metadata exactly like sync(); a watch-driven
-			// index that never updated its identity was a second kind of index.
-			configChanged: this.configHashChanged(await this.computeConfigHash()),
+			configChanged,
 			force: false,
-			eventScoped: true,
+			eventScoped: !configChanged,
 		});
 	}
 
@@ -302,16 +318,36 @@ export class Indexer {
 			}
 		}
 
+		// A batch speaks about the paths it names, whether it called them a change
+		// or a delete. Losing eligibility is a membership transition, not a
+		// content edit: a file that just crossed `maxFileSizeBytes` arrives as a
+		// `change`, and scoping retirement to `removedHint` alone left it in the
+		// graph while its evidence record was rewritten underneath it.
+		const namedByBatch = new Set([
+			...options.candidates,
+			...(options.removedHint ?? []),
+		]);
 		const removed = new Set(
 			(options.removedHint ?? []).filter((path) => known.has(path)),
 		);
 		for (const file of known.values()) {
 			if (membership.isEligible(file.path)) continue;
-			// An event batch must not retire files it never mentioned.
-			if (options.eventScoped === true && !removed.has(file.path)) continue;
+			// An event batch still must not retire files it never mentioned.
+			if (options.eventScoped === true && !namedByBatch.has(file.path)) {
+				continue;
+			}
 			removed.add(file.path);
 		}
 		const removedFiles = [...removed].sort(compareStrings);
+
+		// Evidence records follow the same scoping: a watch batch must not rewrite
+		// the record of an unrelated oversized file on every save.
+		const recordable =
+			options.eventScoped === true
+				? membership.recordable.filter((entry) =>
+						namedByBatch.has(entry.path),
+					)
+				: membership.recordable;
 
 		// --- 3. Evidence first, then retirement.
 		const invalidation = this.invalidationInput({
@@ -324,7 +360,7 @@ export class Indexer {
 		const affected = this.collectAffectedFiles(invalidation, membership);
 
 		for (const relPath of removedFiles) this.retireFile(relPath);
-		for (const entry of membership.recordable) {
+		for (const entry of recordable) {
 			await this.recordIneligibleFile(entry);
 		}
 
@@ -718,10 +754,21 @@ export class Indexer {
 	 * a relationship that still exists in the source.
 	 */
 	private retireFile(relPath: string): void {
-		const priorNodeIds = this.queries.getNodesByFile(relPath).map((n) => n.id);
-		const incomingEdges = this.findIncomingEdges(priorNodeIds);
+		const priorNodes = this.queries.getNodesByFile(relPath);
+		const incomingEdges = this.findIncomingEdges(
+			priorNodes.map((node) => node.id),
+		);
+		// Textual identity captured *before* deletion. Afterwards the only thing
+		// left of the target is its id, which is a content hash; presenting that
+		// as `targetName` would make the evidence lie about being a name.
+		const namesById = new Map(
+			priorNodes.map((node) => [
+				node.id,
+				node.qualifiedName.length > 0 ? node.qualifiedName : node.name,
+			]),
+		);
 		this.queries.deleteByFile(relPath);
-		this.markIncomingEdgesUnresolved(incomingEdges);
+		this.markIncomingEdgesUnresolved(incomingEdges, namesById);
 	}
 
 	private findIncomingEdges(
@@ -732,18 +779,28 @@ export class Indexer {
 		);
 	}
 
+	/**
+	 * Demote edges that pointed at a retired file's nodes.
+	 *
+	 * `targetName` keeps whatever the extractor recorded; when it recorded
+	 * nothing, the retired node's own textual identity is used. It is never
+	 * filled from `edge.target`, which is an internal id.
+	 */
 	private markIncomingEdgesUnresolved(
 		incomingEdges: ReturnType<QueryBuilder["getAllEdges"]>,
+		namesById: ReadonlyMap<string, string>,
 	): void {
 		for (const edge of incomingEdges) {
 			if (this.queries.getNode(edge.source) === undefined) continue;
 			const { id: _id, ...edgeWithoutId } = edge;
+			const retiredName =
+				edge.target === null ? undefined : namesById.get(edge.target);
 			this.queries.upsertEdge({
 				...edgeWithoutId,
 				target: null,
 				resolutionState: "unresolved",
 				confidence: "low",
-				targetName: edge.targetName ?? edge.target ?? undefined,
+				targetName: edge.targetName ?? retiredName,
 			});
 		}
 	}

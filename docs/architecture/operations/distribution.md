@@ -151,7 +151,7 @@ These controls are recommendations, not current behavior. They must not be repre
 
 ## Known deviations
 
-- **DEV-017 — static quality:** baseline static checks are not green. Tag publishing now re-runs `bun run check` on the exact tag, so this is a blocker for the first release rather than an unenforced claim.
+- **DEV-017 — static quality:** the tracked sources are implemented against a green `bun run check`, and tag publishing re-runs it on the exact tag rather than trusting a branch run. The deviation stays open until the owner executes it and reports the result; nothing here asserts that it has been run.
 - **DEV-013 — resource lifecycle:** distribution invokes a compiled process which must still follow the core close/cleanup contract; backend disposal remains incomplete in the current runtime.
 - **DEV-015 — eval validity:** release/installer confidence is independent from the current eval harness. Eval output is not release certification.
 

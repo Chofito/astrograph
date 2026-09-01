@@ -5,6 +5,7 @@ import {
 	evidenceNotes,
 	hasUnprovenRelations,
 	MAX_EVIDENCE_SAMPLES,
+	mergeEdgeSets,
 } from "./evidence";
 
 /**
@@ -157,5 +158,37 @@ describe("evidenceNotes", () => {
 
 	test("is empty when there is nothing to say", () => {
 		expect(evidenceNotes(undefined)).toEqual([]);
+	});
+});
+
+describe("mergeEdgeSets", () => {
+	test("a persisted row appearing in two sets is kept once", () => {
+		// `trace` merges the resolved path with the destination's own relations,
+		// and the two overlap whenever the destination is also a hop. Counting it
+		// twice would inflate the evidence.
+		const shared: Edge = { ...edge({ targetName: "save" }), id: 7 };
+		const merged = mergeEdgeSets([shared], [shared]);
+		expect(merged.length).toBe(1);
+		expect(collectEvidence(merged)?.counts[0]?.count).toBe(1);
+	});
+
+	test("unsaved edges dedupe on their structural identity", () => {
+		const a = edge({ targetName: "save", line: 3 });
+		const b = edge({ targetName: "save", line: 3 });
+		expect(mergeEdgeSets([a], [b]).length).toBe(1);
+	});
+
+	test("edges that differ in location are both kept", () => {
+		expect(
+			mergeEdgeSets(
+				[edge({ targetName: "save", line: 3 })],
+				[edge({ targetName: "save", line: 9 })],
+			).length,
+		).toBe(2);
+	});
+
+	test("no sets, or empty sets, produce nothing", () => {
+		expect(mergeEdgeSets()).toEqual([]);
+		expect(mergeEdgeSets([], [])).toEqual([]);
 	});
 });

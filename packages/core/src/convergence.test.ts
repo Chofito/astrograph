@@ -4,15 +4,17 @@ import { runMigrations } from "./db/migrations";
 import { QueryBuilder } from "./db/queries";
 import { LanguageRegistry } from "./extraction/registry";
 import { Indexer } from "./indexer";
-import { normalizeIndex } from "./testing/normalize";
+import { type NormalizedIndex, normalizeIndex } from "./testing/normalize";
 import type { AstrographConfig } from "./config";
 import type {
+	Edge,
 	EdgeResolutionResult,
 	FileSystem,
 	GlobScanner,
 	Hasher,
 	LanguageBackend,
 	Node,
+	NodeKind,
 	PassAResult,
 	Range,
 	WatchEvent,
@@ -28,12 +30,23 @@ const NOW = 1_700_000_000_000;
 const RANGE: Range = { startLine: 1, endLine: 1, startColumn: 0, endColumn: 0 };
 const HASHER: Hasher = { hash: (content) => String(Bun.hash(content)) };
 
-/** One node per file, named after its content, so edits change the graph. */
-function node(filePath: string, name: string, language: string): Node {
+/**
+ * One node per token. A bare word declares a symbol; `->name` references one.
+ *
+ * Reference nodes exist so the stub enricher can resolve cross-file relations
+ * from *persisted Pass A state*, the way PHP does, rather than needing the
+ * source text `resolveEdges(filePath)` does not receive.
+ */
+function node(
+	filePath: string,
+	name: string,
+	language: string,
+	kind: NodeKind = "function",
+): Node {
 	return {
-		id: `${filePath}::${name}`,
+		id: `${filePath}::${kind}:${name}`,
 		project: "root",
-		kind: "function",
+		kind,
 		name,
 		qualifiedName: `${filePath}::${name}`,
 		filePath,
@@ -50,7 +63,37 @@ function node(filePath: string, name: string, language: string): Node {
 	};
 }
 
+const REFERENCE_PREFIX = "->";
+
+function declarations(source: string): string[] {
+	return source
+		.split(/\s+/)
+		.filter((w) => w.length > 0 && !w.startsWith(REFERENCE_PREFIX));
+}
+
+function references(source: string): string[] {
+	return source
+		.split(/\s+/)
+		.filter((w) => w.startsWith(REFERENCE_PREFIX))
+		.map((w) => w.slice(REFERENCE_PREFIX.length))
+		.filter((w) => w.length > 0);
+}
+
+/**
+ * A miniature language backend that produces real cross-file relations.
+ *
+ * A retirement bug is invisible to a backend that emits no edges, so this one
+ * resolves `->name` references against the project's persisted declarations —
+ * within its own language only, and from its own project state, exactly as a
+ * real backend must.
+ */
 function backend(id: string, extensions: string[]): LanguageBackend {
+	let fileNames: string[] = [];
+	let loadNodesForFile: (filePath: string) => Node[] = () => [];
+
+	const owns = (filePath: string) =>
+		extensions.some((ext) => filePath.toLowerCase().endsWith(ext));
+
 	return {
 		id,
 		languages: [id],
@@ -58,10 +101,12 @@ function backend(id: string, extensions: string[]): LanguageBackend {
 		parser: {
 			extractNodes(filePath: string, source: string): PassAResult {
 				return {
-					nodes: source
-						.split(/\s+/)
-						.filter((name) => name.length > 0)
-						.map((name) => node(filePath, name, id)),
+					nodes: [
+						...declarations(source).map((name) => node(filePath, name, id)),
+						...references(source).map((name) =>
+							node(filePath, name, id, "import"),
+						),
+					],
 					edges: [],
 					errors: [],
 				};
@@ -71,12 +116,63 @@ function backend(id: string, extensions: string[]): LanguageBackend {
 			mode: "complement",
 			id: `${id}-enricher`,
 			provenance: "synthesized:stub",
-			loadProject: () => {},
-			resolveEdges: (): EdgeResolutionResult => ({
-				edges: [],
-				errors: [],
-				externalNodes: [],
-			}),
+			loadProject(opts) {
+				fileNames = [...(opts.fileNames ?? [])];
+				loadNodesForFile = opts.loadNodesForFile ?? (() => []);
+			},
+			resolveEdges(filePath: string): EdgeResolutionResult {
+				// Declarations visible to this backend, from persisted Pass A rows.
+				const declarationsByName = new Map<string, Node>();
+				for (const candidate of fileNames) {
+					for (const persisted of loadNodesForFile(candidate)) {
+						if (persisted.kind !== "function") continue;
+						if (!declarationsByName.has(persisted.name)) {
+							declarationsByName.set(persisted.name, persisted);
+						}
+					}
+				}
+
+				const edges: Edge[] = [];
+				for (const reference of loadNodesForFile(filePath)) {
+					if (reference.kind !== "import") continue;
+					const target = declarationsByName.get(reference.name);
+					edges.push({
+						source: reference.id,
+						target: target?.id ?? null,
+						targetName: reference.name,
+						kind: "calls",
+						resolutionState: target === undefined ? "unresolved" : "resolved",
+						confidence: target === undefined ? "low" : "high",
+						provenance: "synthesized:stub",
+					});
+				}
+				return { edges, errors: [], externalNodes: [] };
+			},
+			invalidate(input) {
+				// Membership changes move declarations in and out of view, so the
+				// whole owned set is re-resolved; content edits use recorded edges.
+				if (
+					input.added.length > 0 ||
+					input.removed.length > 0 ||
+					input.configurationChanged
+				) {
+					return { resolveFiles: input.ownedFiles.filter(owns).sort() };
+				}
+				const affected = new Set<string>();
+				for (const filePath of input.modified) {
+					affected.add(filePath);
+					for (const dependent of input.dependentsOf(filePath)) {
+						affected.add(dependent);
+					}
+				}
+				for (const identity of input.priorIdentities) {
+					if (!owns(identity.filePath)) continue;
+					for (const dependent of input.dependentsOf(identity.filePath)) {
+						affected.add(dependent);
+					}
+				}
+				return { resolveFiles: [...affected].filter(owns).sort() };
+			},
 		},
 		capabilities: { edgeKinds: ["contains", "calls"] },
 		versionKeys: () => ({ parser: "1" }),
@@ -503,6 +599,227 @@ describe("event coalescing is deterministic", () => {
 			// kind of index; both paths must leave the same identity behind.
 			expect(indexer.lastPassInterrupted()).toBe(false);
 			expect(queries.getStats().lastUpdated).toEqual(before);
+		} finally {
+			storage.close();
+		}
+	});
+});
+
+/* -------------------------------------------------------------------------- */
+/* AG-209: crossing the eligibility boundary, with real incoming relations     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `src/caller.stub` calls `target`, declared in `src/target.stub`. Every test
+ * below moves `src/target.stub` across the eligibility boundary and checks that
+ * the incoming relation is demoted rather than deleted, and that all four
+ * routes agree.
+ */
+const LINKED_PROJECT: Record<string, string> = {
+	"src/caller.stub": "caller ->target",
+	"src/target.stub": "target",
+};
+
+function edgesTo(index: NormalizedIndex, targetName: string) {
+	return index.edges.filter((edge) => edge.targetName === targetName);
+}
+
+describe("crossing the eligibility boundary converges on every route", () => {
+	test("the fixture really does record an incoming relation", async () => {
+		// Guard on the guard: a backend that emits no edges cannot demonstrate
+		// anything about retirement.
+		const clean = await cleanIndex({ files: LINKED_PROJECT });
+		const resolved = edgesTo(clean, "target");
+		expect(resolved.length).toBe(1);
+		expect(resolved[0]?.resolutionState).toBe("resolved");
+		expect(resolved[0]?.target).not.toBeNull();
+	});
+
+	test("a file that grows past the size limit", async () => {
+		const before: ProjectState = {
+			files: LINKED_PROJECT,
+			config: { maxFileSizeBytes: 1_000 },
+		};
+		const after: ProjectState = {
+			files: LINKED_PROJECT,
+			config: { maxFileSizeBytes: 8 },
+		};
+		await expectAllFourAgree(before, after);
+
+		const reused = await reusedIndex(before, after);
+		const demoted = edgesTo(reused, "target");
+		expect(demoted.length).toBe(1);
+		expect(demoted[0]?.resolutionState).toBe("unresolved");
+		expect(demoted[0]?.target).toBeNull();
+	});
+
+	test("a file that leaves the scan scope", async () => {
+		await expectAllFourAgree(
+			{ files: LINKED_PROJECT },
+			{ files: { "src/caller.stub": "caller ->target" } },
+		);
+	});
+
+	test("a backend that gets disabled", async () => {
+		// The `.stub` reference never resolved into `.other` in the first place —
+		// a backend may only resolve within its own language — so what this
+		// asserts is that disabling a backend retires its rows and that all four
+		// routes agree afterwards, including the evidence record left behind.
+		const acrossBackends: Record<string, string> = {
+			"src/caller.stub": "caller ->target",
+			"src/target.other": "target",
+		};
+		await expectAllFourAgree(
+			{ files: acrossBackends },
+			{ files: acrossBackends, backends: [STUB] },
+		);
+
+		const reused = await reusedIndex(
+			{ files: acrossBackends },
+			{ files: acrossBackends, backends: [STUB] },
+		);
+		expect(reused.nodes.some((n) => n.filePath === "src/target.other")).toBe(
+			false,
+		);
+	});
+
+	test("a file that becomes eligible again", async () => {
+		const tight: ProjectState = {
+			files: LINKED_PROJECT,
+			config: { maxFileSizeBytes: 8 },
+		};
+		const loose: ProjectState = {
+			files: LINKED_PROJECT,
+			config: { maxFileSizeBytes: 1_000 },
+		};
+		await expectAllFourAgree(tight, loose);
+
+		const restored = await reusedIndex(tight, loose);
+		const resolved = edgesTo(restored, "target");
+		expect(resolved[0]?.resolutionState).toBe("resolved");
+	});
+});
+
+describe("an event batch retires a candidate that lost eligibility", () => {
+	test("a change event on a now-oversized file demotes its incoming relations", async () => {
+		// The reported bug: `syncFiles` named the file as a candidate, `runPass`
+		// skipped it because it was ineligible, and `recordIneligibleFile` then
+		// deleted its rows directly — dropping the incoming edge instead of
+		// demoting it.
+		const storage = freshStorage();
+		try {
+			const first = openIndexer(
+				{ files: LINKED_PROJECT, config: { maxFileSizeBytes: 1_000 } },
+				storage,
+			);
+			await first.indexer.indexAll();
+			expect(
+				first.queries
+					.getAllEdges()
+					.filter((edge) => edge.resolutionState === "resolved").length,
+			).toBeGreaterThan(0);
+
+			const second = openIndexer(
+				{ files: LINKED_PROJECT, config: { maxFileSizeBytes: 8 } },
+				storage,
+			);
+			const result = await second.indexer.syncFiles([
+				{ type: "change", path: "src/target.stub" },
+			]);
+
+			expect(result.removed).toEqual(["src/target.stub"]);
+
+			const demoted = second.queries
+				.getAllEdges()
+				.filter((edge) => edge.targetName === "target");
+			expect(demoted.length).toBe(1);
+			expect(demoted[0]?.resolutionState).toBe("unresolved");
+			expect(demoted[0]?.target).toBeNull();
+
+			// The evidence record survives, and the file keeps no nodes.
+			const record = second.queries.getFile("src/target.stub");
+			expect(record?.nodeCount).toBe(0);
+			expect((record?.errors ?? []).map((e) => e.code)).toEqual([
+				"FILE_TOO_LARGE",
+			]);
+			expect(second.queries.getDanglingEdges()).toEqual([]);
+		} finally {
+			storage.close();
+		}
+	});
+
+	test("an unmentioned ineligible file is still left alone", async () => {
+		// The `eventScoped` guard must keep protecting silence: a batch about one
+		// file may not retire another that merely happens to be ineligible.
+		const storage = freshStorage();
+		try {
+			const files: Record<string, string> = {
+				...LINKED_PROJECT,
+				"notes.txt": "unclaimed",
+			};
+			const first = openIndexer({ files }, storage);
+			await first.indexer.indexAll();
+
+			const second = openIndexer({ files }, storage);
+			const result = await second.indexer.syncFiles([
+				{ type: "change", path: "src/caller.stub" },
+			]);
+
+			expect(result.removed).toEqual([]);
+			// Its evidence record is untouched, not rewritten on every save.
+			expect(
+				(second.queries.getFile("notes.txt")?.errors ?? []).map((e) => e.code),
+			).toEqual(["NO_BACKEND"]);
+		} finally {
+			storage.close();
+		}
+	});
+});
+
+describe("retirement keeps a textual identity, never a node id", () => {
+	test("an incoming edge without targetName gets the retired node's name", async () => {
+		const storage = freshStorage();
+		try {
+			const { indexer, queries } = openIndexer(
+				{ files: LINKED_PROJECT },
+				storage,
+			);
+			await indexer.indexAll();
+
+			const targetNode = queries
+				.getNodesByFile("src/target.stub")
+				.find((n) => n.kind === "function");
+			const caller = queries
+				.getNodesByFile("src/caller.stub")
+				.find((n) => n.kind === "function");
+			expect(targetNode).toBeDefined();
+			expect(caller).toBeDefined();
+
+			// An edge the extractor never gave a textual name to. Before the fix
+			// retirement filled `targetName` from `edge.target` — a content hash.
+			queries.upsertEdge({
+				source: caller?.id ?? "",
+				target: targetNode?.id ?? "",
+				kind: "references",
+				resolutionState: "resolved",
+				confidence: "high",
+				provenance: "synthesized:stub",
+			});
+
+			const shrunk = openIndexer(
+				{ files: { "src/caller.stub": "caller ->target" } },
+				storage,
+			);
+			await shrunk.indexer.sync();
+
+			const demoted = shrunk.queries
+				.getAllEdges()
+				.filter((edge) => edge.kind === "references");
+			expect(demoted.length).toBe(1);
+			expect(demoted[0]?.resolutionState).toBe("unresolved");
+			expect(demoted[0]?.targetName).toBe("src/target.stub::target");
+			// Never the internal id.
+			expect(demoted[0]?.targetName).not.toBe(targetNode?.id);
 		} finally {
 			storage.close();
 		}

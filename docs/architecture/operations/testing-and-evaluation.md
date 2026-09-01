@@ -16,7 +16,7 @@ This document separates the checks that exist at the baseline from the desired q
 |---|---|---|
 | `bun test` | Bun tests across the workspace | CI runs it; repository convention requires the user to run tests for an implementation task |
 | `bun run typecheck` | package typechecks plus `tsconfig.eval.json` | CI runs it |
-| `bun run check` | `biome check .` | CI runs it; baseline has known failures, see DEV-017 |
+| `bun run check` | `biome check .` | Required gate in CI and at tag time. Implemented against a green baseline; execution evidence is owed by the owner, see DEV-017 |
 | `bun run build` | compiles the host-platform CLI binary | CI runs it then invokes `--version` and `--help` |
 | `bun run bench -- <repo>` | measures process RSS while one in-memory full index runs | manual only |
 | `bun run eval [repo]` | runs a predefined Astrograph-query suite through one or more backend arms | manual only |
@@ -204,7 +204,7 @@ The intended eval gate is every required case passing, an explicit case-manifest
 
 - **DEV-014 — golden integration:** current snapshots bypass registry, indexer, SQLite, and persisted resolution/coverage behavior. Preserve extractor tests but add genuine pipeline goldens.
 - **DEV-015 — eval validity:** exit status ignores individual case failures; a stale case is present; built-in cases are not portable despite accepting a repository argument. Do not claim agent-vs-grep results from this runner.
-- **DEV-017 — static quality:** CI intends to gate Biome, but the baseline has outstanding check failures. Documentation must report typecheck and static check independently.
+- **DEV-017 — static quality:** Biome is gated in CI and at tag time, and the tracked sources were brought to a green state with narrow, documented fixture exceptions. The row stays `implemented, awaiting verification` until the owner runs `bun run check` and reports the output; typecheck and static check are still reported independently.
 
 ## Related documents
 

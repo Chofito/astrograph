@@ -10,13 +10,14 @@ Specify how `Indexer.indexAll` converts the current filesystem/config into persi
 
 ## Current behavior (AS-IS)
 
-`Indexer.indexAll` scans indexable extensions, calls `beginPass(files)`, performs Pass A for every scanned file, reconciles all enricher node views, resolves all enricher edges, then persists config/version metadata.
+`Indexer.indexAll` classifies membership once, then delegates to `runPass()` — the same reconciler `sync()` and `syncFiles()` use. `runPass` marks the pass in flight, calls `startPass(membership)`, captures invalidation evidence, retires what no longer belongs, performs Pass A over changed files, calls `loadBackendProjects(membership)`, re-resolves the affected set, and only then persists config/version metadata.
 
 ```mermaid
 flowchart TD
     Scan["scanFiles()"] --> Classify["buildMembership(): one classification"]
     Classify --> Record["recordable: persist FILE_TOO_LARGE / NO_BACKEND evidence"]
-    Classify --> Begin["beginPass(membership) -> loadProject with eligible files only"]
+    Classify --> Begin["startPass(membership) -> publish the snapshot"]
+    Begin --> Load["loadBackendProjects(membership) after Pass A"]
     Begin --> A{"For each eligible file: Pass A"}
     A --> Hash["Read + content hash"]
     Hash --> Parse["parser.extractNodes (always)"]
@@ -29,7 +30,7 @@ flowchart TD
 
 A full index over a **reused** database first retires everything the current membership no longer accepts — deleted files, newly excluded paths, files that grew past the limit, extensions whose backend was disabled — using `retireFile()`, the same policy both sync paths use. Without that step a row kept answering queries long after its file stopped belonging to the project. The identity (`configHash` and the version keys) is written last, in the same transaction that marks the pass complete, so a crashed run can never present itself as current: `passState` stays `in_progress`, `status` reports `indexInterrupted`, and the next pass forces Pass A rather than trusting content hashes.
 
-`classifyProject()` computes membership once (contracts §13) and every later phase reads it. Pass A no longer re-checks the size limit or backend ownership, and `beginPass` no longer re-groups files by walking the registry — both were second definitions of eligibility, and they were how an oversized file stayed inside a backend's `loadProject` set while being excluded from Pass A. `beginPass` now takes the membership snapshot and calls each enricher's `loadProject` with its eligible files only. `resolveFor` memoizes one `EdgeResolutionResult` per file so the reconciliation phase and edge phase share it, and returns `undefined` when the backend has no enricher. Pass A runs for every eligible claimed file — there is no branch that skips it. A backend without an enricher reaches `resolved` during Pass A. An enriched file reaches `resolved` after its edges are written; its reconciled nodes are stamped with `Enricher.provenance`, declared by the producing backend.
+`classifyProject()` computes membership once (contracts §13) and every later phase reads it. Pass A no longer re-checks the size limit or backend ownership, and nothing re-groups files by walking the registry — both were second definitions of eligibility, and they were how an oversized file stayed inside a backend's `loadProject` set while being excluded from Pass A. `startPass(membership)` publishes the snapshot before Pass A; `loadBackendProjects(membership)` runs *after* Pass A and hands each enricher only its eligible files, because a backend builds its project view from persisted Pass A rows. `resolveFor` memoizes one `EdgeResolutionResult` per file so the reconciliation phase and edge phase share it, and returns `undefined` when the backend has no enricher. Pass A runs for every eligible claimed file — there is no branch that skips it. A backend without an enricher reaches `resolved` during Pass A. An enriched file reaches `resolved` after its edges are written; its reconciled nodes are stamped with `Enricher.provenance`, declared by the producing backend.
 
 ## Target behavior (TO-BE)
 
@@ -76,7 +77,7 @@ Indexer orchestration, transactions, reconciliation and coverage are reusable. P
 
 ## Source evidence
 
-- `packages/core/src/indexer.ts`: `indexAll`, `beginPass`, `indexFilePassA`, `indexFileReconcile`, `indexFileResolveEdges`.
+- `packages/core/src/indexer.ts`: `indexAll`, `sync`, `syncFiles`, `runPass`, `startPass`, `loadBackendProjects`, `indexFilePassA`, `indexFileReconcile`, `indexFileResolveEdges`, `retireFile`.
 - `packages/core/src/extraction/reconcile.ts`: subset reconciliation.
 - `packages/core/src/db/queries.ts`: persisted operations and coverage.
 

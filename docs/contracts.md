@@ -537,8 +537,15 @@ interface UnprovenRelation {
 Rules:
 
 - Applied to `callees`, `callers`, `getNode` previews, `impact`, `context`, and both `trace`
-  branches. A "no path found" carries the unproven relations reachable within the traced depth,
-  because a negative answer that does not say what blocked it is not honest.
+  branches. A successful `trace` merges the resolved path with the destination's outgoing
+  relations, so an unresolved callee at the destination is reported even though it cannot appear
+  in `destinationCallees`. A "no path found" carries the unproven relations reachable within the
+  traced depth, gathered by a walk that inspects each node's relations *before* deciding whether
+  it can advance through them — the general traversal cannot, because it discards a target-null
+  edge before recording a visit.
+- A failed `trace` distinguishes an **exhausted** search from a **truncated** one. Only a walk
+  that stopped with candidates still to follow reports `search_truncated`; a blocker one hop past
+  `maxDepth` was never inspected and is deliberately absent rather than reported as examined.
 - **`external` is not a failure.** A call into `node_modules` is a complete answer about a target
   outside the project. It is counted, but `hasUnprovenRelations` ignores it.
 - Counts are exact; samples are capped at 10 and ordered by state, kind, target name, source, then
@@ -654,6 +661,8 @@ Rules:
 - `backend_disabled` is distinguished from `no_backend` because "PHP is turned off" is actionable and "nothing reads .php" is not.
 - Membership is sorted by path throughout and never depends on backend registration order or SQLite row order.
 - `out_of_scope` produces no file record: the project simply does not contain the file, and a row would make the graph claim knowledge of it.
+- **Losing eligibility is a retirement, not an edit.** However the change arrives — full index, scanner sync, or a watch `change` event — the file goes through the one retirement policy: incoming relations are captured and demoted to `unresolved` before deletion, and the evidence record is written only afterwards. A demoted edge keeps `targetName` if the extractor recorded one and otherwise takes the retired node's `qualifiedName`; it is never filled from `edge.target`, which is a content hash.
+- A configuration change is a project-wide fact. A watch batch stops being path-scoped when the config hash moves, because it cannot speak for files it never heard about.
 - `too_large`, `no_backend`, and `backend_disabled` produce a record carrying `FILE_TOO_LARGE` or `NO_BACKEND`, which §10.1 classifies as coverage-degrading.
 
 ## 12. Release identity and compatibility
