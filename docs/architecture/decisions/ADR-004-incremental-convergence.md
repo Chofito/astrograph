@@ -32,7 +32,16 @@ normalize(indexAll(emptyDb, state)) == normalize(indexAll(previousDb, state))
 - `normalizeIndex()` in `packages/core/src/testing/normalize.ts` is the comparison boundary. It drops exactly `updatedAt`, `indexedAt`, `modifiedAt`, and the autoincrement `edges.id`. It keeps `contentHash`, `state`, `nodeCount`, and the sorted `errors`, because a converged index must agree about *why* a file is incomplete, not merely that it exists.
 - Identity is written last: `configHash`, the version keys, and `passState: "complete"` land in one transaction, and `passState: "in_progress"` is set before any mutation. An interrupted pass is therefore detectable (`status.indexInterrupted`) and the next pass forces Pass A instead of trusting content hashes.
 
-The delta half — `applyDeltas` producing the same normalized graph — is AG-205. Backend-owned invalidation, which replaces name-based healing, is AG-204.
+The delta half is implemented too (AG-205). `indexAll`, `sync` and `syncFiles` share one internal reconciler and one fixed phase order, so all four routes are asserted equal:
+
+```text
+normalize(cleanFull(state))
+  == normalize(reusedFull(state))
+  == normalize(scannerSync(prior -> state))
+  == normalize(eventSync(prior -> state))
+```
+
+`convergence.test.ts` covers add, modify, remove, rename (unlink + add), and a size-limit change, plus deterministic event coalescing where `unlink` dominates regardless of arrival order.
 
 ## Consequences
 

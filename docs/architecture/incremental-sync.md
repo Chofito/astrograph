@@ -10,9 +10,24 @@ Define how filesystem/config deltas update the graph and the equivalence expecte
 
 ## Current behavior (AS-IS)
 
-`sync()` performs a scan and content-hash comparison. `syncFiles(events)` merges watcher events and inspects only event paths. Both classify membership once (contracts §13), capture the identities of removed and modified files **before** retiring anything, ask every backend which of its own files the change affects (contracts §14), retire what no longer belongs, run Pass A on changed files, then reconcile and resolve the affected set.
+### Event coalescing
 
-Name-based healing is gone. It matched a bare `node.name` against every unresolved edge and promoted whatever it found, which could link a PHP `save()` to a TypeScript call and two same-named symbols in different namespaces to each other. Storage no longer offers a lookup from a target name to edges, so the behavior cannot return by accident. An edge whose target cannot be proven stays `unresolved` — a correct answer, not a gap.
+At most one event survives per path. `unlink` dominates: a batch that both changed and deleted a path describes a deleted path, and watchers do not guarantee arrival order, so "last wins" would let a stale `change` resurrect a deleted file. `syncFiles` then re-checks existence, which is what lets a genuine delete-then-recreate come back. A **rename arrives as `unlink` + `add` on two paths** and needs no case of its own.
+
+
+`indexAll()`, `sync()` and `syncFiles(events)` are one reconciliation model. They differ only in which paths they nominate as candidates — every eligible file, every eligible file, or the coalesced event batch — and everything after that is the same code in one fixed order:
+
+1. classify membership (once, contracts §13);
+2. capture invalidation evidence, before anything is destroyed;
+3. retire what no longer belongs;
+4. Pass A over changed files;
+5. load each backend's project state;
+6. re-resolve the affected set (contracts §14);
+7. persist the identity.
+
+Steps 4 and 5 are in that order deliberately: a backend builds its project view from persisted Pass A rows, so loading first would show it the previous pass's nodes.
+
+`syncFiles` refreshes `configHash` and the version keys exactly like `sync`; a watch-driven index that never updated its identity was a second kind of index. An event batch never retires a path it did not mention, because silence is not deletion. Name-based healing is gone. It matched a bare `node.name` against every unresolved edge and promoted whatever it found, which could link a PHP `save()` to a TypeScript call and two same-named symbols in different namespaces to each other. Storage no longer offers a lookup from a target name to edges, so the behavior cannot return by accident. An edge whose target cannot be proven stays `unresolved` — a correct answer, not a gap.
 
 ```mermaid
 sequenceDiagram

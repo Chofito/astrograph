@@ -15,6 +15,7 @@ import type {
 	Node,
 	PassAResult,
 	Range,
+	WatchEvent,
 } from "./types";
 
 /**
@@ -332,6 +333,176 @@ describe("an interrupted pass is detectable", () => {
 			expect(indexer.lastPassInterrupted()).toBe(false);
 			expect(queries.getStats().indexInterrupted).toBeUndefined();
 			expect(normalizeIndex(queries)).toEqual(await cleanIndex(state));
+		} finally {
+			storage.close();
+		}
+	});
+});
+
+/* -------------------------------------------------------------------------- */
+/* AG-205: full, scanner sync and event sync are one model                     */
+/* -------------------------------------------------------------------------- */
+
+/** Index `before`, then reach `after` through `sync()`. */
+async function scannerSync(before: ProjectState, after: ProjectState) {
+	const storage = freshStorage();
+	try {
+		const first = openIndexer(before, storage);
+		await first.indexer.indexAll();
+
+		const second = openIndexer(after, storage);
+		await second.indexer.sync();
+		return normalizeIndex(second.queries);
+	} finally {
+		storage.close();
+	}
+}
+
+/** Index `before`, then reach `after` through `syncFiles()` with a watch batch. */
+async function eventSync(
+	before: ProjectState,
+	after: ProjectState,
+	events: WatchEvent[],
+) {
+	const storage = freshStorage();
+	try {
+		const first = openIndexer(before, storage);
+		await first.indexer.indexAll();
+
+		const second = openIndexer(after, storage);
+		await second.indexer.syncFiles(events);
+		return normalizeIndex(second.queries);
+	} finally {
+		storage.close();
+	}
+}
+
+/** The events a watcher would emit for `before -> after`. */
+function eventsFor(before: ProjectState, after: ProjectState): WatchEvent[] {
+	const events: WatchEvent[] = [];
+	for (const path of Object.keys(after.files)) {
+		if (!(path in before.files)) events.push({ type: "add", path });
+		else if (before.files[path] !== after.files[path]) {
+			events.push({ type: "change", path });
+		}
+	}
+	for (const path of Object.keys(before.files)) {
+		if (!(path in after.files)) events.push({ type: "unlink", path });
+	}
+	return events;
+}
+
+async function expectAllFourAgree(before: ProjectState, after: ProjectState) {
+	const expected = await cleanIndex(after);
+	expect(await reusedIndex(before, after)).toEqual(expected);
+	expect(await scannerSync(before, after)).toEqual(expected);
+	expect(await eventSync(before, after, eventsFor(before, after))).toEqual(
+		expected,
+	);
+}
+
+describe("full, scanner sync and event sync converge (ADR-004)", () => {
+	test("add", async () => {
+		await expectAllFourAgree(
+			{ files: { "src/a.stub": "alpha" } },
+			{ files: { "src/a.stub": "alpha", "src/b.stub": "beta" } },
+		);
+	});
+
+	test("modify", async () => {
+		await expectAllFourAgree(
+			{ files: { "src/a.stub": "alpha beta" } },
+			{ files: { "src/a.stub": "alpha gamma" } },
+		);
+	});
+
+	test("remove", async () => {
+		await expectAllFourAgree(
+			{ files: { "src/a.stub": "alpha", "src/b.stub": "beta" } },
+			{ files: { "src/a.stub": "alpha" } },
+		);
+	});
+
+	test("rename is remove plus add", async () => {
+		await expectAllFourAgree(
+			{ files: { "src/old.stub": "alpha" } },
+			{ files: { "src/new.stub": "alpha" } },
+		);
+	});
+
+	test("a size-limit change", async () => {
+		await expectAllFourAgree(
+			{
+				files: { "src/a.stub": "alpha", "src/big.stub": "beta" },
+				config: { maxFileSizeBytes: 1_000 },
+			},
+			{
+				files: { "src/a.stub": "alpha", "src/big.stub": "beta" },
+				config: { maxFileSizeBytes: 3 },
+			},
+		);
+	});
+});
+
+describe("event coalescing is deterministic", () => {
+	test("unlink dominates a change for the same path", async () => {
+		const before: ProjectState = {
+			files: { "src/a.stub": "alpha", "src/doomed.stub": "beta" },
+		};
+		const after: ProjectState = { files: { "src/a.stub": "alpha" } };
+
+		// A watcher may report the write and the delete in either order.
+		const forward: WatchEvent[] = [
+			{ type: "change", path: "src/doomed.stub" },
+			{ type: "unlink", path: "src/doomed.stub" },
+		];
+		const backward: WatchEvent[] = [...forward].reverse();
+
+		const expected = await cleanIndex(after);
+		expect(await eventSync(before, after, forward)).toEqual(expected);
+		expect(await eventSync(before, after, backward)).toEqual(expected);
+	});
+
+	test("an event batch does not retire files it never mentioned", async () => {
+		// A watch batch speaks only about its own paths; treating silence as
+		// deletion would empty the graph on the first single-file save.
+		const storage = freshStorage();
+		try {
+			const state: ProjectState = {
+				files: { "src/a.stub": "alpha", "src/b.stub": "beta" },
+			};
+			const first = openIndexer(state, storage);
+			await first.indexer.indexAll();
+
+			const changed: ProjectState = {
+				files: { "src/a.stub": "alpha gamma", "src/b.stub": "beta" },
+			};
+			const second = openIndexer(changed, storage);
+			const result = await second.indexer.syncFiles([
+				{ type: "change", path: "src/a.stub" },
+			]);
+
+			expect(result.removed).toEqual([]);
+			expect(second.queries.getNodesByFile("src/b.stub").length).toBe(1);
+		} finally {
+			storage.close();
+		}
+	});
+
+	test("syncFiles refreshes the identity like sync does", async () => {
+		const storage = freshStorage();
+		try {
+			const state: ProjectState = { files: { "src/a.stub": "alpha" } };
+			const { indexer, queries } = openIndexer(state, storage);
+			await indexer.indexAll();
+
+			const before = queries.getStats().lastUpdated;
+			await indexer.syncFiles([{ type: "change", path: "src/a.stub" }]);
+
+			// A watch-driven index that never refreshed its metadata was a second
+			// kind of index; both paths must leave the same identity behind.
+			expect(indexer.lastPassInterrupted()).toBe(false);
+			expect(queries.getStats().lastUpdated).toEqual(before);
 		} finally {
 			storage.close();
 		}

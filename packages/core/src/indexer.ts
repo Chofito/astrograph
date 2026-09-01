@@ -47,6 +47,13 @@ export interface IndexerOptions {
 	now?: () => number;
 }
 
+/** What one reconciliation pass changed. Identical for full, scan and events. */
+export interface SyncResult {
+	added: string[];
+	modified: string[];
+	removed: string[];
+}
+
 export interface IndexAllOptions {
 	force?: boolean;
 	onProgress?: (e: IndexProgress) => void;
@@ -111,73 +118,16 @@ export class Indexer {
 	}
 
 	async indexAll(options: IndexAllOptions = {}): Promise<void> {
-		const configHash = await this.computeConfigHash();
 		const membership = await this.classifyProject();
-		const eligible = membership.eligible.map((entry) => entry.path);
-
-		options.onProgress?.({
-			phase: "scan",
-			current: eligible.length,
-			total: eligible.length,
-		});
-
-		// A crashed pass leaves a half-written graph. Marking the index
-		// in-progress *before* any mutation means the next run can see it, and
-		// `configHash` is only written once the work below actually finished.
-		const previousPassInterrupted = this.lastPassInterrupted();
-		this.markPassInProgress();
-
-		this.beginPass(membership);
-
-		// Convergence: a full index over a reused database must retire whatever
-		// no longer belongs, before Pass A, using the same policy sync uses.
-		// Without this a deleted, newly-excluded, now-oversized or
-		// disabled-backend file kept answering queries forever.
-		this.retireLostMembership(membership);
-
-		// A file the graph cannot read still deserves a record saying why, but it
-		// must never reach a parser or an enricher.
-		for (const entry of membership.recordable) {
-			await this.recordIneligibleFile(entry);
-		}
-
-		// An interrupted predecessor may have left files that look current but are
-		// not, so their content hash cannot be trusted to skip work.
-		const force = options.force === true || previousPassInterrupted;
-
-		for (let i = 0; i < eligible.length; i++) {
-			const relPath = eligible[i]!;
-			options.onProgress?.({
-				phase: "parse",
-				current: i + 1,
-				total: eligible.length,
-				file: relPath,
-			});
-			await this.indexFilePassA(relPath, { force });
-		}
-
-		// Pass B is two-phase: reconcile all nodes first (FK-safe targets), then
-		// edges. Files whose backend has no enricher are already final.
-		for (let i = 0; i < eligible.length; i++) {
-			const relPath = eligible[i]!;
-			options.onProgress?.({
-				phase: "resolve",
-				current: i + 1,
-				total: eligible.length,
-				file: relPath,
-			});
-			this.indexFileReconcile(relPath);
-		}
-		for (const relPath of eligible) {
-			this.indexFileResolveEdges(relPath);
-		}
-
-		// Only now is the identity allowed to advance: everything above completed.
-		this.persistProjectMetadata(configHash);
-		options.onProgress?.({
-			phase: "done",
-			current: eligible.length,
-			total: eligible.length,
+		await this.runPass({
+			membership,
+			// A full index reconsiders every eligible file.
+			candidates: membership.eligible.map((entry) => entry.path),
+			configChanged: true,
+			force: options.force === true || this.lastPassInterrupted(),
+			...(options.onProgress === undefined
+				? {}
+				: { onProgress: options.onProgress }),
 		});
 	}
 
@@ -203,21 +153,6 @@ export class Indexer {
 				}
 			},
 		});
-	}
-
-	/**
-	 * Retire every persisted file the current membership no longer accepts.
-	 *
-	 * Covers deletion, a newly excluded path, a file that grew past the limit, an
-	 * extension whose backend was disabled, and a semantic configuration change
-	 * that narrowed the project. `recordable` entries are retired too: their old
-	 * nodes must go even though a record explaining the absence stays behind.
-	 */
-	private retireLostMembership(membership: Membership): void {
-		for (const file of this.queries.getAllFiles()) {
-			if (membership.isEligible(file.path)) continue;
-			this.retireFile(file.path);
-		}
 	}
 
 	/** True when the previous pass began but never recorded completion. */
@@ -259,178 +194,192 @@ export class Indexer {
 		return this.registry.allExtensions();
 	}
 
-	async sync(): Promise<{
-		added: string[];
-		modified: string[];
-		removed: string[];
-	}> {
-		const configHash = await this.computeConfigHash();
-		const storedConfigHash = this.getProjectMetadata("configHash");
-		const configChanged =
-			storedConfigHash !== undefined && storedConfigHash !== configHash;
-
-		// Same classification the full index uses. A file that stopped being
-		// eligible — excluded, oversized, or owned by a backend the user just
-		// disabled — is a removal, not a silent survivor.
+	async sync(): Promise<SyncResult> {
 		const membership = await this.classifyProject();
-		this.markPassInProgress();
-		const knownFiles = this.queries.getAllFiles();
-		const knownByPath = new Map(knownFiles.map((file) => [file.path, file]));
+		return this.runPass({
+			membership,
+			// The scanner already reported the whole current membership; every
+			// eligible file is a candidate and content hashing finds the changes.
+			candidates: membership.eligible.map((entry) => entry.path),
+			configChanged: this.configHashChanged(await this.computeConfigHash()),
+			force: false,
+		});
+	}
 
+	async syncFiles(events: WatchEvent[]): Promise<SyncResult> {
+		const membership = await this.classifyProject();
+
+		// A batch only speaks about the paths it names. `unlink` dominates, and a
+		// path that no longer exists is a removal regardless of what the event
+		// claimed, so a stale `change` cannot resurrect a deleted file. A rename
+		// reaches us as unlink + add and needs no special case.
+		const candidates: string[] = [];
+		const removedHint: string[] = [];
+		for (const event of mergeEvents(events)) {
+			if (
+				event.type === "unlink" ||
+				!(await this.fs.exists(this.joinRoot(event.path)))
+			) {
+				removedHint.push(event.path);
+				continue;
+			}
+			candidates.push(event.path);
+		}
+
+		return this.runPass({
+			membership,
+			candidates,
+			removedHint,
+			// syncFiles refreshes metadata exactly like sync(); a watch-driven
+			// index that never updated its identity was a second kind of index.
+			configChanged: this.configHashChanged(await this.computeConfigHash()),
+			force: false,
+			eventScoped: true,
+		});
+	}
+
+	/**
+	 * The one reconciliation model. `indexAll`, `sync`, and `syncFiles` differ
+	 * only in which paths they nominate as candidates; everything after that is
+	 * identical, in one fixed order:
+	 *
+	 *   1. classify membership           (done once by the caller)
+	 *   2. capture invalidation evidence (before anything is destroyed)
+	 *   3. retire what no longer belongs
+	 *   4. Pass A over changed files
+	 *   5. load each backend's project state
+	 *   6. re-resolve the affected set
+	 *   7. persist the identity
+	 *
+	 * Steps 4 and 5 are in that order deliberately: a backend builds its project
+	 * view from persisted Pass A rows, so loading first would show it the
+	 * previous pass's nodes.
+	 */
+	private async runPass(options: {
+		membership: Membership;
+		candidates: readonly string[];
+		removedHint?: readonly string[];
+		configChanged: boolean;
+		force: boolean;
+		/** Event batches speak only about their own paths. */
+		eventScoped?: boolean;
+		onProgress?: (e: IndexProgress) => void;
+	}): Promise<SyncResult> {
+		const { membership } = options;
+		const configHash = await this.computeConfigHash();
+
+		options.onProgress?.({
+			phase: "scan",
+			current: options.candidates.length,
+			total: options.candidates.length,
+		});
+
+		// In flight before anything is touched, so a crash stays visible and the
+		// graph is never a mixture that claims to be complete.
+		this.markPassInProgress();
+		this.startPass(membership);
+
+		// --- 2. Classify the delta.
+		const known = new Map(
+			this.queries.getAllFiles().map((file) => [file.path, file]),
+		);
 		const added: string[] = [];
 		const modified: string[] = [];
-		const removed: string[] = [];
 
-		for (const entry of membership.eligible) {
-			const relPath = entry.path;
+		for (const relPath of options.candidates) {
+			if (!membership.isEligible(relPath)) continue;
 			const contentHash = this.hasher.hash(
 				await this.fs.readText(this.joinRoot(relPath)),
 			);
-			const known = knownByPath.get(relPath);
-
-			if (known === undefined) {
-				added.push(relPath);
-			} else if (configChanged || known.contentHash !== contentHash) {
+			const record = known.get(relPath);
+			if (record === undefined) added.push(relPath);
+			else if (
+				options.force ||
+				options.configChanged ||
+				record.contentHash !== contentHash
+			) {
 				modified.push(relPath);
 			}
 		}
 
-		for (const file of knownFiles) {
-			if (!membership.isEligible(file.path)) removed.push(file.path);
+		const removed = new Set(
+			(options.removedHint ?? []).filter((path) => known.has(path)),
+		);
+		for (const file of known.values()) {
+			if (membership.isEligible(file.path)) continue;
+			// An event batch must not retire files it never mentioned.
+			if (options.eventScoped === true && !removed.has(file.path)) continue;
+			removed.add(file.path);
 		}
+		const removedFiles = [...removed].sort(compareStrings);
 
-		const changedFiles = [...added, ...modified];
-
-		// Evidence first: once a file is retired its identities are gone, and a
-		// backend cannot reason about what the removal broke.
-		const invalidation = this.invalidationInput({
-			added,
-			modified,
-			removed: removed,
-			priorIdentities: this.captureIdentities([...removed, ...modified]),
-			configurationChanged: configChanged,
-		});
-		const affected = this.collectAffectedFiles(invalidation, membership);
-
-		for (const relPath of removed) this.retireFile(relPath);
-
-		if (changedFiles.length > 0 || affected.length > 0) {
-			this.beginPass(membership);
-
-			for (const relPath of changedFiles) {
-				await this.indexFilePassA(relPath, { force: true });
-			}
-
-			const resolveSet = [...new Set([...changedFiles, ...affected])].sort(
-				compareStrings,
-			);
-			for (const relPath of resolveSet) {
-				this.indexFileReconcile(relPath);
-			}
-			for (const relPath of resolveSet) {
-				this.indexFileResolveEdges(relPath);
-			}
-
-		}
-
-		for (const entry of membership.recordable) {
-			await this.recordIneligibleFile(entry);
-		}
-
-		this.persistProjectMetadata(configHash);
-
-		return {
-			added: added.sort(compareStrings),
-			modified: modified.sort(compareStrings),
-			removed: removed.sort(compareStrings),
-		};
-	}
-
-	async syncFiles(
-		events: WatchEvent[],
-	): Promise<{ added: string[]; modified: string[]; removed: string[] }> {
-		const normalizedEvents = mergeEvents(events);
-		const removed = normalizedEvents
-			.filter((event) => event.type === "unlink")
-			.map((event) => event.path);
-		const changedCandidates = normalizedEvents
-			.filter((event) => event.type !== "unlink")
-			.map((event) => event.path);
-
-		const added: string[] = [];
-		const modified: string[] = [];
-		const changedFiles: string[] = [];
-
-		// One classification for the whole event batch, identical to the one full
-		// index and scanner sync use.
-		const membership = await this.classifyProject();
-
-		for (const relPath of changedCandidates) {
-			const absolutePath = this.joinRoot(relPath);
-			if (!(await this.fs.exists(absolutePath))) {
-				removed.push(relPath);
-				continue;
-			}
-
-			// An event for a path the project does not own is not a change. Without
-			// this an oversized or excluded file re-entered Pass A on every save.
-			if (!membership.isEligible(relPath)) {
-				if (this.queries.getFile(relPath) !== undefined) removed.push(relPath);
-				continue;
-			}
-
-			const contentHash = this.hasher.hash(
-				await this.fs.readText(absolutePath),
-			);
-			const known = this.queries.getFile(relPath);
-
-			if (known === undefined) {
-				added.push(relPath);
-				changedFiles.push(relPath);
-			} else if (known.contentHash !== contentHash) {
-				modified.push(relPath);
-				changedFiles.push(relPath);
-			}
-		}
-
-		const removedFiles = uniqueStrings(removed);
-		// Evidence first: once a file is retired its identities are gone, and a
-		// backend cannot reason about what the removal broke.
+		// --- 3. Evidence first, then retirement.
 		const invalidation = this.invalidationInput({
 			added,
 			modified,
 			removed: removedFiles,
 			priorIdentities: this.captureIdentities([...removedFiles, ...modified]),
-			configurationChanged: false,
+			configurationChanged: options.configChanged,
 		});
 		const affected = this.collectAffectedFiles(invalidation, membership);
 
 		for (const relPath of removedFiles) this.retireFile(relPath);
-
-		if (changedFiles.length > 0 || removedFiles.length > 0 || affected.length > 0) {
-			this.beginPass(membership);
-
-			for (const relPath of changedFiles) {
-				await this.indexFilePassA(relPath, { force: true });
-			}
-
-			const resolveSet = [...new Set([...changedFiles, ...affected])].sort(
-				compareStrings,
-			);
-			for (const relPath of resolveSet) {
-				this.indexFileReconcile(relPath);
-			}
-			for (const relPath of resolveSet) {
-				this.indexFileResolveEdges(relPath);
-			}
-
+		for (const entry of membership.recordable) {
+			await this.recordIneligibleFile(entry);
 		}
+
+		// --- 4. Pass A.
+		const changed = [...added, ...modified].sort(compareStrings);
+		for (let i = 0; i < changed.length; i++) {
+			const relPath = changed[i]!;
+			options.onProgress?.({
+				phase: "parse",
+				current: i + 1,
+				total: changed.length,
+				file: relPath,
+			});
+			await this.indexFilePassA(relPath, { force: true });
+		}
+
+		// --- 5. Backend project state, over the rows Pass A just wrote.
+		this.loadBackendProjects(membership);
+
+		// --- 6. Re-resolve the affected set.
+		const resolveSet = [...new Set([...changed, ...affected])].sort(
+			compareStrings,
+		);
+		for (let i = 0; i < resolveSet.length; i++) {
+			const relPath = resolveSet[i]!;
+			options.onProgress?.({
+				phase: "resolve",
+				current: i + 1,
+				total: resolveSet.length,
+				file: relPath,
+			});
+			this.indexFileReconcile(relPath);
+		}
+		for (const relPath of resolveSet) {
+			this.indexFileResolveEdges(relPath);
+		}
+
+		// --- 7. Identity last: only a completed pass may claim to be current.
+		this.persistProjectMetadata(configHash);
+		options.onProgress?.({
+			phase: "done",
+			current: changed.length,
+			total: changed.length,
+		});
 
 		return {
 			added: added.sort(compareStrings),
 			modified: modified.sort(compareStrings),
 			removed: removedFiles,
 		};
+	}
+
+	private configHashChanged(configHash: string): boolean {
+		const stored = this.getProjectMetadata("configHash");
+		return stored !== undefined && stored !== configHash;
 	}
 
 	close(): void {
@@ -438,17 +387,28 @@ export class Indexer {
 	}
 
 	/**
-	 * Start a fresh pass: drop the per-file resolve cache, reset counters, and
-	 * give every enricher the slice of the project its own backend owns. The TS
-	 * program no longer sees `.php` paths in its rootNames.
+	 * Begin a pass: drop the per-file resolve cache, reset counters, and publish
+	 * the membership every later phase reads.
+	 *
+	 * Deliberately separate from {@link loadBackendProjects}: Pass A must run
+	 * between the two, because a backend builds its project view from persisted
+	 * Pass A rows.
 	 */
-	private beginPass(membership: Membership): void {
+	private startPass(membership: Membership): void {
 		this.resolveCache.clear();
 		this.lastReconcileStats = { matched: 0, added: 0, dropped: 0 };
 		this.membership = membership;
+	}
 
-		// `byBackend` already holds only eligible files, so an oversized file or a
-		// file owned by a disabled backend can never enter a backend's project.
+	/**
+	 * Hand each enricher the slice of the project its own backend owns.
+	 *
+	 * `byBackend` holds only eligible files, so an oversized file, an unclaimed
+	 * extension, or a file owned by a disabled backend can never enter a
+	 * backend's project. The TS program does not see `.php` paths in its
+	 * rootNames.
+	 */
+	private loadBackendProjects(membership: Membership): void {
 		for (const backend of this.registry.list()) {
 			const loadProject = backend.enricher?.loadProject;
 			if (!loadProject) continue;
@@ -978,20 +938,24 @@ function isPersistableExternalNode(node: Node, root: string): boolean {
 	return true;
 }
 
-function uniqueStrings(values: string[]): string[] {
-	return [...new Set(values)].sort(compareStrings);
-}
 
+/**
+ * Collapse a watch batch to at most one event per path, deterministically.
+ *
+ * `unlink` dominates: a batch that both changed and deleted a path describes a
+ * deleted path, and watchers do not guarantee arrival order, so "last wins"
+ * would let a stale `change` resurrect a deleted file. `syncFiles` then
+ * re-checks existence, which is what lets a genuine delete-then-recreate come
+ * back. A rename arrives as `unlink` + `add` on two paths and needs no case of
+ * its own.
+ */
 function mergeEvents(events: WatchEvent[]): WatchEvent[] {
 	const byPath = new Map<string, WatchEvent>();
 	for (const event of events) {
 		const path = normalizePath(event.path);
 		const prior = byPath.get(path);
-		if (
-			prior === undefined ||
-			event.type === "unlink" ||
-			prior.type === "unlink"
-		) {
+		if (prior?.type === "unlink") continue;
+		if (prior === undefined || event.type === "unlink") {
 			byPath.set(path, { type: event.type, path });
 		}
 	}
