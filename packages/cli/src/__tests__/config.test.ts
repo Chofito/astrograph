@@ -41,6 +41,10 @@ describe("CLI project configuration", () => {
 	test("formats semantic facts for terminal output", async () => {
 		const fixture = INVALID_CONFIGURATION_FIXTURES[0];
 		if (fixture === undefined) throw new Error("missing semantic fixture");
+		const expected = fixture.diagnostics[0];
+		if (expected === undefined) {
+			throw new Error("semantic fixture has no diagnostics");
+		}
 		await withConfig(JSON.stringify(fixture.input), async (root) => {
 			try {
 				await loadConfig(root);
@@ -48,7 +52,7 @@ describe("CLI project configuration", () => {
 			} catch (error) {
 				if (!(error instanceof InvalidCliConfigError)) throw error;
 				expect(error.message).toContain("/kinds [UNKNOWN_CONFIG_KEY]");
-				expect(error.message).toContain(fixture.diagnostics[0]?.message);
+				expect(error.message).toContain(expected.message);
 			}
 		});
 	});

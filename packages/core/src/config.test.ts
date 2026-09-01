@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
-	parseAstrographConfig,
-	semanticAstrographConfig,
 	type ConfigDiagnostic,
 	type NormalizedAstrographConfig,
+	parseAstrographConfig,
+	semanticAstrographConfig,
 } from "./config";
 
 const options = { knownBackendIds: ["typescript", "php"] } as const;
@@ -20,8 +20,16 @@ const defaults: NormalizedAstrographConfig = {
 	},
 };
 
+interface ParseCase {
+	name: string;
+	input: unknown;
+	expected: NormalizedAstrographConfig;
+}
+
 describe("parseAstrographConfig", () => {
-	test.each([
+	// Annotated: `test.each` infers its rows as const, which makes the literal
+	// arrays `readonly` and no longer assignable to the mutable normalized shape.
+	test.each<ParseCase>([
 		{
 			name: "accepts an empty object and applies every default",
 			input: {},
@@ -173,7 +181,8 @@ describe("parseAstrographConfig", () => {
 			options,
 		);
 
-		if (!first.ok || !second.ok) throw new Error("expected valid test fixtures");
+		if (!first.ok || !second.ok)
+			throw new Error("expected valid test fixtures");
 		expect(semanticAstrographConfig(first.config)).toEqual(
 			semanticAstrographConfig(second.config),
 		);
