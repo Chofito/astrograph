@@ -88,7 +88,6 @@ This per-file output is not itself a global completeness claim. The indexer reco
 ## Known deviations
 
 - `DEV-002`: files rejected by the size limit can still reach Pass B even though Pass A skips them.
-- `DEV-007`: `replace` can bypass the locked “Pass A always runs” target.
 - `DEV-014`: existing goldens do not cover registry -> indexer -> SQLite as the architecture describes.
 
 ## Related documents

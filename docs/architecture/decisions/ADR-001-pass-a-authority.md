@@ -46,5 +46,5 @@ For every registered language, Tree-sitter Pass A is the structural base. It emi
 
 ## Current deviations
 
-`DEV-002`, `DEV-007`, and `DEV-014` in [deviations](../deviations.md).
+`DEV-002` and `DEV-014` in [deviations](../deviations.md). `DEV-007` no longer applies: `EnricherMode` is complement-only and Pass A runs for every eligible claimed file.
 

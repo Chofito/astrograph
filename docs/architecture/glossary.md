@@ -13,8 +13,7 @@ Canonical owner: architecture documentation
 | Pass A | Per-file Tree-sitter structural extraction. At the baseline it emits project nodes and `contains` edges only. |
 | Pass B | Optional language-specific enrichment for semantic/name resolution and optional node enrichment. |
 | Complement | Enricher mode in which Pass A nodes are a conservative subset and matching IDs are updated in place. |
-| Replace | Implemented mode that skips Pass A. It conflicts with the current target that Pass A always owns structural nodes; see `DEV-007`. |
-| None | Status/config representation for a backend without an enricher. In code this is normally `enricher === undefined`. |
+| None | How `status` presents a backend without an enricher (`EnricherStatus`). In code this is always `enricher === undefined`; there is no `none` mode object. |
 | Reconciliation | ID-based comparison of Pass A and enricher node sets: update matches, insert enricher-only nodes, report Pass-A-only drops. |
 | Project node | Symbol whose `filePath` is inside the indexed project and is not marked external. |
 | External node | Minimal symbol outside the project boundary, persisted only when path-hygiene policy permits. |

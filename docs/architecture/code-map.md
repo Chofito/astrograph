@@ -149,6 +149,7 @@ Every row assigns one canonical document. “Reusable” means language/runtime 
 |---|---|---|---|---|
 | `agents/astrograph/SKILL.md` | Agent routing and safe use of Astrograph tools | integration / agent-specific | installed guide contract | [Agent skill](surfaces/agent-skill.md) |
 | `scripts/link-agent-guide.sh` | Local development link for the agent guide | tooling / developer-specific | local setup script | [Distribution](operations/distribution.md) |
+| `scripts/docs-check.ts` | Static documentation guard: links/anchors, architecture metadata, fence balance, deviation IDs, required-document inventory | tooling / reusable | `bun run docs:check`, CI and release gates | [Documentation checklist](documentation-checklist.md) |
 | `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `.github/workflows/site.yml` | Static/test CI, binary release and site deployment | operations / GitHub-specific | automation lifecycle | [Distribution](operations/distribution.md) |
 
 ## Manifests and build configuration
@@ -337,6 +338,7 @@ The tables above group files by architectural responsibility. This manifest make
 - `packages/mcp/src/tools.ts`
 - `packages/mcp/tsconfig.json`
 - `scripts/link-agent-guide.sh`
+- `scripts/docs-check.ts`
 - `tsconfig.base.json`
 - `tsconfig.eval.json`
 - `tsconfig.json`
