@@ -1,0 +1,103 @@
+{
+  "callees:run": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "local_outgoing",
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "resolved",
+          "kind": "calls",
+          "count": 1
+        }
+      ],
+      "samples": [],
+      "truncated": false
+    }
+  },
+  "callers:process": {
+    "coverage": {
+      "total": 4,
+      "resolved": 4,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_reverse",
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "resolved",
+          "kind": "calls",
+          "count": 1
+        }
+      ],
+      "samples": [],
+      "truncated": false
+    },
+    "notes": [
+      "symbol is ambiguous; selected src/js/handler.ts::process from 2 candidates"
+    ]
+  },
+  "files": {
+    "coverage": {
+      "total": 4,
+      "resolved": 4,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "explicit_scope"
+  },
+  "node:Handler": {
+    "coverage": {
+      "total": 4,
+      "resolved": 4,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_reverse"
+  },
+  "search:invoke": {
+    "coverage": {
+      "total": 4,
+      "resolved": 4,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_discovery",
+    "notes": [
+      "1 duplicate symbol name(s) in result candidates"
+    ]
+  },
+  "search:process": {
+    "coverage": {
+      "total": 4,
+      "resolved": 4,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_discovery",
+    "notes": [
+      "1 duplicate symbol name(s) in result candidates"
+    ]
+  },
+  "status": {
+    "coverage": {
+      "total": 4,
+      "resolved": 4,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "descriptive"
+  }
+}

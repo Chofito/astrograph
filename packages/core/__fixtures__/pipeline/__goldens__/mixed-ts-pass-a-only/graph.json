@@ -1,0 +1,668 @@
+{
+  "nodes": [
+    {
+      "id": "16929197798211147583",
+      "project": "root",
+      "kind": "file",
+      "name": "consumer.ts",
+      "qualifiedName": "src/js/consumer.ts",
+      "filePath": "src/js/consumer.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 11,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "17270051534736601559",
+      "project": "root",
+      "kind": "import",
+      "name": "./handler",
+      "qualifiedName": "src/js/consumer.ts::import(./handler)",
+      "filePath": "src/js/consumer.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 0,
+        "endColumn": 35
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "13706241310696100966",
+      "project": "root",
+      "kind": "function",
+      "name": "consume",
+      "qualifiedName": "src/js/consumer.ts::consume",
+      "filePath": "src/js/consumer.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 7,
+        "endLine": 10,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "2574238571378287595",
+      "project": "root",
+      "kind": "file",
+      "name": "handler.ts",
+      "qualifiedName": "src/js/handler.ts",
+      "filePath": "src/js/handler.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 8,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "12449897472651271783",
+      "project": "root",
+      "kind": "function",
+      "name": "process",
+      "qualifiedName": "src/js/handler.ts::process",
+      "filePath": "src/js/handler.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "9035792468134319521",
+      "project": "root",
+      "kind": "function",
+      "name": "invoke",
+      "qualifiedName": "src/js/handler.ts::invoke",
+      "filePath": "src/js/handler.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 5,
+        "endLine": 7,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "5743026100564843426",
+      "project": "root",
+      "kind": "file",
+      "name": "Consumer.php",
+      "qualifiedName": "src/php/Consumer.php",
+      "filePath": "src/php/Consumer.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 22,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "16665241795301203892",
+      "project": "root",
+      "kind": "namespace",
+      "name": "App",
+      "qualifiedName": "src/php/Consumer.php::App",
+      "filePath": "src/php/Consumer.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 14
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "12635724908495398367",
+      "project": "root",
+      "kind": "class",
+      "name": "Consumer",
+      "qualifiedName": "src/php/Consumer.php::Consumer",
+      "filePath": "src/php/Consumer.php",
+      "language": "php",
+      "range": {
+        "startLine": 5,
+        "endLine": 21,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "3684876012334959730",
+      "project": "root",
+      "kind": "method",
+      "name": "__construct",
+      "qualifiedName": "src/php/Consumer.php::Consumer.__construct",
+      "filePath": "src/php/Consumer.php",
+      "language": "php",
+      "range": {
+        "startLine": 7,
+        "endLine": 9,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "1088394460688105576",
+      "project": "root",
+      "kind": "method",
+      "name": "run",
+      "qualifiedName": "src/php/Consumer.php::Consumer.run",
+      "filePath": "src/php/Consumer.php",
+      "language": "php",
+      "range": {
+        "startLine": 11,
+        "endLine": 14,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "12937404585041949565",
+      "project": "root",
+      "kind": "method",
+      "name": "stray",
+      "qualifiedName": "src/php/Consumer.php::Consumer.stray",
+      "filePath": "src/php/Consumer.php",
+      "language": "php",
+      "range": {
+        "startLine": 17,
+        "endLine": 20,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "12286445218650245167",
+      "project": "root",
+      "kind": "file",
+      "name": "Handler.php",
+      "qualifiedName": "src/php/Handler.php",
+      "filePath": "src/php/Handler.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 20,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "5900114692865800916",
+      "project": "root",
+      "kind": "namespace",
+      "name": "App",
+      "qualifiedName": "src/php/Handler.php::App",
+      "filePath": "src/php/Handler.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 14
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "8759207228289796347",
+      "project": "root",
+      "kind": "class",
+      "name": "Handler",
+      "qualifiedName": "src/php/Handler.php::Handler",
+      "filePath": "src/php/Handler.php",
+      "language": "php",
+      "range": {
+        "startLine": 5,
+        "endLine": 19,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "17289927845201476408",
+      "project": "root",
+      "kind": "method",
+      "name": "process",
+      "qualifiedName": "src/php/Handler.php::Handler.process",
+      "filePath": "src/php/Handler.php",
+      "language": "php",
+      "range": {
+        "startLine": 7,
+        "endLine": 9,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "4946583357492129166",
+      "project": "root",
+      "kind": "method",
+      "name": "invoke",
+      "qualifiedName": "src/php/Handler.php::Handler.invoke",
+      "filePath": "src/php/Handler.php",
+      "language": "php",
+      "range": {
+        "startLine": 11,
+        "endLine": 14,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "6124862028431531614",
+      "project": "root",
+      "kind": "method",
+      "name": "handle",
+      "qualifiedName": "src/php/Handler.php::Handler.handle",
+      "filePath": "src/php/Handler.php",
+      "language": "php",
+      "range": {
+        "startLine": 16,
+        "endLine": 18,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "1088394460688105576",
+      "target": "4946583357492129166",
+      "targetName": "invoke",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 13,
+      "col": 8
+    },
+    {
+      "source": "12286445218650245167",
+      "target": "5900114692865800916",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "12286445218650245167",
+      "target": "8759207228289796347",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "12635724908495398367",
+      "target": "1088394460688105576",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 11
+    },
+    {
+      "source": "12635724908495398367",
+      "target": "12937404585041949565",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 17
+    },
+    {
+      "source": "12635724908495398367",
+      "target": "3684876012334959730",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7
+    },
+    {
+      "source": "12937404585041949565",
+      "target": null,
+      "targetName": "compute",
+      "kind": "calls",
+      "resolutionState": "unresolved",
+      "confidence": "low",
+      "provenance": "tree-sitter",
+      "line": 19,
+      "col": 8
+    },
+    {
+      "source": "16929197798211147583",
+      "target": "13706241310696100966",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7
+    },
+    {
+      "source": "16929197798211147583",
+      "target": "17270051534736601559",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 1
+    },
+    {
+      "source": "2574238571378287595",
+      "target": "12449897472651271783",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 1
+    },
+    {
+      "source": "2574238571378287595",
+      "target": "9035792468134319521",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "3684876012334959730",
+      "target": "8759207228289796347",
+      "targetName": "Handler",
+      "kind": "type_of",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7,
+      "col": 49
+    },
+    {
+      "source": "4946583357492129166",
+      "target": "17289927845201476408",
+      "targetName": "process",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 13,
+      "col": 8
+    },
+    {
+      "source": "5743026100564843426",
+      "target": "12635724908495398367",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "5743026100564843426",
+      "target": "16665241795301203892",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "8759207228289796347",
+      "target": "17289927845201476408",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7
+    },
+    {
+      "source": "8759207228289796347",
+      "target": "4946583357492129166",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 11
+    },
+    {
+      "source": "8759207228289796347",
+      "target": "6124862028431531614",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 16
+    }
+  ],
+  "files": [
+    {
+      "path": "src/js/consumer.ts",
+      "project": "root",
+      "contentHash": "10225391595990519656",
+      "language": "typescript",
+      "size": 297,
+      "nodeCount": 3,
+      "state": "resolved",
+      "errors": []
+    },
+    {
+      "path": "src/js/handler.ts",
+      "project": "root",
+      "contentHash": "11307827376089911346",
+      "language": "typescript",
+      "size": 128,
+      "nodeCount": 3,
+      "state": "resolved",
+      "errors": []
+    },
+    {
+      "path": "src/php/Consumer.php",
+      "project": "root",
+      "contentHash": "11465794808995955059",
+      "language": "php",
+      "size": 359,
+      "nodeCount": 6,
+      "state": "resolved",
+      "errors": []
+    },
+    {
+      "path": "src/php/Handler.php",
+      "project": "root",
+      "contentHash": "295136660572530157",
+      "language": "php",
+      "size": 211,
+      "nodeCount": 6,
+      "state": "resolved",
+      "errors": []
+    }
+  ]
+}

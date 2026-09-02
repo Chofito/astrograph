@@ -17,7 +17,7 @@ Define how one repository becomes an open Astrograph instance and who owns every
 3. Creates hasher, query builder and filesystem adapters.
 4. Builds the default registry from config.
 5. Initializes Tree-sitter and loads the registry's required grammars.
-6. Creates a backend-aware glob scanner.
+6. Creates a glob scanner covering every *shipped* backend's extensions, enabled or not.
 7. Creates `Indexer` and `GraphQueries`.
 8. Returns an `Astrograph` facade.
 
@@ -43,6 +43,21 @@ sequenceDiagram
 ```
 
 The CLI finds a project by walking ancestors for `.astrograph`, except initialization which creates it. MCP uses explicit path, client roots, then cwd, and requires an existing index. Config loading occurs in the transport before `openProject`.
+
+### What the scanner covers
+
+The scan list is `registry.allExtensions()` **union** `shippedBackendExtensionOwners()` — deliberately
+wider than the enabled backends. A disabled backend's files must still be *seen* so that
+`classifyPath` can return `backend_disabled` and `eligibilityEvidence` can record the actionable
+`NO_BACKEND` message; when the scanner omitted those extensions, membership saw a persisted path
+missing from the scan set, classified it `out_of_scope`, and — since `out_of_scope` is not
+recordable — deleted the row. A project whose entire PHP half was unindexed then answered every
+query with `partial: false`.
+
+Widening the scan does not widen parsing. Such a path is ineligible, is recorded with zero nodes, and
+reaches neither `extractNodes` nor `loadProject` (contracts §13). `Indexer.indexableExtensions()`
+still reports only the enabled backends' extensions, because that answers a different question: what
+this configuration can actually index.
 
 ### The initialization seam
 
