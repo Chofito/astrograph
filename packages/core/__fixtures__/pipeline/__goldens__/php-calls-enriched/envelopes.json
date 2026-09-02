@@ -1,0 +1,175 @@
+{
+  "callees:bucketOne": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "local_outgoing",
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "resolved",
+          "kind": "calls",
+          "count": 5
+        },
+        {
+          "resolutionState": "resolved",
+          "kind": "instantiates",
+          "count": 1
+        }
+      ],
+      "samples": [],
+      "truncated": false
+    }
+  },
+  "callers:run": {
+    "coverage": {
+      "total": 9,
+      "resolved": 9,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_reverse",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/MissingCall.php"
+        ]
+      }
+    ],
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "resolved",
+          "kind": "calls",
+          "count": 3
+        }
+      ],
+      "samples": [],
+      "truncated": false
+    },
+    "notes": [
+      "1 file(s) finished indexing but are missing content; see their diagnostics."
+    ]
+  },
+  "files": {
+    "coverage": {
+      "total": 9,
+      "resolved": 9,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "explicit_scope",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/MissingCall.php"
+        ]
+      }
+    ],
+    "notes": [
+      "1 file(s) finished indexing but are missing content; see their diagnostics."
+    ]
+  },
+  "node:Worker": {
+    "coverage": {
+      "total": 9,
+      "resolved": 9,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_reverse",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/MissingCall.php"
+        ]
+      }
+    ],
+    "notes": [
+      "1 file(s) finished indexing but are missing content; see their diagnostics."
+    ]
+  },
+  "search:run": {
+    "coverage": {
+      "total": 9,
+      "resolved": 9,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_discovery",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/MissingCall.php"
+        ]
+      }
+    ],
+    "notes": [
+      "1 file(s) finished indexing but are missing content; see their diagnostics."
+    ]
+  },
+  "status": {
+    "coverage": {
+      "total": 9,
+      "resolved": 9,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "descriptive"
+  },
+  "trace:bucketOne->run": {
+    "coverage": {
+      "total": 9,
+      "resolved": 9,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_path",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/MissingCall.php"
+        ]
+      },
+      {
+        "kind": "capability_unsupported",
+        "detail": "php backend produces no references edges, so relations originating in php files cannot appear here."
+      }
+    ],
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "resolved",
+          "kind": "calls",
+          "count": 1
+        }
+      ],
+      "samples": [],
+      "truncated": false
+    },
+    "notes": [
+      "1 file(s) finished indexing but are missing content; see their diagnostics.",
+      "php backend produces no references edges, so relations originating in php files cannot appear here."
+    ]
+  }
+}

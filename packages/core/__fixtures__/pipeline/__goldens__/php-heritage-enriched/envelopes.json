@@ -1,0 +1,52 @@
+{
+  "callers:Cleanup": {
+    "coverage": {
+      "total": 10,
+      "resolved": 10,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_reverse"
+  },
+  "files": {
+    "coverage": {
+      "total": 10,
+      "resolved": 10,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "explicit_scope"
+  },
+  "node:Child": {
+    "coverage": {
+      "total": 10,
+      "resolved": 10,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_reverse"
+  },
+  "search:Child": {
+    "coverage": {
+      "total": 10,
+      "resolved": 10,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_discovery"
+  },
+  "status": {
+    "coverage": {
+      "total": 10,
+      "resolved": 10,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "descriptive"
+  }
+}

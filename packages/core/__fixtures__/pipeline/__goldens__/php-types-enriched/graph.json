@@ -1,0 +1,551 @@
+{
+  "nodes": [
+    {
+      "id": "10004153544350695685",
+      "project": "root",
+      "kind": "file",
+      "name": "Deps.php",
+      "qualifiedName": "src/Deps.php",
+      "filePath": "src/Deps.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 16,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "9595595398019583548",
+      "project": "root",
+      "kind": "namespace",
+      "name": "Vendor\\Di",
+      "qualifiedName": "src/Deps.php::Vendor\\Di",
+      "filePath": "src/Deps.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 20
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "5669556774024808275",
+      "project": "root",
+      "kind": "class",
+      "name": "CleanupCron",
+      "qualifiedName": "src/Deps.php::CleanupCron",
+      "filePath": "src/Deps.php",
+      "language": "php",
+      "range": {
+        "startLine": 5,
+        "endLine": 7,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "7778798933244418302",
+      "project": "root",
+      "kind": "interface",
+      "name": "Thing",
+      "qualifiedName": "src/Deps.php::Thing",
+      "filePath": "src/Deps.php",
+      "language": "php",
+      "range": {
+        "startLine": 9,
+        "endLine": 11,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "14699873284721319370",
+      "project": "root",
+      "kind": "class",
+      "name": "ExternalService",
+      "qualifiedName": "src/Deps.php::ExternalService",
+      "filePath": "src/Deps.php",
+      "language": "php",
+      "range": {
+        "startLine": 13,
+        "endLine": 15,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "12041549960984743993",
+      "project": "root",
+      "kind": "file",
+      "name": "Worker.php",
+      "qualifiedName": "src/Worker.php",
+      "filePath": "src/Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 1,
+        "endLine": 41,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "13643736988019122343",
+      "project": "root",
+      "kind": "namespace",
+      "name": "App\\Service",
+      "qualifiedName": "src/Worker.php::App\\Service",
+      "filePath": "src/Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 3,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 22
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "11236724233630758264",
+      "project": "root",
+      "kind": "class",
+      "name": "Worker",
+      "qualifiedName": "src/Worker.php::Worker",
+      "filePath": "src/Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 13,
+        "endLine": 40,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "119632268575105982",
+      "project": "root",
+      "kind": "property",
+      "name": "$cron",
+      "qualifiedName": "src/Worker.php::Worker.$cron",
+      "filePath": "src/Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 15,
+        "endLine": 15,
+        "startColumn": 24,
+        "endColumn": 29
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "2031595102473004094",
+      "project": "root",
+      "kind": "method",
+      "name": "__construct",
+      "qualifiedName": "src/Worker.php::Worker.__construct",
+      "filePath": "src/Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 17,
+        "endLine": 24,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "14850649969139341543",
+      "project": "root",
+      "kind": "method",
+      "name": "run",
+      "qualifiedName": "src/Worker.php::Worker.run",
+      "filePath": "src/Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 26,
+        "endLine": 29,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "8738447791541560686",
+      "project": "root",
+      "kind": "method",
+      "name": "label",
+      "qualifiedName": "src/Worker.php::Worker.label",
+      "filePath": "src/Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 31,
+        "endLine": 34,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "7675699119728350881",
+      "project": "root",
+      "kind": "method",
+      "name": "missing",
+      "qualifiedName": "src/Worker.php::Worker.missing",
+      "filePath": "src/Worker.php",
+      "language": "php",
+      "range": {
+        "startLine": 36,
+        "endLine": 39,
+        "startColumn": 4,
+        "endColumn": 5
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "10004153544350695685",
+      "target": "14699873284721319370",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 13
+    },
+    {
+      "source": "10004153544350695685",
+      "target": "5669556774024808275",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    },
+    {
+      "source": "10004153544350695685",
+      "target": "7778798933244418302",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 9
+    },
+    {
+      "source": "10004153544350695685",
+      "target": "9595595398019583548",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "11236724233630758264",
+      "target": "119632268575105982",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 15
+    },
+    {
+      "source": "11236724233630758264",
+      "target": "14850649969139341543",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 26
+    },
+    {
+      "source": "11236724233630758264",
+      "target": "2031595102473004094",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 17
+    },
+    {
+      "source": "11236724233630758264",
+      "target": "7675699119728350881",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 36
+    },
+    {
+      "source": "11236724233630758264",
+      "target": "8738447791541560686",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 31
+    },
+    {
+      "source": "119632268575105982",
+      "target": "5669556774024808275",
+      "targetName": "CleanupCron",
+      "kind": "type_of",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 15,
+      "col": 12
+    },
+    {
+      "source": "12041549960984743993",
+      "target": "11236724233630758264",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 13
+    },
+    {
+      "source": "12041549960984743993",
+      "target": "13643736988019122343",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 3
+    },
+    {
+      "source": "12041549960984743993",
+      "target": "14699873284721319370",
+      "targetName": "ExternalService",
+      "kind": "imports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 7,
+      "col": 0
+    },
+    {
+      "source": "12041549960984743993",
+      "target": "5669556774024808275",
+      "targetName": "CleanupCron",
+      "kind": "imports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5,
+      "col": 0
+    },
+    {
+      "source": "12041549960984743993",
+      "target": "7778798933244418302",
+      "targetName": "Thing",
+      "kind": "imports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 6,
+      "col": 0
+    },
+    {
+      "source": "14850649969139341543",
+      "target": "7778798933244418302",
+      "targetName": "Thing",
+      "kind": "returns",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 26,
+      "col": 27
+    },
+    {
+      "source": "2031595102473004094",
+      "target": "5669556774024808275",
+      "targetName": "CleanupCron",
+      "kind": "type_of",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 19,
+      "col": 8
+    },
+    {
+      "source": "2031595102473004094",
+      "target": "7778798933244418302",
+      "targetName": "Thing",
+      "kind": "type_of",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 18,
+      "col": 25
+    },
+    {
+      "source": "7675699119728350881",
+      "target": null,
+      "targetName": "RuntimeException",
+      "kind": "instantiates",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 38,
+      "col": 14
+    },
+    {
+      "source": "7675699119728350881",
+      "target": null,
+      "targetName": "Vendor\\Missing\\Factory",
+      "kind": "returns",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 36,
+      "col": 31
+    }
+  ],
+  "files": [
+    {
+      "path": "src/Deps.php",
+      "project": "root",
+      "contentHash": "2829469036840706775",
+      "language": "php",
+      "size": 99,
+      "nodeCount": 5,
+      "state": "resolved",
+      "errors": []
+    },
+    {
+      "path": "src/Worker.php",
+      "project": "root",
+      "contentHash": "5968377446252256253",
+      "language": "php",
+      "size": 769,
+      "nodeCount": 8,
+      "state": "resolved",
+      "errors": []
+    }
+  ]
+}
