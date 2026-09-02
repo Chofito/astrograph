@@ -1,0 +1,130 @@
+{
+  "callees:useHelper": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "local_outgoing",
+    "reasons": [
+      {
+        "kind": "capability_unsupported",
+        "detail": "typescript backend produces no calls/instantiates edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here."
+      }
+    ],
+    "notes": [
+      "typescript backend produces no calls/instantiates edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here."
+    ]
+  },
+  "callers:helper": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_reverse",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/broken.ts"
+        ]
+      },
+      {
+        "kind": "capability_unsupported",
+        "detail": "typescript backend produces no calls edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here."
+      }
+    ],
+    "notes": [
+      "1 file(s) finished indexing but are missing content; see their diagnostics.",
+      "typescript backend produces no calls edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here."
+    ]
+  },
+  "files": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "explicit_scope",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/broken.ts"
+        ]
+      }
+    ],
+    "notes": [
+      "1 file(s) finished indexing but are missing content; see their diagnostics."
+    ]
+  },
+  "search:helper": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_discovery",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/broken.ts"
+        ]
+      }
+    ],
+    "notes": [
+      "1 file(s) finished indexing but are missing content; see their diagnostics."
+    ]
+  },
+  "status": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "descriptive"
+  },
+  "trace:useHelper->helper": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_path",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/broken.ts"
+        ]
+      },
+      {
+        "kind": "capability_unsupported",
+        "detail": "typescript backend produces no calls/references edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here."
+      }
+    ],
+    "notes": [
+      "1 file(s) finished indexing but are missing content; see their diagnostics.",
+      "typescript backend produces no calls/references edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here.",
+      "No calls/references path found; the reachable graph was fully searched"
+    ]
+  }
+}

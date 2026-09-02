@@ -1,0 +1,90 @@
+{
+  "callees:useHelper": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "local_outgoing",
+    "reasons": [
+      {
+        "kind": "capability_unsupported",
+        "detail": "typescript backend produces no calls/instantiates edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here."
+      }
+    ],
+    "notes": [
+      "typescript backend produces no calls/instantiates edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here."
+    ]
+  },
+  "callers:helper": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_reverse",
+    "reasons": [
+      {
+        "kind": "capability_unsupported",
+        "detail": "typescript backend produces no calls edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here."
+      }
+    ],
+    "notes": [
+      "typescript backend produces no calls edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here."
+    ]
+  },
+  "files": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "explicit_scope"
+  },
+  "search:helper": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_discovery"
+  },
+  "status": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "descriptive"
+  },
+  "trace:useHelper->helper": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_path",
+    "reasons": [
+      {
+        "kind": "capability_unsupported",
+        "detail": "typescript backend produces no calls/references edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here."
+      }
+    ],
+    "notes": [
+      "typescript backend produces no calls/references edges, so relations originating in typescript/tsx/javascript/jsx files cannot appear here.",
+      "No calls/references path found; the reachable graph was fully searched"
+    ]
+  }
+}

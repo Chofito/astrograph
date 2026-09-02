@@ -1,0 +1,551 @@
+{
+  "nodes": [
+    {
+      "id": "11557706427147824079",
+      "project": "root",
+      "kind": "file",
+      "name": "ambiguous.ts",
+      "qualifiedName": "src/ambiguous.ts",
+      "filePath": "src/ambiguous.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 12,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "17420373163759923435",
+      "project": "root",
+      "kind": "function",
+      "name": "merged",
+      "qualifiedName": "src/ambiguous.ts::merged",
+      "filePath": "src/ambiguous.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "function merged()",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "1627747370167255258",
+      "project": "root",
+      "kind": "namespace",
+      "name": "merged",
+      "qualifiedName": "src/ambiguous.ts::merged",
+      "filePath": "src/ambiguous.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 5,
+        "endLine": 7,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "namespace merged",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "17685551717434400707",
+      "project": "root",
+      "kind": "constant",
+      "name": "tag",
+      "qualifiedName": "src/ambiguous.ts::merged.tag",
+      "filePath": "src/ambiguous.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 6,
+        "endLine": 6,
+        "startColumn": 1,
+        "endColumn": 25
+      },
+      "signature": "export const tag = \"ns\";",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "6514554142957686491",
+      "project": "root",
+      "kind": "function",
+      "name": "readTag",
+      "qualifiedName": "src/ambiguous.ts::readTag",
+      "filePath": "src/ambiguous.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 9,
+        "endLine": 11,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function readTag(): string",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "4114604165447085705",
+      "project": "root",
+      "kind": "file",
+      "name": "ok.ts",
+      "qualifiedName": "src/ok.ts",
+      "filePath": "src/ok.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 8,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "15303676503015854983",
+      "project": "root",
+      "kind": "function",
+      "name": "helper",
+      "qualifiedName": "src/ok.ts::helper",
+      "filePath": "src/ok.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function helper(): number",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "3023701341406684353",
+      "project": "root",
+      "kind": "function",
+      "name": "useHelper",
+      "qualifiedName": "src/ok.ts::useHelper",
+      "filePath": "src/ok.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 5,
+        "endLine": 7,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function useHelper(): number",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "2296214266183720416",
+      "project": "root",
+      "kind": "file",
+      "name": "shader.frag",
+      "qualifiedName": "src/shader.frag",
+      "filePath": "src/shader.frag",
+      "language": "unknown",
+      "range": {
+        "startLine": 1,
+        "endLine": 2,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "3550951864554352127",
+      "project": "root",
+      "kind": "file",
+      "name": "unresolved.ts",
+      "qualifiedName": "src/unresolved.ts",
+      "filePath": "src/unresolved.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 6,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "16634860457079739733",
+      "project": "root",
+      "kind": "import",
+      "name": "node:path",
+      "qualifiedName": "src/unresolved.ts::import(node:path)",
+      "filePath": "src/unresolved.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 0,
+        "endColumn": 33
+      },
+      "signature": "import { join } from \"node:path\";",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "10556564263797331569",
+      "project": "root",
+      "kind": "function",
+      "name": "describePath",
+      "qualifiedName": "src/unresolved.ts::describePath",
+      "filePath": "src/unresolved.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 3,
+        "endLine": 5,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function describePath(): string",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "10556564263797331569",
+      "target": null,
+      "targetName": "join",
+      "kind": "calls",
+      "resolutionState": "unresolved",
+      "confidence": "low",
+      "provenance": "ts-compiler",
+      "line": 4,
+      "col": 8
+    },
+    {
+      "source": "10556564263797331569",
+      "target": "10556564263797331569",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "11557706427147824079",
+      "target": "1627747370167255258",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 5,
+      "col": 0
+    },
+    {
+      "source": "11557706427147824079",
+      "target": "17420373163759923435",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "11557706427147824079",
+      "target": "6514554142957686491",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 9,
+      "col": 0
+    },
+    {
+      "source": "15303676503015854983",
+      "target": "15303676503015854983",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "1627747370167255258",
+      "target": "17685551717434400707",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 6,
+      "col": 1
+    },
+    {
+      "source": "16634860457079739733",
+      "target": null,
+      "targetName": "join",
+      "kind": "imports",
+      "resolutionState": "unresolved",
+      "confidence": "low",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 9
+    },
+    {
+      "source": "3023701341406684353",
+      "target": "15303676503015854983",
+      "targetName": "helper",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 6,
+      "col": 8
+    },
+    {
+      "source": "3023701341406684353",
+      "target": "3023701341406684353",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 5,
+      "col": 0
+    },
+    {
+      "source": "3550951864554352127",
+      "target": "10556564263797331569",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "4114604165447085705",
+      "target": "15303676503015854983",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "4114604165447085705",
+      "target": "3023701341406684353",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 5,
+      "col": 0
+    },
+    {
+      "source": "6514554142957686491",
+      "target": "6514554142957686491",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 9,
+      "col": 0
+    },
+    {
+      "source": "6514554142957686491",
+      "target": "17420373163759923435",
+      "targetName": "merged",
+      "kind": "references",
+      "resolutionState": "ambiguous",
+      "confidence": "medium",
+      "provenance": "ts-compiler",
+      "line": 10,
+      "col": 8,
+      "metadata": {
+        "candidates": [
+          "17420373163759923435",
+          "1627747370167255258"
+        ]
+      }
+    },
+    {
+      "source": "6514554142957686491",
+      "target": "17685551717434400707",
+      "targetName": "tag",
+      "kind": "references",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 10,
+      "col": 15
+    }
+  ],
+  "files": [
+    {
+      "path": "src/ambiguous.ts",
+      "project": "root",
+      "contentHash": "3751008769241282190",
+      "language": "typescript",
+      "size": 140,
+      "nodeCount": 5,
+      "state": "resolved",
+      "errors": []
+    },
+    {
+      "path": "src/ok.ts",
+      "project": "root",
+      "contentHash": "13986654319930986408",
+      "language": "typescript",
+      "size": 107,
+      "nodeCount": 3,
+      "state": "resolved",
+      "errors": []
+    },
+    {
+      "path": "src/oversized.ts",
+      "project": "root",
+      "contentHash": "",
+      "language": "typescript",
+      "size": 855,
+      "nodeCount": 0,
+      "state": "parsed",
+      "errors": [
+        {
+          "message": "File exceeds maxFileSizeBytes (855 bytes)",
+          "filePath": "src/oversized.ts",
+          "severity": "warning",
+          "code": "FILE_TOO_LARGE"
+        }
+      ]
+    },
+    {
+      "path": "src/shader.frag",
+      "project": "root",
+      "contentHash": "1999639578319681390",
+      "language": "unknown",
+      "size": 22,
+      "nodeCount": 1,
+      "state": "resolved",
+      "errors": [
+        {
+          "message": "No tree-sitter grammar for src/shader.frag",
+          "filePath": "src/shader.frag",
+          "severity": "warning",
+          "code": "TREE_SITTER_UNAVAILABLE"
+        }
+      ]
+    },
+    {
+      "path": "src/unresolved.ts",
+      "project": "root",
+      "contentHash": "8271871384147092648",
+      "language": "typescript",
+      "size": 102,
+      "nodeCount": 3,
+      "state": "resolved",
+      "errors": []
+    }
+  ]
+}

@@ -1,0 +1,194 @@
+{
+  "callees:useHelper": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "local_outgoing",
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "resolved",
+          "kind": "calls",
+          "count": 1
+        }
+      ],
+      "samples": [],
+      "truncated": false
+    }
+  },
+  "callers:helper": {
+    "coverage": {
+      "total": 5,
+      "resolved": 4,
+      "parsed": 1,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_reverse",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 of 5 files have not finished resolving.",
+        "files": [
+          "src/oversized.ts"
+        ]
+      },
+      {
+        "kind": "coverage_incomplete",
+        "detail": "2 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/oversized.ts",
+          "src/shader.frag"
+        ]
+      }
+    ],
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "resolved",
+          "kind": "calls",
+          "count": 1
+        }
+      ],
+      "samples": [],
+      "truncated": false
+    },
+    "pendingFiles": [
+      "src/oversized.ts"
+    ],
+    "notes": [
+      "1 of 5 files have not finished resolving.",
+      "2 file(s) finished indexing but are missing content; see their diagnostics."
+    ]
+  },
+  "files": {
+    "coverage": {
+      "total": 5,
+      "resolved": 4,
+      "parsed": 1,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "explicit_scope",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 of 5 files have not finished resolving.",
+        "files": [
+          "src/oversized.ts"
+        ]
+      },
+      {
+        "kind": "coverage_incomplete",
+        "detail": "2 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/oversized.ts",
+          "src/shader.frag"
+        ]
+      }
+    ],
+    "pendingFiles": [
+      "src/oversized.ts"
+    ],
+    "notes": [
+      "1 of 5 files have not finished resolving.",
+      "2 file(s) finished indexing but are missing content; see their diagnostics."
+    ]
+  },
+  "search:helper": {
+    "coverage": {
+      "total": 5,
+      "resolved": 4,
+      "parsed": 1,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_discovery",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 of 5 files have not finished resolving.",
+        "files": [
+          "src/oversized.ts"
+        ]
+      },
+      {
+        "kind": "coverage_incomplete",
+        "detail": "2 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/oversized.ts",
+          "src/shader.frag"
+        ]
+      }
+    ],
+    "pendingFiles": [
+      "src/oversized.ts"
+    ],
+    "notes": [
+      "1 of 5 files have not finished resolving.",
+      "2 file(s) finished indexing but are missing content; see their diagnostics."
+    ]
+  },
+  "status": {
+    "coverage": {
+      "total": 5,
+      "resolved": 4,
+      "parsed": 1,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "descriptive",
+    "pendingFiles": [
+      "src/oversized.ts"
+    ]
+  },
+  "trace:useHelper->helper": {
+    "coverage": {
+      "total": 5,
+      "resolved": 4,
+      "parsed": 1,
+      "pending": 0
+    },
+    "partial": true,
+    "domain": "global_path",
+    "reasons": [
+      {
+        "kind": "coverage_incomplete",
+        "detail": "1 of 5 files have not finished resolving.",
+        "files": [
+          "src/oversized.ts"
+        ]
+      },
+      {
+        "kind": "coverage_incomplete",
+        "detail": "2 file(s) finished indexing but are missing content; see their diagnostics.",
+        "files": [
+          "src/oversized.ts",
+          "src/shader.frag"
+        ]
+      }
+    ],
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "resolved",
+          "kind": "calls",
+          "count": 1
+        }
+      ],
+      "samples": [],
+      "truncated": false
+    },
+    "pendingFiles": [
+      "src/oversized.ts"
+    ],
+    "notes": [
+      "1 of 5 files have not finished resolving.",
+      "2 file(s) finished indexing but are missing content; see their diagnostics."
+    ]
+  }
+}
