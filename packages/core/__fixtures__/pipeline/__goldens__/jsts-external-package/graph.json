@@ -1,0 +1,159 @@
+{
+  "nodes": [
+    {
+      "id": "6059124866146119727",
+      "project": "root",
+      "kind": "function",
+      "name": "tinyHelper",
+      "qualifiedName": "node_modules/tiny-lib/index.d.ts::tinyHelper",
+      "filePath": "node_modules/tiny-lib/index.d.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 0,
+        "endLine": 0,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": true,
+      "isGenerated": false,
+      "isTest": false
+    },
+    {
+      "id": "239664857792434119",
+      "project": "root",
+      "kind": "file",
+      "name": "app.ts",
+      "qualifiedName": "src/app.ts",
+      "filePath": "src/app.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 6,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "5225928730466851924",
+      "project": "root",
+      "kind": "import",
+      "name": "tiny-lib",
+      "qualifiedName": "src/app.ts::import(tiny-lib)",
+      "filePath": "src/app.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 0,
+        "endColumn": 38
+      },
+      "signature": "import { tinyHelper } from \"tiny-lib\";",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "2049291832321518770",
+      "project": "root",
+      "kind": "function",
+      "name": "run",
+      "qualifiedName": "src/app.ts::run",
+      "filePath": "src/app.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 3,
+        "endLine": 5,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function run(): number",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "2049291832321518770",
+      "target": "6059124866146119727",
+      "targetName": "tinyHelper",
+      "kind": "calls",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 4,
+      "col": 8
+    },
+    {
+      "source": "2049291832321518770",
+      "target": "2049291832321518770",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "239664857792434119",
+      "target": "2049291832321518770",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "5225928730466851924",
+      "target": "6059124866146119727",
+      "targetName": "tinyHelper",
+      "kind": "imports",
+      "resolutionState": "external",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 9
+    }
+  ],
+  "files": [
+    {
+      "path": "src/app.ts",
+      "project": "root",
+      "contentHash": "9454408899276545919",
+      "language": "typescript",
+      "size": 97,
+      "nodeCount": 3,
+      "state": "resolved",
+      "errors": []
+    }
+  ]
+}

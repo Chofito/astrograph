@@ -1,0 +1,101 @@
+{
+  "callees:run": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "local_outgoing",
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "external",
+          "kind": "calls",
+          "count": 1
+        }
+      ],
+      "samples": [
+        {
+          "source": "2049291832321518770",
+          "kind": "calls",
+          "resolutionState": "external",
+          "provenance": "ts-compiler",
+          "targetName": "tinyHelper",
+          "line": 4,
+          "col": 8
+        }
+      ],
+      "truncated": false
+    },
+    "notes": [
+      "1 external calls relation(s) could not be shown as nodes."
+    ]
+  },
+  "callers:tinyHelper": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_reverse",
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "external",
+          "kind": "calls",
+          "count": 1
+        }
+      ],
+      "samples": [
+        {
+          "source": "2049291832321518770",
+          "kind": "calls",
+          "resolutionState": "external",
+          "provenance": "ts-compiler",
+          "targetName": "tinyHelper",
+          "line": 4,
+          "col": 8
+        }
+      ],
+      "truncated": false
+    },
+    "notes": [
+      "1 external calls relation(s) could not be shown as nodes.",
+      "1 external edge(s) included"
+    ]
+  },
+  "files": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "explicit_scope"
+  },
+  "search:tinyHelper": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_discovery"
+  },
+  "status": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "descriptive"
+  }
+}
