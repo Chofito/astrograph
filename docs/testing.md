@@ -2,7 +2,7 @@
 
 > 🌐 Languages: **English** (this file) · _ES mirror pending (see backlog)_
 
-> Target design with historical completion markers. It is **not** an AS-IS inventory: the current suite has unit/integration coverage and stored golden files, but the goldens are not exercised through the production pipeline and the built-in eval cases are repository-specific. Use [Testing and evaluation](architecture/operations/testing-and-evaluation.md) for the frozen baseline and `DEV-014`/`DEV-015` for gaps. Checkboxes below record prior planning, not current verification.
+> Target design with historical completion markers. It is **not** an AS-IS inventory. Since 0.1-C there are two fixture families: the extractor goldens this document describes, and the production-pipeline goldens under `packages/core/__fixtures__/pipeline/` that do run `LanguageRegistry → Indexer → SQLite → GraphQueries` (§2.3). The built-in eval cases remain repository-specific. Use [Testing and evaluation](architecture/operations/testing-and-evaluation.md) for the frozen baseline and the authoritative matrix, and `DEV-014`/`DEV-015` for what is still owed. Checkboxes below record prior planning, not current verification.
 >
 > Extraction is **two-pass and multi-backend** ([overview](extraction/overview.md)): Pass A is tree-sitter, Pass B is an optional per-language enricher. The test suite has to pin **both passes, per backend**, and the seam between them (§2.1–2.2) — not just the JS/TS happy path.
 >
@@ -104,7 +104,9 @@ test('imports/alias golden', async () => {
 });
 ```
 
-Updating a golden is a reviewed act — run `bun packages/core/__fixtures__/update-goldens.ts [fixture...]` (or `UPDATE_GOLDENS=1 bun test packages/core/__fixtures__/extraction.test.ts`), never automatic in CI. A missing `graph.json` fails the test suite.
+Updating an **extractor** golden is a reviewed act — run `bun packages/core/__fixtures__/update-goldens.ts [fixture...]` (or `UPDATE_GOLDENS=1 bun test packages/core/__fixtures__/extraction.test.ts`), never automatic in CI. A missing `graph.json` fails the test suite.
+
+Updating a **production-pipeline** golden is a different command with stricter rules (§2.3): it takes explicit fixture ids, has no update-all default, and has no environment-variable mode at all.
 
 ### 2.1 Per-backend golden matrix
 
@@ -156,6 +158,29 @@ test('pass A node ids are a subset of pass B node ids', async () => {
   across the fixture set.
 
 ---
+
+### 2.3 Production-pipeline goldens (AS-IS since 0.1-C)
+
+The goldens in §2–2.2 pin the extractor. They deliberately do **not** pin what the product persists,
+which is why `packages/core/__fixtures__/pipeline/` exists alongside them.
+
+| | Extractor goldens | Production-pipeline goldens |
+|---|---|---|
+| Driver | `__fixtures__/harness.ts` → `TsExtractor` | `pipeline/harness.ts` → `openProject` |
+| Where the graph comes from | the extractor's return value | SQLite, read back after indexing |
+| What else is pinned | nothing | the query envelope (`coverage`, `partial`, `domain`, `reasons`, `evidence`) |
+| Location | `<fixture>/__golden__/graph.json` | `pipeline/__goldens__/<id>/graph.json` + `envelopes.json` |
+| Update command | `__fixtures__/update-goldens.ts` (or `UPDATE_GOLDENS=1`) | `pipeline/update-goldens.ts <id>…`, explicit ids only |
+| Failure tells you | which pass of which backend changed | what the shipped pipeline now persists or claims |
+
+Both families are kept. An extractor failure is the fastest way to see *what* changed in extraction;
+a pipeline failure is the only way to see whether that reached the database and the answers.
+
+The authoritative fixture list, the four-route mutation matrix, the update guardrails and the review
+expectations live in
+[Testing and evaluation — the 0.1-C production-pipeline fixtures](architecture/operations/testing-and-evaluation.md#the-01-c-production-pipeline-fixtures).
+That document is canonical; this section exists so a reader of §2 does not conclude the extractor
+goldens are all there is.
 
 ## 3. Sync-cycle tests (no dangling edges)
 

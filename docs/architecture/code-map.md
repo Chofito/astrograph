@@ -91,6 +91,8 @@ Every row assigns one canonical document. “Reusable” means language/runtime 
 |---|---|---|---|---|
 | `packages/core/src/testing/graph-assertions.ts` | Graph integrity assertions | test support / reusable | internal test helper; currently under source | [Testing](operations/testing-and-evaluation.md) |
 | `packages/core/src/testing/normalize.ts` | The sole 0.1-C oracle: graph snapshots, query-envelope snapshots, digests, and the per-field stability rules | test support / reusable | comparison boundary for every pipeline golden and convergence claim | [Testing — graph oracle](operations/testing-and-evaluation.md#the-01-c-graph-oracle) |
+| `packages/core/__fixtures__/harness.ts`, `packages/core/__fixtures__/extraction.test.ts`, `packages/core/__fixtures__/update-goldens.ts` | Extractor-direct fixtures and their goldens | test support / reusable | pins what the extractor computes; kept alongside the pipeline fixtures | [Testing](operations/testing-and-evaluation.md) |
+| `packages/core/__fixtures__/pipeline/**` | Production-pipeline fixtures: the `openProject` harness, manifests, probes, discrepancy comparison, golden governance, failure injection and the four-route mutation matrix | test support / reusable | AS-IS full-pipeline evidence for 0.1-C; goldens updated only through `pipeline/update-goldens.ts` | [Testing — production-pipeline fixtures](operations/testing-and-evaluation.md#the-01-c-production-pipeline-fixtures) |
 
 ## CLI entry, dispatch and commands
 

@@ -75,11 +75,41 @@ Extraction errors are attached to `FileRecord.errors`. A missing or failed gramm
 
 Indexer orchestration, transactions, reconciliation and coverage are reusable. Parsing, project loading and edge resolution belong to backends. File I/O, hashing and storage are injected adapters.
 
+## Evidence that these invariants hold
+
+The invariants above are exercised end to end by the production-pipeline fixtures in
+`packages/core/__fixtures__/pipeline/`, which run this flow through `openProject` and compare
+persisted SQLite state via the 0.1-C oracle. In particular:
+
+- Scanner/backend ownership: `mixed-enriched` asserts one owning backend per path and no relation
+  crossing a language boundary.
+- Oversized content: `failure-coverage-gaps` pins the `FILE_TOO_LARGE` record with zero nodes, and
+  the `jsts-eligible-to-oversized` / `jsts-oversized-to-eligible` route rows cross the boundary in
+  both directions.
+- Pass A id stability under a complement enricher: `jsts-pass-a-only` asserts Pass A node ids are a
+  subset of the enriched ones, observed through persistence rather than in memory.
+- Resolved-edge targets: every fixture runs `assertGraphIntegrity`, and the PHP fixtures assert that
+  each resolved call points at an indexed method.
+- Clean versus reused convergence: every row of the four-route matrix compares clean full, reused
+  full, `sync()` and `syncFiles()` against one expectation.
+
+Building those fixtures also corrected this flow. The scanner's extension list now comes from every
+*shipped* backend rather than only the enabled ones, so a file whose backend was switched off is
+scanned, classified `backend_disabled` and recorded with an actionable `NO_BACKEND` reason instead of
+being dropped as `out_of_scope` — which had made a project with an entire language unindexed answer
+every query with `partial: false`. Such a file is still never parsed.
+
+Two gaps remain, pinned as AS-IS by those fixtures rather than described as intended: the envelope
+reports that situation as a coverage gap rather than a capability limit, and PHP lookup keys are
+still case-sensitive (`DEV-009`). Both are documented in
+[Testing and evaluation](operations/testing-and-evaluation.md#what-the-fixtures-found-and-what-they-still-pin).
+
 ## Source evidence
 
 - `packages/core/src/indexer.ts`: `indexAll`, `sync`, `syncFiles`, `runPass`, `startPass`, `loadBackendProjects`, `indexFilePassA`, `indexFileReconcile`, `indexFileResolveEdges`, `retireFile`.
 - `packages/core/src/extraction/reconcile.ts`: subset reconciliation.
 - `packages/core/src/db/queries.ts`: persisted operations and coverage.
+- `packages/core/__fixtures__/pipeline/`: the production-pipeline fixtures and the four-route matrix.
 
 ## Known deviations
 

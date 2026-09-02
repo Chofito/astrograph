@@ -27,17 +27,20 @@ Source evidence: `package.json`, `.github/workflows/ci.yml`, `bench/rss.ts`, `ev
 
 ### Tests and fixtures actually present
 
-The core package contains unit/integration-style Bun tests for indexing, resolution, query behavior, freshness, SQLite queries, registry/configuration, and PHP extraction. The fixture harness under `packages/core/__fixtures__/` reads `graph.json` goldens. It directly constructs the TypeScript extractor; the parity test separately compares Tree-sitter and TypeScript extraction through reconciliation helpers.
+The core package contains unit/integration-style Bun tests for indexing, resolution, query behavior, freshness, SQLite queries, registry/configuration, and PHP extraction. There are now **two** fixture families, and the difference between them is the point:
 
-That arrangement is useful for deterministic extractor behavior, but it is **not** a persisted, full-pipeline golden: it does not prove the route `LanguageRegistry → Indexer → SQLite → query facade`, nor all coverage states and backend configurations.
+- **Extractor fixtures** (`packages/core/__fixtures__/<name>/__golden__/graph.json`, driven by `__fixtures__/harness.ts`) construct `TsExtractor` directly. They pin what the extractor computes, and they stay: a failure there names one pass of one backend, which is the fastest thing to read when extraction changes.
+- **Production-pipeline fixtures** (`packages/core/__fixtures__/pipeline/`, driven by `pipeline/harness.ts`) run the real composition root `openProject` over a temporary project, and snapshot what SQLite holds afterwards plus what the query facade claimed about it. They pin the route `LanguageRegistry → Indexer → SQLite → GraphQueries/Astrograph` (AG-302 through AG-307).
 
 ```mermaid
 flowchart LR
     A[fixture source] --> B[TsExtractor harness]
-    B --> C[graph.json golden]
-    D[Tree-sitter parser] --> E[reconcile helper parity]
-    E --> F[parity assertion]
-    G[Registry to Indexer to SQLite] -. not exercised by these goldens .-> H[full-pipeline golden]
+    B --> C[extractor graph.json]
+    A --> D[pipeline harness: openProject]
+    D --> E[Registry to Indexer to SQLite]
+    E --> F[normalizeIndex: __goldens__/id/graph.json]
+    E --> G[GraphQueries]
+    G --> H[normalizeEnvelope: __goldens__/id/envelopes.json]
 ```
 
 The real fixture tree currently has `graph.json` snapshots; the `pass-a.json` and `externals.json` matrix described in legacy `docs/testing.md` is not present. Likewise, legacy references to parked/nonexistent fixture groups should not be read as suite coverage.
@@ -63,6 +66,29 @@ This manifest complements the production [code map](../code-map.md). CLI tests c
 - `packages/core/__fixtures__/functions/__golden__/graph.json`
 - `packages/core/__fixtures__/functions/sample.ts`
 - `packages/core/__fixtures__/harness.ts`
+- `packages/core/__fixtures__/pipeline/assert.ts`
+- `packages/core/__fixtures__/pipeline/compare.ts`
+- `packages/core/__fixtures__/pipeline/failure-fixtures.ts`
+- `packages/core/__fixtures__/pipeline/failure-injection.ts`
+- `packages/core/__fixtures__/pipeline/failure.test.ts`
+- `packages/core/__fixtures__/pipeline/goldens.ts`
+- `packages/core/__fixtures__/pipeline/harness.ts`
+- `packages/core/__fixtures__/pipeline/jsts-fixtures.ts`
+- `packages/core/__fixtures__/pipeline/jsts.test.ts`
+- `packages/core/__fixtures__/pipeline/manifests.ts`
+- `packages/core/__fixtures__/pipeline/mixed-fixtures.ts`
+- `packages/core/__fixtures__/pipeline/mixed.test.ts`
+- `packages/core/__fixtures__/pipeline/php-fixtures.ts`
+- `packages/core/__fixtures__/pipeline/php.test.ts`
+- `packages/core/__fixtures__/pipeline/probes.ts`
+- `packages/core/__fixtures__/pipeline/route-scripts.ts`
+- `packages/core/__fixtures__/pipeline/routes.test.ts`
+- `packages/core/__fixtures__/pipeline/routes.ts`
+- `packages/core/__fixtures__/pipeline/smoke-fixture.ts`
+- `packages/core/__fixtures__/pipeline/smoke.test.ts`
+- `packages/core/__fixtures__/pipeline/update-goldens.test.ts`
+- `packages/core/__fixtures__/pipeline/update-goldens.ts`
+- `packages/core/__fixtures__/pipeline/__goldens__/<fixture-id>/graph.json` and `envelopes.json`, one directory per fixture id in the matrix above
 - `packages/core/__fixtures__/imports/barrel/__golden__/graph.json`
 - `packages/core/__fixtures__/imports/barrel/consumer.ts`
 - `packages/core/__fixtures__/imports/barrel/extra.ts`
@@ -220,6 +246,163 @@ Nodes, edges, files and diagnostics are sorted by **total** orders. A partial or
 a stable sort, which means SQLite row order decides them — so two indexes with identical content
 but different insertion history would normalize differently and the oracle would report a
 divergence that is not one. Edge order ends at `provenance`; node order ends at the node ID.
+
+## The 0.1-C production-pipeline fixtures
+
+`packages/core/__fixtures__/pipeline/` is the AS-IS full-pipeline evidence `DEV-014` asked for. Every
+fixture runs `openProjectWithDependencies` — the same composition root `openProject` uses — over a
+freshly created temporary directory, and compares two independent snapshots taken through
+[the 0.1-C graph oracle](#the-01-c-graph-oracle).
+
+### Layout
+
+| Path | What it holds |
+|---|---|
+| `pipeline/harness.ts` | `PipelineSession`, `withPipeline`, `runCleanPipeline`: the temporary project, its SQLite file, and the two snapshot functions. |
+| `pipeline/*-fixtures.ts`, `pipeline/smoke-fixture.ts` | Manifests: files, backend modes, configuration, probes. |
+| `pipeline/manifests.ts` | The registry of every fixture that owns a golden. The updater validates ids against it. |
+| `pipeline/probes.ts` | Named questions, one per completeness domain. |
+| `pipeline/compare.ts` | Identity-based comparison producing attributable discrepancies. |
+| `pipeline/goldens.ts` | Reading and writing expectations. The read path has no update branch. |
+| `pipeline/assert.ts` | `expectMatchesGolden`, `expectSnapshotsAgree`. |
+| `pipeline/failure-injection.ts` | AG-306 registry overrides, reachable only through the adapter-local seam. |
+| `pipeline/routes.ts`, `pipeline/route-scripts.ts` | The AG-307 mutation-script format and its matrix. |
+| `pipeline/__goldens__/<fixture-id>/graph.json` | Reviewed persisted graph truth. |
+| `pipeline/__goldens__/<fixture-id>/envelopes.json` | Reviewed probe outcomes. Absent when a fixture declares no probes. |
+
+### What is pinned, and why
+
+Determinism comes from pinning six things: the clock (`PIPELINE_PINNED_NOW`), the project root (a
+fresh `mkdtemp`, whose prefix the oracle strips), the project name (`openProject` fixes it to `root`,
+and node ids hash it), the configuration (declared per manifest, never inherited from the
+repository), the database (one file per session, deleted with the temporary tree), and the
+**type environment** (`HERMETIC_TSCONFIG`, written into every temporary root). The root lives
+outside the repository deliberately: a fixture rooted inside `packages/core` would discover this
+checkout's `tsconfig.json` and the goldens would encode its compiler options — and the hermetic
+tsconfig closes the subtler half of the same hole, since TypeScript resolves automatic `@types` from
+the process working directory rather than from the project root it was handed.
+
+The filesystem, glob scanner, SQLite, tree-sitter, TypeScript program and both shipped backends are
+the production ones. The only test seams are `createRegistry` and `loadGrammars` on
+`OpenProjectDependencies` — adapter-local, absent from every barrel, and used by the AG-306 fixtures
+alone, for the failure conditions that have no other trigger.
+
+### The implemented matrix
+
+| Fixture id | Backends | Evidence |
+|---|---|---|
+| `smoke` | typescript enriched | The harness reaches registry, Indexer, SQLite and GraphQueries; a divergence fails. |
+| `jsts-enriched` | typescript enriched | TS/JS/TSX ownership, barrel resolution, calls, instantiation, and all four resolution states: `resolved`, `ambiguous` (a merged declaration, with its candidates), and `unresolved` (an `any` receiver, a non-literal `import()`, an uninstalled module). |
+| `jsts-external-package` | typescript enriched | An installed dependency: the external declaration is persisted as an external node with a root-relative path, and the relation resolves to it as `external`. |
+| `jsts-pass-a-only` | typescript Pass A only | Containment only, with envelopes that say why; Pass A ids are a subset of the enriched ones. |
+| `php-calls-enriched` | php enriched | STEP 3 receiver buckets, unresolved and dynamic calls, a vendor parent, mixed-case lookup. |
+| `php-calls-pass-a-only` | php Pass A only | The same sources with declarations and containment only. |
+| `php-heritage-enriched` | php enriched | Plain, aliased, grouped and absolute `use`; same-namespace resolution; a class absent from disk. |
+| `php-types-enriched` | php enriched | Type-position edges for imported types; scalars produce nothing. |
+| `mixed-enriched` | both enriched | Exclusive ownership, homonyms, and no bare-name cross-language resolution. |
+| `mixed-php-pass-a-only` | ts enriched, php Pass A | A capability reduction in one backend does not degrade the other. |
+| `mixed-ts-pass-a-only` | ts Pass A, php enriched | The mirror configuration. |
+| `failure-coverage-gaps` | typescript enriched | Oversized file, owned extension with no grammar, ambiguous and unresolved relations. |
+| `failure-backend-extraction` | typescript enriched | An injected Pass A failure whose diagnostic survives the enricher recovering the content. |
+| `failure-backend-extraction-pass-a` | typescript Pass A only | The same failure with nothing to fall back on: a visibly known-and-empty file. |
+| `failure-unowned-and-disabled` | typescript enriched, php disabled, `include` naming `.txt` | An extension no shipped backend claims, next to a disabled backend's extension: both `NO_BACKEND`, with distinct messages. |
+| `failure-backend-disabled` | php enriched, then disabled, default configuration | Nodes retired, the `NO_BACKEND` record kept with its actionable message, and global envelopes incomplete. |
+| `failure-capability-gap` | typescript Pass A only | A healthy project where a relational question is unsupported and discovery is complete. |
+
+The AG-307 rows in `route-scripts.ts` carry **no** golden. Each of the eighteen rows is run through
+four routes — clean full index, reused full index, `sync()` and `syncFiles()` — and compared against
+a clean index of the same final state, so there is one expectation per row rather than four. The
+matrix covers add, modify, delete and rename; both directions across the size limit; an `exclude`
+change and, separately, an `include` change, because the two reach membership by different code
+paths; enricher enable; backend disable and enable; JS/TS-only, PHP-only and mixed projects;
+Pass-A-only in both languages; and an aborted pass followed by recovery and an ordinary edit — that
+last one as a full four-route row, so recovery is held to the same expectation as everything else.
+
+Two guards keep the matrix from going vacuous: every row must contain a resolved cross-file relation
+at one of its two endpoints (not both — a deletion row ends with the relation deliberately demoted),
+and every row's two endpoint graphs must actually differ.
+
+### What the fixtures found, and what they still pin
+
+Building the oracle changed the product twice and corrected the oracle three times. Both product
+changes are recorded here because a reader comparing an old golden to a new one needs to know which
+diffs were fixes.
+
+**Fixed: a disabled backend now leaves evidence.** The scanner's extension list came from
+`registry.allExtensions()`, which omits a disabled backend, so with PHP switched off no `.php` path
+was ever scanned; `buildMembership` classified the persisted path `out_of_scope` rather than
+`backend_disabled`, and `out_of_scope` is deliberately not recordable. The rows were deleted, and a
+project whose entire PHP half was unindexed answered **every query with `partial: false`** —
+indistinguishable from a project with no PHP. `openProject` now builds the scanner from every
+*shipped* backend's extensions, enabled or not, which feeds the `backend_disabled` →
+`NO_BACKEND` path that `classifyPath` and `eligibilityEvidence` already implemented and nothing
+could reach. Scanning is all that changed: such a file is recorded with zero nodes and never reaches
+a parser. `failure-backend-disabled` and the AG-305 disable tests hold it in place.
+
+**Fixed: the harness was not hermetic, and it made a wrong answer look right.** `ts.createProgram`
+had no `types`/`typeRoots`, so TypeScript resolved `@types` from the *process* working directory —
+this repository — and pulled `bun-types` and `@types/bun` into every fixture's program. An
+`import { join } from "node:path"` in a project with no dependencies therefore came back
+`external`/`high` ("the declaration is known, it is simply not yours") when the honest answer is
+`unresolved`/`low`. A fixture asserting that an unprovable target stays unproven was passing because
+the harness had quietly made it provable, and the recorded goldens encoded whichever type packages
+this checkout happened to have installed. Every fixture now gets `HERMETIC_TSCONFIG`
+(`types: []`, `typeRoots: []`); real module resolution is untouched, so a package genuinely
+installed inside a fixture's own root still resolves — that is what `jsts-external-package` proves,
+and it is now the *only* fixture producing an `external` state.
+
+**Fixed in the oracle:** the `node_modules` path rewrite ran before root removal and collapsed
+`<root>/packages/a/node_modules/x` and `.../b/node_modules/x` onto one path; `stripRoot` was an
+unanchored substring replace, so with a root of `/tmp/ag` the message `in /tmp/agent/x.ts` became
+`in ent/x.ts` — the same snapshot as a genuinely different diagnostic; and `compareEdges` had no
+unique final key, leaving two edges that differ only in `metadata` tied and ordered by SQLite row
+order. Each has a regression test in `normalize.test.ts`.
+
+**Still open, and pinned as AS-IS:**
+
+1. **The reason for a disabled backend is imprecise.** The envelope now reports
+   `coverage_incomplete`, because coverage is what the unindexed files move. The honest reason is a
+   capability limit — "the PHP backend is switched off" — and `capabilityReasons` cannot produce it:
+   `registry.summary()` lists only constructed backends, so a disabled one is invisible to it. Doing
+   this properly needs a shipped-but-disabled capability table. Recorded as a residual finding in
+   the [0.1-C review](0.1-c-review.md).
+2. **PHP lookup is still case-sensitive.** `php-calls-enriched` contains a `MIXEDCASE` type hint for
+   an in-project `MixedCase` class. PHP class names are case-insensitive, so that is a real
+   in-project relation; the shipped lookup keys classify it as `external`. This is `DEV-009`, still
+   open, and the golden pins its cost. AG-304's matrix row is therefore only half met: display
+   casing is preserved, the lookup is not case-insensitive.
+
+### Updating a golden
+
+```sh
+bun packages/core/__fixtures__/pipeline/update-goldens.ts --list
+bun packages/core/__fixtures__/pipeline/update-goldens.ts jsts-enriched php-calls-enriched
+```
+
+The updater is the **only** writer. Its guardrails, each covered by a test in
+`pipeline/update-goldens.test.ts`:
+
+- No fixture named fails with exit code 1. There is no update-all default.
+- An unknown id fails and prints the known ids.
+- `--all` requires `--i-reviewed-every-fixture`, so rewriting every reviewed expectation is a
+  deliberate act recorded in shell history.
+- An unrecognized option fails instead of being ignored.
+- Output is deterministic: two-space JSON, one trailing newline, oracle key order.
+
+`bun test` cannot rewrite an expectation: `goldens.ts` has no update branch in its read path, so
+unlike the extractor goldens there is no `UPDATE_GOLDENS=1` mode to leave switched on. CI runs
+`bun test` and never the updater.
+
+### Review expectations
+
+A golden diff is a claim about what the product persists, so review it as one:
+
+- A changed `resolutionState`, `confidence` or `provenance` is a semantic change. Say which code
+  change caused it.
+- A changed node `id` means identity churn: every consumer's cached reference is invalidated.
+- A new or removed `errors` entry changes what the product admits to the user.
+- A changed envelope means a query's honesty changed, independently of the graph.
+- Re-record one fixture at a time. A diff nobody can read is not review.
 
 ## Invariants
 
