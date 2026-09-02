@@ -164,6 +164,63 @@ Current gates reject runner errors, mean recall below the supplied threshold, an
 
 Source evidence: `eval/runner.ts`, `eval/cases.ts`, `eval/scoring.ts`, `eval/types.ts`.
 
+## The 0.1-C graph oracle
+
+`packages/core/src/testing/normalize.ts` is the **sole** comparison boundary for every 0.1-C
+pipeline golden and convergence claim (AG-301). There is deliberately no second normalizer: a
+golden and a convergence assertion that disagree about what counts as equal prove nothing about
+each other. `normalizeIndex()` is what every fixture, four-route convergence test and
+delta-versus-full assertion must compare through.
+
+### Three snapshot kinds, three purposes
+
+| Snapshot | Function | What it proves |
+|---|---|---|
+| **Graph** | `normalizeIndex(source, { rootPath })` | Persisted truth: files, nodes, edges, states, diagnostics. Compared with `toEqual`. |
+| **Query envelope** | `normalizeEnvelope(meta, { rootPath })` | What a *question* claimed about that graph: coverage, `partial`, domain, reasons, evidence. |
+| **Digest** | `digest(snapshot, hasher)` | A single comparable value for a corpus that cannot be committed. |
+
+The envelope is a separate type on purpose. `ToolMeta` is not persisted truth — it is computed per
+query from a completeness domain and legitimately differs between two questions asked of the same
+index. Folding it into the graph snapshot would make an envelope difference look like a graph
+divergence, and would break a graph golden because a query's wording changed. A fixture that wants
+both takes two snapshots and compares them independently.
+
+Digests exist for the maintainer certification path in `DEV-014`, where the corpus is proprietary
+and no golden can be checked in. `digest()` runs the *same* normalization as a committed fixture
+and folds in `ORACLE_SCHEMA_VERSION`, so a digest computed under a different schema cannot silently
+compare against one recorded under another. Publish digests, counts and redacted discrepancy
+categories — never the database or the payloads.
+
+### Stability rules
+
+Every field of `Node`, `Edge`, `FileRecord` and `ExtractionError` carries an explicit rule in
+`NODE_FIELD_STABILITY`, `EDGE_FIELD_STABILITY`, `FILE_FIELD_STABILITY` and
+`EXTRACTION_ERROR_FIELD_STABILITY`. They are typed `Record<keyof T, FieldStability>`, so adding a
+field to a persisted shape fails to compile until it is classified.
+
+Exactly four fields are removed, each with a written reason (`volatileFields()`):
+
+| Field | Reason |
+|---|---|
+| `Node.updatedAt` | Wall-clock stamp of when the row was written. |
+| `Edge.id` | SQLite autoincrement rowid: insertion order in one database, not a fact about the relation. |
+| `FileRecord.modifiedAt` | Filesystem mtime; a checkout changes it without changing the file. |
+| `FileRecord.indexedAt` | Wall-clock stamp of when indexing ran. |
+
+Everything else is retained, including node IDs, `resolutionState`, `confidence`, `provenance`,
+external nodes, file `state` and the full diagnostic list. **Nothing is dropped to make two outputs
+agree.** The only other transformation is removing the project root from paths and from free text
+inside diagnostics and envelope notes — two runs in different temporary directories are the same
+graph, and a path outside the project is left alone because it is identical on the next run.
+
+### Ordering
+
+Nodes, edges, files and diagnostics are sorted by **total** orders. A partial order leaves ties to
+a stable sort, which means SQLite row order decides them — so two indexes with identical content
+but different insertion history would normalize differently and the oracle would report a
+divergence that is not one. Edge order ends at `provenance`; node order ends at the node ID.
+
 ## Invariants
 
 - Tests are never run autonomously by an implementing agent; the user executes requested test commands and provides results.

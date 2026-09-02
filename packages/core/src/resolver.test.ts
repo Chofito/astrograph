@@ -7,7 +7,7 @@ import {
 	assertGraphIntegrity,
 	assertNoDanglingResolved,
 } from "./testing/graph-assertions";
-import { normalize } from "./testing/normalize";
+import { normalize, normalizeIndex } from "./testing/normalize";
 
 const tempRoots: string[] = [];
 
@@ -1576,13 +1576,16 @@ async function makeTempProject(): Promise<string> {
 	return root;
 }
 
+/**
+ * Compare through the canonical oracle (AG-301) rather than an ad-hoc
+ * nodes-plus-edges projection. `QueryBuilder` already satisfies `IndexSource`,
+ * so this also covers file records, states and diagnostics — a delta and a
+ * forced full index must agree about those too, not only about the graph.
+ */
 function normalizeIndexerGraph(
 	indexer: Awaited<ReturnType<typeof openProject>>,
-): ReturnType<typeof normalize> {
-	return normalize({
-		nodes: indexer.queries.getAllNodes(),
-		edges: indexer.queries.getAllEdges(),
-	});
+): ReturnType<typeof normalizeIndex> {
+	return normalizeIndex(indexer.queries);
 }
 
 async function writeProjectFile(

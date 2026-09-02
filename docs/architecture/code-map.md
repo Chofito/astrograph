@@ -89,7 +89,8 @@ Every row assigns one canonical document. “Reusable” means language/runtime 
 
 | Files | Responsibility | Layer / reuse | Stability / lifecycle | Canonical doc |
 |---|---|---|---|---|
-| `packages/core/src/testing/graph-assertions.ts`, `packages/core/src/testing/normalize.ts` | Integrity assertions and stable graph normalization | test support / reusable | internal test helpers; currently under source | [Testing](operations/testing-and-evaluation.md) |
+| `packages/core/src/testing/graph-assertions.ts` | Graph integrity assertions | test support / reusable | internal test helper; currently under source | [Testing](operations/testing-and-evaluation.md) |
+| `packages/core/src/testing/normalize.ts` | The sole 0.1-C oracle: graph snapshots, query-envelope snapshots, digests, and the per-field stability rules | test support / reusable | comparison boundary for every pipeline golden and convergence claim | [Testing — graph oracle](operations/testing-and-evaluation.md#the-01-c-graph-oracle) |
 
 ## CLI entry, dispatch and commands
 
