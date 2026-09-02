@@ -11,7 +11,8 @@
 			"!!**/dist",
 			"!!**/.next",
 			"!!**/out",
-			"!!**/__golden__/*"
+			"!!**/__golden__/*",
+			"!!**/__goldens__/*"
 		]
 	},
 	"formatter": {
@@ -69,6 +70,17 @@
 					"recommended": false,
 					"suspicious": { "noDuplicateClassMembers": "off" },
 					"a11y": { "useButtonType": "off" }
+				}
+			}
+		},
+		{
+			"includes": ["packages/core/__fixtures__/pipeline/**/*.ts"],
+			"formatter": { "enabled": true },
+			"assist": { "enabled": true },
+			"linter": {
+				"rules": {
+					"recommended": true,
+					"style": { "noNonNullAssertion": "warn" }
 				}
 			}
 		}

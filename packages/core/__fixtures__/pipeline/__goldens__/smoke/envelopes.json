@@ -1,0 +1,43 @@
+{
+  "callers:target": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_reverse",
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "resolved",
+          "kind": "calls",
+          "count": 1
+        }
+      ],
+      "samples": [],
+      "truncated": false
+    }
+  },
+  "files": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "explicit_scope"
+  },
+  "search:target": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_discovery"
+  }
+}

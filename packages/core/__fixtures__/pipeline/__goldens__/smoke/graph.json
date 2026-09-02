@@ -1,0 +1,218 @@
+{
+  "nodes": [
+    {
+      "id": "2365598809372701733",
+      "project": "root",
+      "kind": "file",
+      "name": "caller.ts",
+      "qualifiedName": "src/caller.ts",
+      "filePath": "src/caller.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 6,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "15407450069224864386",
+      "project": "root",
+      "kind": "import",
+      "name": "./target",
+      "qualifiedName": "src/caller.ts::import(./target)",
+      "filePath": "src/caller.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 0,
+        "endColumn": 34
+      },
+      "signature": "import { target } from \"./target\";",
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "3195644943748933227",
+      "project": "root",
+      "kind": "function",
+      "name": "caller",
+      "qualifiedName": "src/caller.ts::caller",
+      "filePath": "src/caller.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 3,
+        "endLine": 5,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function caller(): number",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "10212409003657278017",
+      "project": "root",
+      "kind": "file",
+      "name": "target.ts",
+      "qualifiedName": "src/target.ts",
+      "filePath": "src/target.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 4,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    },
+    {
+      "id": "4112309211877392672",
+      "project": "root",
+      "kind": "function",
+      "name": "target",
+      "qualifiedName": "src/target.ts::target",
+      "filePath": "src/target.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "signature": "export function target(): number",
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "ts-compiler"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "10212409003657278017",
+      "target": "4112309211877392672",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    },
+    {
+      "source": "15407450069224864386",
+      "target": "4112309211877392672",
+      "targetName": "target",
+      "kind": "imports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 9
+    },
+    {
+      "source": "2365598809372701733",
+      "target": "3195644943748933227",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "3195644943748933227",
+      "target": "4112309211877392672",
+      "targetName": "target",
+      "kind": "calls",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 4,
+      "col": 8
+    },
+    {
+      "source": "3195644943748933227",
+      "target": "3195644943748933227",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 3,
+      "col": 0
+    },
+    {
+      "source": "4112309211877392672",
+      "target": "4112309211877392672",
+      "kind": "exports",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "ts-compiler",
+      "line": 1,
+      "col": 0
+    }
+  ],
+  "files": [
+    {
+      "path": "src/caller.ts",
+      "project": "root",
+      "contentHash": "5275742804569840060",
+      "language": "typescript",
+      "size": 91,
+      "nodeCount": 3,
+      "state": "resolved",
+      "errors": []
+    },
+    {
+      "path": "src/target.ts",
+      "project": "root",
+      "contentHash": "16395969648619836918",
+      "language": "typescript",
+      "size": 48,
+      "nodeCount": 2,
+      "state": "resolved",
+      "errors": []
+    }
+  ]
+}

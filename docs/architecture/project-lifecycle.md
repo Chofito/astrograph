@@ -44,6 +44,29 @@ sequenceDiagram
 
 The CLI finds a project by walking ancestors for `.astrograph`, except initialization which creates it. MCP uses explicit path, client roots, then cwd, and requires an existing index. Config loading occurs in the transport before `openProject`.
 
+### The initialization seam
+
+`openProject` delegates to `openProjectWithDependencies(rootPath, opts, dependencies)`, where
+`OpenProjectDependencies` names the three composition steps a test may replace:
+
+| Hook | Default | Why it is replaceable |
+|---|---|---|
+| `createStorage(path)` (required) | `new BunSqliteStorageAdapter(path)` | Observes that a failure after the handle exists closes it exactly once (AG-209). |
+| `createRegistry(options)` | `createDefaultRegistry` | Lets a pipeline fixture register a backend whose Pass A fails, throws, or owns an extension tree-sitter has no grammar for — failure modes with no other deterministic trigger (AG-306). |
+| `loadGrammars(registry)` | `initTreeSitter()` then `loadGrammars(grammarsForRegistry(registry))` | Lets a fixture exercise a grammar-runtime initialization failure without mutating the process-global grammar cache, which would leak into every other test in the run. |
+
+Two properties are deliberate. **Every hook defaults to production**, so an override changes one step
+and leaves Indexer phases, SQLite persistence and `GraphQueries` untouched — which is what makes a
+fixture's result a statement about the shipped pipeline. And **`openProjectWithDependencies` is
+exported from no barrel**: neither `packages/core/src/index.ts` nor
+`packages/core/src/adapters/bun/index.ts` re-exports it, because a consumer able to swap the registry
+would also be able to claim capabilities the shipped backends do not have. The ownership contract is
+unchanged: everything after the storage handle exists must either hand ownership to `Astrograph` or
+give the handle back.
+
+Nothing here is a dependency-injection container. There is no registration, no resolution and no
+lifetime management — three optional function properties on one interface, consumed once.
+
 ## Target behavior (TO-BE)
 
 Opening a graph must have an explicit side-effect contract: read-only/eval opens with an external `dbPath` should not create state under the target repository unless requested. Configuration parsing and validation should be shared across transports. Shutdown should dispose freshness/watch resources and each backend before storage.
@@ -80,7 +103,8 @@ flowchart TD
 
 ## Source evidence
 
-- `packages/core/src/adapters/bun/project.ts`: composition root.
+- `packages/core/src/adapters/bun/project.ts`: composition root, `OpenProjectDependencies`, `openProjectWithDependencies`.
+- `packages/core/src/adapters/bun/project.test.ts`, `packages/core/__fixtures__/pipeline/`: the seam's two consumers.
 - `packages/core/src/astrograph.ts`: facade and close path.
 - `packages/cli/src/root.ts`, `commands/shared.ts`: CLI root/config rules.
 - `packages/mcp/src/project.ts`: MCP root/session lifecycle.
