@@ -94,9 +94,16 @@ const KIND_WEIGHT: Record<string, number> = {
 const STOPWORDS = new Set(
 	(
 		"the and for with that this from into how does what where when which who why are was were has have " +
-		"not but all any can could should would will use uses used using work works make makes get set add " +
-		"new file code function method class find show list there their them then than also like just only " +
+		"not but all any can could should would will there their them then than also like just only " +
 		"como que para por con los las del una uno donde cuando funciona hace este esta"
+	).split(" "),
+);
+
+/** Common verbs and nouns: noise in prose, but real method names (`find`, `get`). Exact matches only. */
+const WEAK_WORDS = new Set(
+	(
+		"use uses used using work works make makes get set add new file code function method class find show " +
+		"list create update delete remove load save read write run handle check"
 	).split(" "),
 );
 
@@ -414,6 +421,10 @@ export class Graph {
 			scores.set(symbol.id, entry);
 		};
 		for (const { term, exactWeight } of terms) {
+			if (WEAK_WORDS.has(term)) {
+				for (const s of this.symbolsWhere("s.name = ?1 COLLATE NOCASE", [term], 300)) bump(s, exactWeight);
+				continue;
+			}
 			for (const s of this.symbolsWhere("s.name LIKE ?1 ESCAPE '\\'", [`%${escapeLike(term)}%`], 300)) {
 				const name = s.name.toLowerCase();
 				if (name === term) bump(s, exactWeight);
@@ -540,7 +551,7 @@ export function extractTerms(text: string): { term: string; exactWeight: number 
 	const add = (term: string, weight: number) => {
 		const lower = term.toLowerCase();
 		if (lower.length < 3 || STOPWORDS.has(lower)) return;
-		terms.set(lower, Math.max(terms.get(lower) ?? 0, weight));
+		terms.set(lower, Math.max(terms.get(lower) ?? 0, WEAK_WORDS.has(lower) ? 4 : weight));
 	};
 	for (const token of text.split(/[^A-Za-z0-9_$\\]+/)) {
 		if (!token) continue;

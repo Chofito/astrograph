@@ -31,12 +31,10 @@ Do not create other documentation files.
 
 - **Keep it small.** Prefer deleting code to adding layers. No new abstractions for a single
   caller, no feature flags, no compatibility shims for old index formats (bump `SCHEMA_VERSION`).
-- **Code is the source of truth.** Docs are `README.md` (users), `ARCHITECTURE.md` (design) and
-  this file. Update the relevant one in the same change; do not add new docs trees, stage plans,
-  review logs or handoff files.
-- **Tests are run by the owner.** Write or update tests under `test/`, then ask the owner to run
-  `bun test` and share the output. Do not run the test suite yourself. Typecheck
-  (`bun run typecheck`) and lint (`bun run check`) are fine to run.
+- **Code is the source of truth.** When behavior or design changes, update the file the table
+  above assigns it to, in the same change.
+- **Keep tests green.** Add or update tests under `test/` with every behavior change and run
+  `bun test`, `bun run typecheck` and `bun run check` before finishing.
 - **Indexing performance is a budget.** For changes to `scan`, `extract`, `indexer` or `link`,
   run `bun run bench <repo>...` (clones, not working copies) before and after; more than 20%
   slower or bigger is a regression to fix or justify in DECISIONS.md.
