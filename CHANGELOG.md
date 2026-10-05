@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 — unreleased
+## 0.2.0 — 2026-10-05
 
 A rewrite. The CLI commands and the MCP tool names stay the same; the index format does not,
 so existing `.astrograph/graph.db` files are rebuilt on first use.
