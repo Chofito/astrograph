@@ -1,66 +1,46 @@
 ---
 title: Quick Start
-description: Install Astrograph, index a repository, and run your first graph queries.
+description: Index a project and ask your first questions.
 ---
 
-Get from zero to a queryable code graph in a couple of minutes.
-
-## Install
-
-Astrograph ships as a single self-contained binary (Bun runtime embedded).
+## 1. Install and connect your agents
 
 ```bash
-# from source (Bun)
-bun run build            # produces dist/astrograph
-bun run install:local    # copies the binary to ~/.local/bin
+curl -fsSL https://www.chofito.dev/astrograph/install.sh | sh
+astrograph install
 ```
 
-Make sure `~/.local/bin` is on your `PATH`.
+`astrograph install` registers the MCP server and the Astrograph skill with Claude Code, Cursor,
+Codex and opencode. See [MCP & skills](/docs/mcp).
 
-## Index a project
-
-From the root of any JS/TS repository:
+## 2. Index a project
 
 ```bash
+cd my-project
 astrograph init
 ```
 
-This creates a local `.astrograph/` directory (the SQLite graph, config, and watcher metadata) and runs
-the first full index. Re-running stays incremental — only changed files are re-extracted.
+This creates `.astrograph/` (the SQLite graph plus its own `.gitignore`) and indexes every
+supported file git knows about. A few thousand files take a few seconds.
 
-## Run your first queries
+## 3. Ask questions
 
 ```bash
-# find symbols
-astrograph search useAccount
+astrograph context "how does checkout work"
+astrograph search Cart
+astrograph callers CartService.addItem
+astrograph impact "App\Models\Order::total"
+astrograph trace CheckoutPage PaymentGateway.charge
+```
 
-# build task context (entry points + relevant code + coverage)
-astrograph context "how does session refresh work?"
+Every query re-syncs changed files first, so the answers match your working tree. To bring the
+index up to date explicitly, run `astrograph index`; `astrograph index --force` rebuilds it.
 
-# call flow
-astrograph callers useAccount
-astrograph callees AuthProvider
+## 4. Check the result
 
-# blast radius before a change
-astrograph impact AuthProvider
-
-# how does one symbol reach another
-astrograph trace login refreshToken
-
-# index health
+```bash
 astrograph status
 ```
 
-## Keep it fresh
-
-Astrograph watches the project and re-syncs changed files automatically. You can also reconcile on demand:
-
-```bash
-astrograph sync
-```
-
-## Next steps
-
-- Wire it into your agents → **[MCP & skills](/docs/mcp)**.
-- Browse the full command set → **[Commands](/docs/commands)**.
-- Understand the data model → **[Concepts](/docs/concepts)**.
+Status shows how many references were linked to a project symbol, how many leave the project
+(libraries, builtins), how many could not be pinned down, and which files failed to parse.

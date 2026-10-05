@@ -19,10 +19,15 @@ dist/
 
 # Personal repo files
 STATS.md
-TODO.md
+
+# Machine-specific bench baseline (`bun run bench --save`)
+.bench-baseline.json
 
 # Local agent-harness links/config generated for dogfooding
 .claude/
 .codex/
 .cursor/
 .opencode/
+
+# Future work tbd
+*.local.md

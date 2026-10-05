@@ -1,10 +1,10 @@
+import { ArrowRight, Network, Terminal, Zap } from "lucide-react";
 import Link from "next/link";
-import { ArrowRight, Terminal, Network, Zap } from "lucide-react";
 import { HeroConstellation, Starfield } from "@/components/constellation";
+import { GitHubIcon } from "@/components/icons";
 import { PointerParallax } from "@/components/parallax";
 import { ScrollReveal } from "@/components/reveal";
 import { Term } from "@/components/term";
-import { GitHubIcon } from "@/components/icons";
 import { gitConfig } from "@/lib/shared";
 
 const repoUrl = `https://github.com/${gitConfig.user}/${gitConfig.repo}`;
@@ -28,7 +28,7 @@ const surfaces = [
 		title: "Local & fast",
 		icon: Zap,
 		blurb:
-			"A local SQLite graph, watcher-fresh. No API keys, nothing leaves your machine.",
+			"A local SQLite graph, re-synced on every query. No API keys, nothing leaves your machine.",
 	},
 ];
 
@@ -40,8 +40,7 @@ export default function HomePage() {
 			<section className="astro-hero">
 				<div className="astro-hero-copy">
 					<p className="astro-eyebrow">
-						<span className="astro-eyebrow-dot" /> Local-first code graph for
-						JS/TS
+						<span className="astro-eyebrow-dot" /> Local-first code graph
 					</p>
 					<h1>
 						See your codebase as a{" "}
@@ -49,20 +48,20 @@ export default function HomePage() {
 					</h1>
 					<p className="astro-subhead">
 						Astrograph indexes symbols, calls, imports, inheritance, and
-						references into a local graph — then serves it to a fast CLI and to
-						agents over MCP. Exact answers, fewer tokens, no grep loops.
+						references in TypeScript, JavaScript and PHP into a local graph.
+						Fast CLI and MCP for agents. Exact answers, fewer tokens, no grep
+						loops.
 					</p>
 					<div className="astro-actions">
-						<Link href="/docs" className="astro-button astro-button-primary">
-							Read the docs
+						<Link
+							href="/docs/install"
+							className="astro-button astro-button-primary"
+						>
+							Install
 							<ArrowRight className="size-4" />
 						</Link>
-						<Link
-							href={repoUrl}
-							className="astro-button astro-button-secondary"
-						>
-							<GitHubIcon className="size-4" />
-							View on GitHub
+						<Link href="/docs" className="astro-button astro-button-secondary">
+							Read the docs
 						</Link>
 					</div>
 				</div>
@@ -121,11 +120,14 @@ export default function HomePage() {
 
 			<section className="astro-why astro-reveal" aria-labelledby="why-heading">
 				<div className="astro-why-head">
-					<p className="astro-kicker">Why depth wins</p>
-					<h2 id="why-heading">Depth over breadth, on purpose.</h2>
+					<p className="astro-kicker">Why it&apos;s different</p>
+					<h2 id="why-heading">Real references, honestly labeled.</h2>
 					<p className="astro-why-sub">
-						One question, one command. The graph already did the exploration —
-						these are real answers, not text matches.
+						tree-sitter parses every file; imports, namespaces and declared types
+						link each call to its target, and anything that cannot be proven is
+						labeled instead of guessed. One question, one command — the graph
+						already did the exploration, so these are real answers, not text
+						matches.
 					</p>
 				</div>
 
@@ -147,8 +149,8 @@ export default function HomePage() {
 							<span className="t-ok">· resolved</span>
 						</Term>
 						<figcaption>
-							Walk call flow in either direction — every edge resolved by the
-							type-checker.
+							Walk call flow in either direction — every edge says how it was
+							resolved, and by which pass.
 						</figcaption>
 					</figure>
 

@@ -1,0 +1,211 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build and publish (must already exist, e.g. v0.1.0)"
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: "1.4.2"
+
+jobs:
+  # Resolve the tag once so every downstream job builds the same ref, and refuse
+  # anything that is not a v-prefixed semver.
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Resolve and validate tag
+        id: resolve
+        env:
+          RAW_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          tag="${RAW_TAG}"
+          if ! printf '%s' "${tag}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Tag '${tag}' is not a v-prefixed semver (expected e.g. v0.1.0)." >&2
+            exit 1
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+  # Every gate runs against the exact tagged commit. A green run on `main` is
+  # not evidence about a tag: the tag may point somewhere else, and CI does not
+  # trigger on tag pushes. Nothing is built or published until this job passes.
+  gates:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint and format check
+        run: bun run check
+
+      - name: Test
+        run: bun test
+
+      # The installer is piped into `sh`, so it must parse under dash.
+      - name: Shellcheck installer
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq dash shellcheck
+          dash -n apps/site/public/install.sh
+          shellcheck --shell=sh apps/site/public/install.sh
+
+      # One SemVer value must identify the tag, the manifests, and the changelog.
+      # A release whose changelog does not mention it is an unrecorded release.
+      - name: Verify version identity
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+          RELEASE_TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if ! grep -Eq "^## \[?${RELEASE_VERSION}\]?" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## ${RELEASE_VERSION}' section for ${RELEASE_TAG}. Move the [Unreleased] entries under it before tagging." >&2
+            exit 1
+          fi
+          echo "CHANGELOG.md documents ${RELEASE_VERSION}."
+
+          # The in-tree manifests stay at a placeholder and are stamped from the
+          # tag at build time; assert they are at least valid semver so a typo
+          # cannot ride along into the released artifact.
+          root_version="$(bun -e 'console.log((await Bun.file("package.json").json()).version)')"
+          printf '%s' "${root_version}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+' \
+            || { echo "::error::Root package.json version '${root_version}' is not semver." >&2; exit 1; }
+          echo "In-tree manifest version: ${root_version} (stamped to ${RELEASE_VERSION} at build time)."
+
+  build:
+    needs: [version, gates]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: bun-darwin-arm64
+            asset: astrograph-darwin-arm64
+          - os: macos-15-intel
+            target: bun-darwin-x64
+            asset: astrograph-darwin-x64
+          - os: ubuntu-latest
+            target: bun-linux-x64
+            asset: astrograph-linux-x64
+          - os: ubuntu-24.04-arm
+            target: bun-linux-arm64
+            asset: astrograph-linux-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      # workflow_dispatch checks out the default branch unless told otherwise,
+      # which would publish main's code under an older tag.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # The CLI reads package.json's version, so stamp it from the tag.
+      - name: Stamp version from tag
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          bun -e '
+            const pkg = await Bun.file("package.json").json();
+            pkg.version = process.env.RELEASE_VERSION;
+            await Bun.write("package.json", `${JSON.stringify(pkg, null, "\t")}\n`);
+          '
+          grep -H '"version"' package.json
+
+      - name: Compile binary
+        run: |
+          bun build src/bin.ts \
+            --compile \
+            --target=${{ matrix.target }} \
+            --outfile dist/${{ matrix.asset }}
+
+      # Every matrix runner is native for its target, so each binary can run
+      # here. This also proves the version stamp landed.
+      - name: Smoke test binary
+        run: |
+          set -euo pipefail
+          chmod +x dist/${{ matrix.asset }}
+          out="$(dist/${{ matrix.asset }} --version)"
+          echo "$out"
+          test "$out" = "astrograph ${{ needs.version.outputs.version }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+
+  release:
+    needs: [version, gates, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Stage assets and checksums
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          find artifacts -type f -name 'astrograph-*' -exec cp {} release/ \;
+          cd release
+          # upload-artifact does not preserve the executable bit. GitHub release
+          # assets carry no mode either, so manual downloads still need
+          # `chmod +x` (documented in the site's install page); the installer script
+          # uses `install -m 755`.
+          chmod 755 astrograph-*
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum astrograph-* > SHA256SUMS
+          else
+            shasum -a 256 astrograph-* > SHA256SUMS
+          fi
+          ls -la
+          cat SHA256SUMS
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          files: |
+            release/astrograph-darwin-arm64
+            release/astrograph-darwin-x64
+            release/astrograph-linux-x64
+            release/astrograph-linux-arm64
+            release/SHA256SUMS
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

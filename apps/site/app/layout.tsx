@@ -1,6 +1,6 @@
-import { Provider } from "@/components/provider";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { Provider } from "@/components/provider";
 import "./global.css";
 
 const sans = Inter({
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 		template: "%s | Astrograph",
 	},
 	description:
-		"Local-first code graph for JS/TS, built for humans and AI agents.",
+		"Local code graph for TypeScript, JavaScript and PHP, built for coding agents.",
 };
 
 export default function Layout({ children }: LayoutProps<"/">) {

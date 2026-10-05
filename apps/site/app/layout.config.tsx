@@ -1,5 +1,5 @@
-import { BookOpen } from "lucide-react";
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
+import { BookOpen } from "lucide-react";
 import { appName, gitConfig } from "@/lib/shared";
 
 function AstrographLogo() {

@@ -3,6 +3,7 @@
 	"pages": [
 		"---Getting Started---",
 		"index",
+		"install",
 		"quick-start",
 		"---Reference---",
 		"commands",

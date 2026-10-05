@@ -1,61 +1,49 @@
 ---
 title: What is Astrograph
-description: A local-first code graph for JavaScript and TypeScript, built for humans and AI agents.
+description: A local code graph for TypeScript, JavaScript and PHP, built for coding agents.
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
 
-Astrograph indexes a JavaScript or TypeScript repository into a **local graph of symbols and
-relationships** — functions, classes, interfaces, imports, exports, calls, inheritance, references, and
-type usage — stored in SQLite. It then exposes that graph through a fast **CLI** and an **MCP server**, so
-both humans and coding agents can ask sharp structural questions instead of grepping blindly.
+Astrograph indexes a repository into a **local graph of declarations and references** — classes,
+functions, methods, calls, instantiations, inheritance, JSX renders — stored in SQLite. It exposes
+that graph through a **CLI** and an **MCP server**, so coding agents (and you) can ask structural
+questions instead of grepping.
 
-## Why it exists
+## Why
 
-Most coding workflows start with text search. It works, but it is noisy and shallow:
+Agents waste most of their context finding code: search, open a file, search again. Astrograph
+answers "who calls this", "what breaks if I change it" or "how does checkout work" in one call,
+with the relevant source attached.
 
-```bash
-rg "useAccount"
-rg "AccountService"
-rg "login"
-```
+## How it works
 
-Astrograph builds the semantic map **once**, locally, then answers precise questions:
+1. Files come from `git ls-files` (respecting `.gitignore`), filtered to `.ts .tsx .mts .cts .js .jsx .mjs .cjs .php`.
+2. Each file is parsed with tree-sitter into symbols, references and imports.
+3. A linking pass resolves every reference through imports, re-exports, `tsconfig` paths,
+   PHP namespaces and `use` imports, and declared types.
+4. Every reference is labeled `exact`, `inferred`, `ambiguous`, `external` or `unresolved`.
 
-```bash
-astrograph callers useAccount
-astrograph trace login refreshToken
-astrograph context "how does session refresh work?"
-```
-
-## What makes it different
-
-Astrograph trades breadth for depth. Instead of covering 20+ languages with heuristic resolution, it
-focuses on **JS/TS only** and resolves relationships with the **real TypeScript Compiler API** — exact
-module resolution, path aliases, overloads, inheritance, and re-exports.
-
-When a relationship is `external`, `unresolved`, `ambiguous`, `stale`, or `partial`, Astrograph **says so**
-instead of hiding it. Humans and agents always know what the graph can actually prove.
-
-## Explore the docs
-
-<Cards>
-  <Card title="Quick Start" href="/docs/quick-start">
-    Install, index a repo, and run your first queries.
-  </Card>
-  <Card title="Commands" href="/docs/commands">
-    The full CLI reference.
-  </Card>
-  <Card title="MCP &amp; skills" href="/docs/mcp">
-    Connect agents — Claude Code, Cursor, Codex, opencode.
-  </Card>
-  <Card title="Concepts" href="/docs/concepts">
-    The graph model: nodes, edges, and honest coverage.
-  </Card>
-</Cards>
+Only changed files are re-parsed. The MCP server re-syncs before every call, so there is no
+daemon or watcher to manage.
 
 ## Principles
 
-- **100% local.** No API keys, no external services — everything lives in `.astrograph/`.
-- **Incremental.** A file watcher keeps the graph fresh by re-indexing only what changed.
-- **Honest.** Coverage and resolution states are first-class, never silently dropped.
+- **Local only.** No network, no telemetry, no LLM calls.
+- **Honest.** Unproven links are labeled, not guessed.
+- **Small.** One binary, one SQLite file per project.
+
+<Cards>
+  <Card title="Install" href="/docs/install">
+    One command, verified against published checksums.
+  </Card>
+  <Card title="Quick Start" href="/docs/quick-start">
+    Index a project and ask your first questions.
+  </Card>
+  <Card title="Commands" href="/docs/commands">
+    Every CLI command and option.
+  </Card>
+  <Card title="MCP &amp; skills" href="/docs/mcp">
+    Connect Claude Code, Cursor, Codex or opencode.
+  </Card>
+</Cards>

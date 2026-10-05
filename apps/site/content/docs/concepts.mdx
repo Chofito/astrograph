@@ -1,63 +1,49 @@
 ---
 title: Concepts
-description: The Astrograph graph model — nodes, edges, and honest coverage.
+description: Symbols, references, and how a reference gets resolved.
 ---
 
-Astrograph stores a typed graph in SQLite. Understanding the model helps you read query output and trust
-the coverage banners.
+## Symbols
 
-## Nodes
+Top-level declarations and class/interface members:
 
-A node is any meaningful symbol. Kinds include:
+- **TypeScript / JavaScript**: classes, interfaces, functions, methods, fields, top-level
+  constants and variables, type aliases, enums. Qualified as `Class.member`.
+- **PHP**: classes, interfaces, traits, enums, functions, methods, properties, constants.
+  Qualified with their namespace: `App\Models\User::save`.
 
-`file` · `module` · `class` · `interface` · `function` · `method` · `property` · `field` · `variable` ·
-`constant` · `enum` · `enum_member` · `type_alias` · `namespace` · `parameter` · `import` · `export` ·
-`component`
+Code nested inside a function is not a symbol; what it calls is attributed to the enclosing symbol.
 
-Each node carries a stable id (hash of `filePath::qualifiedName`), position (line/column range), language,
-a signature, and flags such as `isExported`, `isAsync`, and `isExternal`.
+## References
 
-> Stable ids mean nodes survive re-indexing and file moves — sync stays correct and tooling doesn't churn.
+A reference is a `call`, `new`, `extends`, `implements` or `render` (a JSX element) from one
+symbol (or file-level code) to a name. The linking pass decides what that name points to:
 
-## Edges
+| Resolution | Meaning |
+|---|---|
+| `exact` | Proven through a binding: a local declaration, an import, a namespace, `this`, or a declared type. |
+| `inferred` | The receiver's type is unknown, but exactly one project method has that name. |
+| `ambiguous` | The receiver's type is unknown and several project methods share the name. |
+| `external` | The target is outside the project: a package, a PHP class that is not indexed, a runtime global or builtin. |
+| `unresolved` | None of the above. |
 
-An edge is a typed relationship between nodes:
+## Where types come from
 
-`contains` · `calls` · `imports` · `exports` · `extends` · `implements` · `references` · `type_of` ·
-`returns` · `instantiates` · `decorates`
+There is no compiler. Types come from what the file says:
 
-Edges record a **resolution state** and **confidence**, because real JS/TS has gray areas (dynamic
-`import()`, CommonJS, `any`, broken aliases, generated code).
+- **TS/JS**: annotations (`x: Foo`), `new Foo()`, typed class fields, constructor parameter
+  properties, and declared return types (`const x = make()` where `make(): Foo`; `Promise<Foo>`
+  unwraps to `Foo`). Members are looked up through the class hierarchy.
+- **PHP**: typed parameters and properties, promoted constructor parameters, constructor
+  assignments from typed parameters (`$this->repo = $repo`), `@var` docblocks, `new` and `catch`.
 
-## Resolution states
+Imports resolve through relative paths, re-export barrels, `tsconfig`/`jsconfig` `paths` and
+`baseUrl`, workspace packages, and `require`. PHP names resolve through the file's namespace and
+`use` imports (including grouped and `use function`).
 
-| State | Meaning |
-| --- | --- |
-| `resolved` | The TypeScript checker pinned the target exactly. |
-| `external` | Resolves to a dependency / `.d.ts` outside the project (not indexed as a node). |
-| `unresolved` | A real reference the checker could not pin down. |
-| `ambiguous` | More than one plausible target. |
+## Freshness
 
-Only **project files** become nodes; the type-checker still loads `node_modules`/`.d.ts` to resolve
-references toward them, marked `external`.
-
-## Coverage & honesty
-
-Every result ends with a banner:
-
-```text
-coverage 128/128 resolved · partial: no
-```
-
-- **coverage** — resolved files over total in scope.
-- **partial** — whether some files are still indexing or pending a sync.
-- **pending files** — listed by name, so a tool (or agent) can read them directly.
-
-This is the core contract: Astrograph never presents partial, stale, unresolved, or low-confidence results
-as complete facts.
-
-## Incrementality
-
-Indexing is ~linear in repo size; sync is proportional to the change. Astrograph re-extracts only changed
-files (by content hash) plus their incoming referrers, so edges never dangle and inbound references stay
-correct.
+Files whose size and modification time did not change are not read. Changed files are hashed,
+and only real content changes are re-parsed. Query commands and MCP tools re-sync before
+answering. The index is a cache: deleting `.astrograph/graph.db` (or `astrograph index --force`)
+is always safe.

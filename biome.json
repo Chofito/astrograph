@@ -6,17 +6,12 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"includes": [
-			"**",
-			"!!**/dist",
-			"!!**/.next",
-			"!!**/out",
-			"!!**/__golden__/*"
-		]
+		"includes": ["**", "!!**/dist", "!!**/.next", "!!**/out", "!!test/fixtures", "!!apps"]
 	},
 	"formatter": {
 		"enabled": true,
-		"indentStyle": "tab"
+		"indentStyle": "tab",
+		"lineWidth": 120
 	},
 	"linter": {
 		"enabled": true,
@@ -32,14 +27,6 @@
 			"quoteStyle": "double"
 		}
 	},
-	"css": {
-		"parser": {
-			"tailwindDirectives": true
-		},
-		"linter": {
-			"enabled": true
-		}
-	},
 	"assist": {
 		"enabled": true,
 		"actions": {
@@ -47,18 +34,5 @@
 				"organizeImports": "on"
 			}
 		}
-	},
-	"overrides": [
-		{
-			"includes": ["**/*.test.ts", "**/__fixtures__/**"],
-			"linter": {
-				"rules": {
-					"suspicious": {
-						"noExplicitAny": "off",
-						"noControlCharactersInRegex": "off"
-					}
-				}
-			}
-		}
-	]
+	}
 }

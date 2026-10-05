@@ -1,1 +1,0 @@
-export { originFn } from "./origin";

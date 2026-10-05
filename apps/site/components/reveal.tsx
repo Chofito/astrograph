@@ -12,7 +12,9 @@ export function ScrollReveal() {
 		if (!els.length) return;
 
 		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-			els.forEach((e) => e.classList.add("is-in"));
+			els.forEach((e) => {
+				e.classList.add("is-in");
+			});
 			return;
 		}
 
@@ -28,7 +30,9 @@ export function ScrollReveal() {
 			},
 			{ rootMargin: "0px 0px -12% 0px", threshold: 0.12 },
 		);
-		els.forEach((e) => io.observe(e));
+		els.forEach((e) => {
+			io.observe(e);
+		});
 		return () => io.disconnect();
 	}, []);
 

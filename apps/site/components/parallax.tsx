@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 
 /** Subtle pointer-driven parallax. No-op on touch / reduced-motion. */
 export function PointerParallax({

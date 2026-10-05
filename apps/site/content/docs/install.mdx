@@ -1,0 +1,92 @@
+---
+title: Install
+description: Install the Astrograph binary with curl, verify checksums, and upgrade or uninstall.
+---
+
+## Quick install
+
+```bash
+curl -fsSL https://www.chofito.dev/astrograph/install.sh | sh
+```
+
+The script detects your OS/arch, downloads the matching binary from GitHub Releases,
+verifies the SHA256 checksum, installs to `~/.local/bin/astrograph`, and runs
+`astrograph --version` to confirm it executes. It is strict POSIX `sh`, so `| sh`
+works on macOS, Debian/Ubuntu, and Alpine alike.
+
+If `SHA256SUMS` is missing or has no entry for your asset, the script **aborts**
+instead of installing something unverified.
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"   # if needed
+astrograph --version
+```
+
+## Platforms
+
+| Asset | Platform |
+| --- | --- |
+| `astrograph-darwin-arm64` | macOS Apple Silicon |
+| `astrograph-darwin-x64` | macOS Intel |
+| `astrograph-linux-x64` | Linux x86_64 |
+| `astrograph-linux-arm64` | Linux ARM64 |
+
+Windows builds are deferred for now. On Apple Silicon the script installs the
+`arm64` build even when run from a Rosetta shell.
+
+## Environment variables
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `ASTROGRAPH_VERSION` | `latest` | Release tag to install, e.g. `v0.2.0` |
+| `ASTROGRAPH_INSTALL_DIR` | `$HOME/.local/bin` | Install location |
+| `ASTROGRAPH_REPO` | `chofito/astrograph` | Source repo (forks, mirrors) |
+| `ASTROGRAPH_UNINSTALL` | unset | `1` removes the binary and exits |
+| `ASTROGRAPH_SKIP_CHECKSUM` | unset | `1` skips verification (not recommended) |
+
+## After the binary
+
+These are **different** steps:
+
+1. **Binary** — `curl …/install.sh \| sh` (this page).
+2. **Agent hosts** — `astrograph install` wires MCP + skills into Claude Code, Cursor, Codex, or opencode. It does **not** install the binary.
+3. **Index a repo** — `astrograph init` creates `.astrograph/` and indexes the project.
+
+## Upgrade
+
+Re-run the install script (idempotent):
+
+```bash
+curl -fsSL https://www.chofito.dev/astrograph/install.sh | sh
+```
+
+Pin a version with `ASTROGRAPH_VERSION`:
+
+```bash
+curl -fsSL https://www.chofito.dev/astrograph/install.sh | ASTROGRAPH_VERSION=v0.2.0 sh
+```
+
+## Uninstall
+
+Three independent pieces — remove them in this order:
+
+1. **Agent config:** `astrograph uninstall` — removes the MCP entry and agent guide.
+   Leaves the binary and every project index in place. Run it first, while the
+   binary still exists.
+2. **Binary:** `rm ~/.local/bin/astrograph`, or:
+
+   ```bash
+   curl -fsSL https://www.chofito.dev/astrograph/install.sh | ASTROGRAPH_UNINSTALL=1 sh
+   ```
+
+3. **Project index:** `astrograph uninit` — removes `.astrograph/` for that repo.
+
+## From source (contributors)
+
+```bash
+bun install
+bun run build
+bun run install:local
+```
+
+See the full guide in the repo: `docs/install.md`.
