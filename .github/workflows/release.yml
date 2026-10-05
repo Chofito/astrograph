@@ -185,7 +185,7 @@ jobs:
           cd release
           # upload-artifact does not preserve the executable bit. GitHub release
           # assets carry no mode either, so manual downloads still need
-          # `chmod +x` (documented in docs/install.md); the installer script
+          # `chmod +x` (documented in the site's install page); the installer script
           # uses `install -m 755`.
           chmod 755 astrograph-*
           if command -v sha256sum >/dev/null 2>&1; then

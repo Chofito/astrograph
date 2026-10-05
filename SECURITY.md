@@ -34,11 +34,10 @@ Expect an acknowledgement within about a week. This is a small project with no p
 
 ## Things that are not vulnerabilities
 
-- **The index contains your code.** `.astrograph/graph.db` holds symbol names, qualified names, docstrings, and file paths from the repository you indexed. Treat it as source-equivalent: do not commit it, and do not attach it to a public issue. This is by design, not a leak.
-- **Indexing untrusted code is a parsing operation, not a sandbox.** Astrograph parses with tree-sitter and the TypeScript compiler. Feeding it a hostile repository may produce a crash or resource exhaustion; that is a bug worth reporting, but Astrograph is not a security boundary for untrusted input.
-- **Resource exhaustion from a very large repository.** Use `maxFileSizeBytes` and `exclude` in `.astrograph/config.json`. Memory budgets are a performance concern, tracked in `ROADMAP.md` §10.
+- **The index contains your code.** `.astrograph/graph.db` holds symbol names, qualified names, signatures, and file paths (never function bodies) from the repository you indexed. Treat it as source-equivalent: do not commit it, and do not attach it to a public issue. This is by design, not a leak.
+- **Indexing untrusted code is a parsing operation, not a sandbox.** Astrograph parses with tree-sitter (WASM). Feeding it a hostile repository may produce a crash or resource exhaustion; that is a bug worth reporting, but Astrograph is not a security boundary for untrusted input.
+- **Resource exhaustion from a very large repository.** Use `maxFileSize` and `exclude` in `.astrograph/config.json`.
 - **`ASTROGRAPH_SKIP_CHECKSUM=1`** disables installer verification. It is a deliberate, loudly warned escape hatch.
-- Missing hardening in the private `@astrograph/*` workspace packages. They are internal source, not a published SDK ([contracts §12.3](docs/contracts.md#123-internal--not-a-public-contract)).
 
 ## Verifying what you installed
 
@@ -47,4 +46,4 @@ astrograph --version                      # must match the release tag
 shasum -a 256 ~/.local/bin/astrograph     # compare against the release SHA256SUMS
 ```
 
-The installer performs this check by default. See [docs/install.md](docs/install.md) for manual verification and for pinning a specific version.
+The installer performs this check by default. See the [install docs](https://www.chofito.dev/astrograph/docs/install) for manual verification and for pinning a specific version.

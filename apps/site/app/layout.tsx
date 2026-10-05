@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 		template: "%s | Astrograph",
 	},
 	description:
-		"Local-first code graph — tree-sitter plus language enrichers, built for humans and AI agents.",
+		"Local code graph for TypeScript, JavaScript and PHP, built for coding agents.",
 };
 
 export default function Layout({ children }: LayoutProps<"/">) {
