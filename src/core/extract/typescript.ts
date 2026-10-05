@@ -406,7 +406,7 @@ function splitTarget(node: Node): { name: string | undefined; receiver: string |
 			return {
 				name: property?.text.replace(/^#/, ""),
 				// "?" marks a receiver too complex to name (call chains, literals).
-				receiver: receiver && receiver.length <= 80 && !receiver.includes("\n") ? receiver : "?",
+				receiver: receiver && receiver.length <= 80 && /^[\w$#.]+$/.test(receiver) ? receiver : "?",
 			};
 		}
 		case "generic_type": {
