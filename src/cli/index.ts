@@ -35,7 +35,7 @@ export async function main(argv: string[]): Promise<number> {
 			return 0;
 		}
 		if (command === "--version" || command === "-v" || command === "version") {
-			print(pkg.version);
+			print(`astrograph ${pkg.version}`);
 			return 0;
 		}
 		switch (command) {

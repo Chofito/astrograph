@@ -18,7 +18,7 @@ curl -fsSL https://www.chofito.dev/astrograph/install.sh | sh   # installs to ~/
 astrograph install                                              # registers the MCP server + skill with your agents
 ```
 
-From source (requires [Bun](https://bun.sh) ≥ 1.2.17):
+From source (requires [Bun](https://bun.sh) ≥ 1.4):
 
 ```bash
 bun install

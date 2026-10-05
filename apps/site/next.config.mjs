@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { createMDX } from "fumadocs-mdx/next";
 
 const withMDX = createMDX();
@@ -12,6 +13,8 @@ const config = {
 	images: {
 		unoptimized: true,
 	},
+	// The site has its own lockfile; do not treat the repository root as the workspace.
+	turbopack: { root: fileURLToPath(new URL(".", import.meta.url)) },
 };
 
 export default withMDX(config);
