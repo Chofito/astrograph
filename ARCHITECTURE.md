@@ -9,7 +9,7 @@ src/
   cli/                argument parsing; install/ writes agent-host configs
   mcp.ts              MCP server (stdio)
   tools.ts            the tool catalog shared by CLI and MCP
-  format.ts           plain-text rendering of query results
+  format.ts           plain-text rendering of query results, fitted to token budgets
   core/
     project.ts        find/open a project, sync on demand
     scan.ts           which files to index (git ls-files, excludes, size cap)
@@ -103,4 +103,6 @@ swapping `.js`→`.ts` and `index.*`), the nearest `tsconfig.json`/`jsconfig.jso
 - **One tool catalog.** A new query is added once in `tools.ts`; it becomes a CLI command and an
   MCP tool.
 - **Output is for agents.** Results are compact text with `path:line` and `#id`s that can be fed
-  back into another call.
+  back into another call. Every renderer in `format.ts` writes through `Out`, a token-budgeted
+  buffer: content that does not fit is counted and the answer says how to get it (`offset=`,
+  a narrower target, a larger `maxTokens`). Code is line-numbered and cut at line boundaries.

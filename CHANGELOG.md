@@ -11,6 +11,12 @@ so existing `.astrograph/graph.db` files are rebuilt on first use.
   Indexing a ~4k-file repository takes ~4 s and ~500 MB peak instead of several GB.
 - PHP resolves receiver types from typed params and properties, promoted constructor params,
   constructor DI assignments, `@var`, `new` and `catch`.
+- Token budgets: every tool takes `maxTokens` (lists also `limit`/`offset`) and fits its answer
+  to it; cuts are always announced with how to continue. New `outline` tool (signatures and line
+  ranges of a file, directory or class). Source is line-numbered; callers and impact are grouped
+  by file; MCP answers end with their approximate token cost. `context`'s `tokenBudget` became `maxTokens`.
+- Signatures are the declaration up to its body, on one line (multi-line parameter lists included).
+- `context` ranking: whole-word stems, multi-word coverage, and fields ranked below code.
 - References carry an explicit resolution: `exact`, `inferred`, `ambiguous`, `external`, `unresolved`.
 - The MCP server re-syncs changed files before each call. The daemon, `stop`, `unlock`, `sync`
   locking and the watcher are gone.

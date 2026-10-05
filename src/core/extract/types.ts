@@ -1,3 +1,5 @@
+import type { Node } from "web-tree-sitter";
+
 export type SymbolKind =
 	| "class"
 	| "interface"
@@ -59,8 +61,20 @@ export interface Extraction {
 	imports: ExtractedImport[];
 }
 
-export function signatureOf(text: string): string {
-	const firstLine = text.split("\n", 1)[0] ?? "";
-	const cut = firstLine.replace(/\s*\{\s*$/, "").trim();
+/**
+ * A declaration up to where its body starts, on one line: `find(id: string): User`,
+ * `export class A extends B`. Without a body node, the first line of the declaration.
+ */
+export function signatureOf(decl: Node, body: Node | null | undefined): string {
+	const text =
+		body && body.startIndex > decl.startIndex
+			? decl.text.slice(0, body.startIndex - decl.startIndex)
+			: (decl.text.split("\n", 1)[0] ?? "");
+	const cut = text
+		.replace(/\s+/g, " ")
+		.replace(/([([{<])\s+/g, "$1")
+		.replace(/\s+([)\]}>])/g, "$1")
+		.replace(/\s*(\{|=>|:)?\s*$/, (_match, tail) => (tail === "=>" ? " =>" : ""))
+		.trim();
 	return cut.length > 160 ? `${cut.slice(0, 157)}...` : cut;
 }

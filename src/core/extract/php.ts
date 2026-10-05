@@ -90,7 +90,7 @@ export function extractPhp(tree: Tree): Extraction {
 			exported: true,
 			startLine: node.startPosition.row + 1,
 			endLine: node.endPosition.row + 1,
-			signature: signatureOf(node.text),
+			signature: signatureOf(node, node.childForFieldName("body")),
 			returnType,
 		});
 		return out.symbols.length - 1;

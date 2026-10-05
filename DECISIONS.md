@@ -7,6 +7,20 @@ Format: **date — decision.** *Why:* … *Revisit if:* …
 
 ---
 
+**2026-10-05 — Every answer has a token budget, and cuts are announced.**
+*Why:* an agent's real cost is context. Every tool takes `maxTokens` with small defaults and
+fits its answer to it; what does not fit is counted with how to get it (`offset=`, narrower
+target, bigger budget), because a silently truncated list reads as a complete one. `outline`
+(signatures and line ranges, no bodies) exists so an agent reads only the lines it needs; code is
+line-numbered for targeted edits; the MCP footer shows each answer's approximate cost. Tokens are
+estimated as characters / 4: cheap and close enough for budgeting.
+*Revisit if:* the estimate is off enough to matter for a model we target (then use a tokenizer).
+
+**2026-10-05 — No cross-call deduplication (yet).**
+*Why:* replacing code already sent in a session with "(shown earlier)" would save tokens, but it
+makes the server stateful and breaks after the agent's context is compacted. Measure first.
+*Revisit if:* the A/B eval shows repeated source is a large share of tokens spent.
+
 **2026-10-05 — Rewrite instead of refactoring 0.1.**
 *Why:* the 0.1 line had ~19k lines of code, ~18k of tests and fixtures, and 97 docs files on a
 43-commit branch that never merged; its core (the TypeScript compiler) caused the memory

@@ -29,8 +29,10 @@ At most three items.
 Ordered; the eval may reorder it.
 
 - `astrograph affected <files…>`: changed files → impacted symbols and tests, for CI test selection.
-- Search recall in `search` / `context`: stemming (`caching` → `cache`), typo tolerance,
-  `kind:` / `path:` filters.
+- Cross-call deduplication of source already sent in a session, if the eval shows repeated code
+  is a large share of tokens (see DECISIONS.md).
+- Search recall in `search` / `context`: typo tolerance, `kind:` / `path:` filters, better
+  stemming than the current suffix stripping.
 - Resolution gaps seen in real use: object-literal methods (`export const api = { get() {} }`),
   `module.exports = {…}`, calls through generic type parameters.
 - Run `bun run bench` in CI against pinned public repositories.

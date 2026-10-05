@@ -37,7 +37,7 @@ export function extractTypeScript(tree: Tree): Extraction {
 			exported,
 			startLine: declNode.startPosition.row + 1,
 			endLine: declNode.endPosition.row + 1,
-			signature: signatureOf(declNode.text),
+			signature: signatureOf(declNode, bodyOf(node)),
 			returnType: returnTypeOf(node),
 		};
 		out.symbols.push(symbol);
@@ -370,6 +370,18 @@ export function extractTypeScript(tree: Tree): Extraction {
 	const root = tree.rootNode;
 	visitChildren(root, { owner: null, cls: null, topLevel: true, types: new Map() }, 0);
 	return out;
+}
+
+/** The node whose start ends a symbol's signature: a body block, or an arrow/function value's body. */
+function bodyOf(node: Node): Node | null {
+	const body = node.childForFieldName("body");
+	if (body) return body;
+	const value = node.childForFieldName("value");
+	return value && FUNCTION_VALUES.has(value.type)
+		? value.childForFieldName("body")
+		: value?.type === "class"
+			? value.childForFieldName("body")
+			: null;
 }
 
 function lineOf(node: Node): number {

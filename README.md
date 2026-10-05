@@ -36,6 +36,7 @@ astrograph callers CartService.addItem
 astrograph callees CheckoutController
 astrograph impact "App\Models\Order::total"       # transitive dependents, before you edit
 astrograph trace CheckoutPage PaymentGateway.charge
+astrograph outline src/checkout/cart.ts          # signatures + line ranges, no bodies
 astrograph node OrderRepository --include-code
 astrograph explore cart coupon discount           # source blocks grouped by file
 astrograph files src/checkout
@@ -62,10 +63,24 @@ id from previous output (`#123`). Run `astrograph <command> --help` for each com
 { "mcpServers": { "astrograph": { "command": "astrograph", "args": ["serve", "--mcp"] } } }
 ```
 
-Tools: `astrograph_context`, `astrograph_search`, `astrograph_node`, `astrograph_callers`,
-`astrograph_callees`, `astrograph_impact`, `astrograph_trace`, `astrograph_explore`,
-`astrograph_files`, `astrograph_status`. They are the same operations as the CLI commands. The
-server re-syncs changed files before answering, so there is no daemon or watcher to run.
+Tools: `astrograph_context`, `astrograph_outline`, `astrograph_search`, `astrograph_node`,
+`astrograph_callers`, `astrograph_callees`, `astrograph_impact`, `astrograph_trace`,
+`astrograph_explore`, `astrograph_files`, `astrograph_status`. They are the same operations as the
+CLI commands. The server re-syncs changed files before answering, so there is no daemon or watcher
+to run.
+
+### Token budgets
+
+Every answer is built for an agent's context window:
+
+- **`maxTokens`** on every tool (defaults from 1.5k for `search` to 6k for `context`). Answers are
+  fitted to it: lists stop early, code is cut at a line boundary, `context` degrades to signatures.
+- **Nothing is cut silently.** A cut list ends with `… 18 more (showing 1–20 of 38); continue with
+  offset=20`; cut code says `… lines 74-355 not shown`.
+- **`outline`** shows what a file, directory or class contains (signatures and line ranges, no
+  bodies), so an agent reads only the lines it needs.
+- **Line-numbered source** (`72│ async updateItemV2(…`), so edits and follow-up reads can target lines.
+- **Cost in the footer:** each MCP answer ends with `— ≈1.2k tokens · 2583 files indexed, synced 3s ago`.
 
 ## Configuration
 

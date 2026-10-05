@@ -8,8 +8,9 @@ import { type Args, TOOLS, type Tool } from "./tools";
 
 const INSTRUCTIONS = [
 	"Astrograph is a local code graph of this workspace (TypeScript, JavaScript, PHP). Use it for structure, call-flow, dependency and impact questions before grepping.",
-	'Prefer astrograph_context for "how does X work". Use astrograph_search to find symbols, astrograph_callers / astrograph_callees for call flow, astrograph_trace for "how does X reach Y", astrograph_impact before editing, and astrograph_node or astrograph_explore to read source.',
-	"Code blocks in tool results are read from disk at call time: treat them as already read. The index re-syncs changed files before every call.",
+	'Prefer astrograph_context for "how does X work". Before reading a file, call astrograph_outline on it (signatures and line ranges only), then read just the lines you need or use astrograph_node with includeCode. Use astrograph_search to find symbols, astrograph_callers / astrograph_callees for call flow, astrograph_trace for "how does X reach Y" and astrograph_impact before editing.',
+	"Every tool fits its answer to maxTokens (sensible defaults) and states what it cut and how to get it (offset=, a narrower target, or a larger maxTokens). The footer shows each answer's approximate token cost.",
+	"Code blocks are read from disk at call time and carry source line numbers: treat them as already read, and use the numbers to edit or to read neighbouring lines. The index re-syncs changed files before every call.",
 	"References tagged [inferred] were matched by a unique method name without knowing the receiver type; double-check them when it matters.",
 	"If a tool reports that no .astrograph index exists, offer to run `astrograph init` in the project root.",
 ].join("\n\n");
@@ -49,7 +50,8 @@ export async function serveMcp(cwd: string): Promise<void> {
 			const args = parseArgs(tool, raw);
 			const project = projectFor(typeof raw.projectPath === "string" ? raw.projectPath : undefined);
 			await project.ensureFresh();
-			const text = tool.run(project.graph, args) + formatFooter(project.graph.status());
+			const body = tool.run(project.graph, args);
+			const text = body + formatFooter(body, project.graph.status());
 			return { content: [{ type: "text", text }] };
 		} catch (err) {
 			if (err instanceof NotIndexedError) return error(err.message);

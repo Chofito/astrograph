@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
 
 /** Bump when the schema or extraction output changes; old indexes are rebuilt, never migrated. */
-export const SCHEMA_VERSION = "4";
+export const SCHEMA_VERSION = "5";
 
 const SCHEMA = `
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);

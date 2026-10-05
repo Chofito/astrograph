@@ -25,6 +25,7 @@ To configure a host by hand:
 | Tool | Use it for |
 |---|---|
 | `astrograph_context` | "How does X work?" — ranked symbols with callers, callees and source. |
+| `astrograph_outline` | What a file, directory or class contains — signatures and line ranges, no bodies. |
 | `astrograph_search` | Finding a symbol by (part of) its name. |
 | `astrograph_node` | One symbol's details and, optionally, its source. |
 | `astrograph_callers` | Who calls, instantiates, extends or renders a symbol. |
@@ -35,9 +36,10 @@ To configure a host by hand:
 | `astrograph_files` | Which files are indexed. |
 | `astrograph_status` | Index health. |
 
-Every tool accepts an optional `projectPath`; by default the server uses the directory the host
+Every tool accepts `maxTokens` (list tools also `limit` and `offset`) and an optional `projectPath`; by default the server uses the directory the host
 launched it in. Before each call the server re-syncs changed files, so results always match the
-working tree. Each answer ends with a one-line banner showing the index size and last sync.
+working tree. Each answer ends with a one-line banner with its approximate token cost, the index size and the
+last sync. Answers never cut silently: a cut list or code block says what is missing and how to get it.
 
 ## Reading results
 

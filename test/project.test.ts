@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { Project } from "../src/core";
-import { getTool } from "../src/tools";
+import { estimateTokens, formatFooter } from "../src/format";
+import { type Args, getTool } from "../src/tools";
 
 /** A small mixed repo exercising every resolution route the linker supports. */
 const FILES: Record<string, string> = {
@@ -189,6 +190,72 @@ describe("queries", () => {
 		expect(callers?.run(project.graph, { symbol: "nopeNothing" })).toContain('No symbol matches "nopeNothing"');
 		const context = getTool("context")?.run(project.graph, { task: "how does UserRepo find users" });
 		expect(context).toContain("UserRepo.find");
+	});
+});
+
+const run = (tool: string, args: Args) => {
+	const t = getTool(tool);
+	if (!t) throw new Error(`no tool ${tool}`);
+	return t.run(project.graph, args);
+};
+
+describe("outline", () => {
+	test("a file: signatures and line ranges, members nested, no bodies", () => {
+		const text = run("outline", { target: "src/lib/db.ts" });
+		expect(text).toContain("src/lib/db.ts");
+		expect(text).toMatch(/class\s+export class Database/);
+		expect(text).toMatch(/\n {4}\d+\s+method\s+query\(sql: string\)/);
+		expect(text).not.toContain("return sql");
+	});
+
+	test("a unique path suffix resolves to the file", () => {
+		expect(run("outline", { target: "repo.ts" })).toContain("src/repo.ts");
+	});
+
+	test("a directory lists top-level symbols of every file under it", () => {
+		const text = run("outline", { target: "src/lib" });
+		expect(text).toContain("3 files under");
+		expect(text).toContain("function  export function format");
+		expect(text).toContain("members hidden");
+	});
+
+	test("a class outlines its members", () => {
+		const text = run("outline", { target: "UserRepo" });
+		expect(text).toContain("method    find(id: string)");
+	});
+});
+
+describe("budgets", () => {
+	test("lists say what was cut and how to continue", () => {
+		const text = run("callers", { symbol: "Database.query", limit: 1 });
+		expect(text).toContain("… 1 more (showing 1–1 of 2); continue with offset=1");
+		const second = run("callers", { symbol: "Database.query", limit: 1, offset: 1 });
+		expect(second).toContain("makeRepo");
+		expect(second).not.toContain("more");
+	});
+
+	test("answers stay near their maxTokens", () => {
+		for (const [tool, args] of [
+			["context", { task: "repo database query users" }],
+			["explore", { query: "UserRepo Database makeRepo" }],
+			["outline", { target: "src" }],
+		] as const) {
+			const text = run(tool, { ...args, maxTokens: 150 });
+			expect(estimateTokens(text)).toBeLessThan(150 * 1.5);
+		}
+	});
+
+	test("source is line-numbered and a cut says which lines are missing", () => {
+		const full = run("node", { symbol: "UserRepo", includeCode: true });
+		expect(full).toMatch(/\n\s*\d+│ {2}find\(id: string\)|\n\s*\d+│\s+find\(id: string\)/);
+		const cut = run("node", { symbol: "UserRepo", includeCode: true, maxTokens: 90 });
+		expect(cut).toMatch(/… lines \d+-\d+ not shown \(budget\)/);
+	});
+
+	test("the MCP footer reports the answer's token cost", () => {
+		const footer = formatFooter("x".repeat(4000), project.graph.status());
+		expect(footer).toContain("≈1.0k tokens");
+		expect(footer).toContain("files indexed");
 	});
 });
 

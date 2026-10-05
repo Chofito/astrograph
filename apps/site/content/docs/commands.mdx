@@ -19,16 +19,21 @@ directory) and re-sync changed files before answering. Options accept `--kebab-c
 
 | Command | Options | What it answers |
 |---|---|---|
-| `context <task…>` | `--max-symbols`, `--no-include-code`, `--token-budget` | The symbols most related to a task, with callers, callees and source. |
-| `search <query>` | `--kind`, `--lang`, `--limit` | Symbols whose name matches. |
+| `context <task…>` | `--max-symbols`, `--no-include-code` | The symbols most related to a task, with callers, callees and source. |
+| `outline <path or symbol>` | | Signatures and line ranges in a file, directory (top-level) or class. No bodies. |
+| `search <query>` | `--kind`, `--lang`, `--limit`, `--offset` | Symbols whose name matches. |
 | `node <symbol>` | `--include-code` | One symbol: location, signature, members, reference counts. |
-| `callers <symbol>` | `--limit` | Code that calls, instantiates, extends or renders the symbol. |
-| `callees <symbol>` | `--limit`, `--include-external` | What the symbol (or a class's members) calls. |
-| `impact <symbol>` | `--depth` | Everything that transitively depends on the symbol. |
+| `callers <symbol>` | `--limit`, `--offset` | Code that calls, instantiates, extends or renders the symbol, by file. |
+| `callees <symbol>` | `--limit`, `--offset`, `--include-external` | What the symbol (or a class's members) calls. |
+| `impact <symbol>` | `--depth`, `--limit`, `--offset` | Everything that transitively depends on the symbol. |
 | `trace <from> <to>` | `--max-depth` | The shortest call path between two symbols. |
 | `explore <terms…>` | `--max-files` | Source blocks for every matching symbol, grouped by file. |
 | `files [dir]` | `--pattern`, `--format tree\|flat\|grouped`, `--max-depth` | Indexed files with symbol counts and parse errors. |
 | `status` | | Counts, resolution quality, parse failures. |
+
+Every command except `trace` and `status` also takes `--max-tokens`: the answer is fitted to that
+budget, and anything cut is announced with how to get it (`--offset`, a narrower target, or a
+larger budget). Source code is shown with line numbers.
 
 A `<symbol>` can be a name (`addItem`), a qualified name (`CartService.addItem`,
 `App\Cart::add`, or a suffix like `Cart::add`), `path:name` (`src/cart.ts:addItem`), or an id

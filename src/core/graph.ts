@@ -15,6 +15,8 @@ export interface SymbolInfo {
 	endLine: number;
 	signature: string;
 	exported: boolean;
+	/** Enclosing class/interface, or null for top-level symbols. */
+	parentId: number | null;
 }
 
 export interface Edge {
@@ -76,7 +78,7 @@ export interface Status {
 }
 
 const SYMBOL_COLUMNS = `s.id, s.name, s.qualified_name AS qualifiedName, s.kind, f.path, f.lang,
-	s.start_line AS startLine, s.end_line AS endLine, s.signature, s.exported`;
+	s.start_line AS startLine, s.end_line AS endLine, s.signature, s.exported, s.parent_id AS parentId`;
 
 const KIND_WEIGHT: Record<string, number> = {
 	class: 3,
@@ -86,9 +88,10 @@ const KIND_WEIGHT: Record<string, number> = {
 	type: 1,
 	function: 3,
 	method: 2,
-	property: -1,
-	constant: 0,
-	variable: -1,
+	// Fields and constants rarely answer "how does X work"; they still win on an exact name.
+	property: -4,
+	constant: -1,
+	variable: -3,
 };
 
 const STOPWORDS = new Set(
@@ -329,39 +332,52 @@ export class Graph {
 		return row?.parent_id ? this.byIds([row.parent_id])[0] : undefined;
 	}
 
-	/** Source of a symbol, read from disk; capped at `maxLines`. */
-	code(symbol: SymbolInfo, maxLines = 400): string | undefined {
+	/**
+	 * Source of a symbol, read from disk at call time. The caller fits it to a
+	 * token budget; `maxLines` only guards against pathological symbols.
+	 */
+	code(symbol: SymbolInfo, maxLines = 2000): string | undefined {
 		let text: string;
 		try {
 			text = readFileSync(join(this.root, symbol.path), "utf8");
 		} catch {
 			return undefined;
 		}
-		const lines = text.split("\n").slice(symbol.startLine - 1, symbol.endLine);
-		if (lines.length <= maxLines) return lines.join("\n");
-		return `${lines.slice(0, maxLines).join("\n")}\n… (${lines.length - maxLines} more lines)`;
+		return text
+			.split("\n")
+			.slice(symbol.startLine - 1, Math.min(symbol.endLine, symbol.startLine - 1 + maxLines))
+			.join("\n");
 	}
 
-	/** Ranked symbols for a natural-language task, with neighbours and source. */
-	context(input: { task: string; maxSymbols?: number; includeCode?: boolean; tokenBudget?: number }): ContextEntry[] {
+	/** Ranked symbols for a natural-language task, with neighbours and (optionally) source. */
+	context(input: { task: string; maxSymbols?: number; includeCode?: boolean }): ContextEntry[] {
 		const ranked = this.rankByTerms(input.task).slice(0, input.maxSymbols ?? 8);
-		let budget = (input.tokenBudget ?? 6000) * 4;
-		return ranked.map(({ symbol, score }) => {
-			const entry: ContextEntry = {
-				symbol,
-				score,
-				callers: [...new Set(this.callers(symbol, 20).map(edgeLabel))].slice(0, 5),
-				callees: [...new Set(this.callees(symbol, { limit: 20 }).map(edgeLabel))].slice(0, 5),
-			};
-			if (input.includeCode !== false && budget > 0) {
-				const code = this.code(symbol, 120);
-				if (code) {
-					entry.code = code.length > budget ? `${code.slice(0, budget)}\n… (truncated)` : code;
-					budget -= entry.code.length;
-				}
-			}
-			return entry;
-		});
+		return ranked.map(({ symbol, score }) => ({
+			symbol,
+			score,
+			callers: [...new Set(this.callers(symbol, 20).map(edgeLabel))].slice(0, 5),
+			callees: [...new Set(this.callees(symbol, { limit: 20 }).map(edgeLabel))].slice(0, 5),
+			code: input.includeCode === false ? undefined : this.code(symbol),
+		}));
+	}
+
+	/** Every symbol of a file, in source order (members follow their class). */
+	fileSymbols(path: string): SymbolInfo[] {
+		return this.symbolsWhere("f.path = ?1", [path], 5000).sort((a, b) => a.startLine - b.startLine || a.id - b.id);
+	}
+
+	/**
+	 * Files a user-supplied path refers to: an exact path, a unique path suffix
+	 * (`repo.ts`), or every file under a directory.
+	 */
+	matchFiles(text: string): FileInfo[] {
+		const path = text.trim().replace(/^\.\//, "").replace(/\/$/, "");
+		const all = this.files();
+		const exact = all.filter((f) => f.path === path);
+		if (exact.length > 0) return exact;
+		const suffix = all.filter((f) => f.path.endsWith(`/${path}`));
+		if (suffix.length > 0) return suffix;
+		return all.filter((f) => path === "" || f.path.startsWith(`${path}/`));
 	}
 
 	/** Source blocks for every symbol matching the query terms, grouped by file. */
@@ -370,11 +386,11 @@ export class Graph {
 		const byFile = new Map<string, { score: number; symbols: SymbolInfo[] }>();
 		for (const { symbol, score } of ranked) {
 			const group = byFile.get(symbol.path) ?? { score: 0, symbols: [] };
-			group.score += score;
+			// The best match decides; many weak matches only break ties.
+			group.score = Math.max(group.score, score) + score * 0.1;
 			group.symbols.push(symbol);
 			byFile.set(symbol.path, group);
 		}
-		let budget = 60_000;
 		const files: ExploreFile[] = [];
 		const ordered = [...byFile].sort((a, b) => b[1].score - a[1].score).slice(0, input.maxFiles ?? 12);
 		for (const [path, group] of ordered) {
@@ -382,13 +398,11 @@ export class Graph {
 			const covered: [number, number][] = [];
 			// Smallest blocks first, so a matched method wins over its whole class.
 			for (const symbol of group.symbols.sort((a, b) => a.endLine - a.startLine - (b.endLine - b.startLine))) {
-				if (budget <= 0) break;
 				if (covered.some(([s, e]) => symbol.startLine >= s && symbol.endLine <= e)) continue;
-				const code = this.code(symbol, 150);
+				const code = this.code(symbol);
 				if (!code) continue;
 				covered.push([symbol.startLine, symbol.endLine]);
 				blocks.push({ symbol, code });
-				budget -= code.length;
 			}
 			blocks.sort((a, b) => a.symbol.startLine - b.symbol.startLine);
 			if (blocks.length > 0) files.push({ path, blocks });
@@ -414,38 +428,46 @@ export class Graph {
 
 	private rankByTerms(text: string, limit = 50): { symbol: SymbolInfo; score: number }[] {
 		const terms = extractTerms(text);
-		const scores = new Map<number, { symbol: SymbolInfo; score: number }>();
-		const bump = (symbol: SymbolInfo, points: number) => {
-			const entry = scores.get(symbol.id) ?? { symbol, score: 0 };
-			entry.score += points;
-			scores.set(symbol.id, entry);
-		};
-		for (const { term, exactWeight } of terms) {
-			if (WEAK_WORDS.has(term)) {
-				for (const s of this.symbolsWhere("s.name = ?1 COLLATE NOCASE", [term], 300)) bump(s, exactWeight);
-				continue;
+		// Per symbol, the best points each word earned: "updated" and its stem "updat" are one word.
+		const scores = new Map<number, { symbol: SymbolInfo; byRoot: Map<string, number>; path: number }>();
+		const entryFor = (symbol: SymbolInfo) => {
+			let entry = scores.get(symbol.id);
+			if (!entry) {
+				entry = { symbol, byRoot: new Map(), path: 0 };
+				scores.set(symbol.id, entry);
 			}
+			return entry;
+		};
+		for (const { term, root, exactWeight } of terms) {
+			const weak = WEAK_WORDS.has(term);
 			for (const s of this.symbolsWhere("s.name LIKE ?1 ESCAPE '\\'", [`%${escapeLike(term)}%`], 300)) {
 				const name = s.name.toLowerCase();
-				if (name === term) bump(s, exactWeight);
-				else if (name.startsWith(term)) bump(s, 5);
-				else bump(s, 2);
+				const points = name === term ? exactWeight : weak ? 1 : name.startsWith(term) ? 5 : 2;
+				const byRoot = entryFor(s).byRoot;
+				byRoot.set(root, Math.max(byRoot.get(root) ?? 0, points));
 			}
+			if (weak) continue;
 			for (const s of this.symbolsWhere(
 				"f.path LIKE ?1 ESCAPE '\\' AND s.parent_id IS NULL",
 				[`%${escapeLike(term)}%`],
 				100,
 			)) {
-				bump(s, 1);
+				entryFor(s).path = 1;
 			}
 		}
-		const candidates = [...scores.values()];
-		for (const entry of candidates) {
-			entry.score += KIND_WEIGHT[entry.symbol.kind] ?? 0;
-			// "indexer sync" should prefer Indexer.sync over any other sync.
-			const owner = entry.symbol.qualifiedName.slice(0, -entry.symbol.name.length).toLowerCase();
-			for (const { term } of terms) if (owner.includes(term)) entry.score += 6;
-		}
+		const candidates = [...scores.values()].map(({ symbol, byRoot, path }) => {
+			let score = path + (KIND_WEIGHT[symbol.kind] ?? 0);
+			for (const points of byRoot.values()) score += points;
+			// A symbol matching several of the task's words beats one matching a single word well.
+			score += 4 * Math.max(0, byRoot.size - 1);
+			// "indexer sync" should prefer Indexer.sync over any other sync. Only for methods:
+			// a field inherits nothing useful from its class name.
+			if (symbol.kind === "method") {
+				const owner = symbol.qualifiedName.slice(0, -symbol.name.length).toLowerCase();
+				for (const { term } of terms) if (owner.includes(term)) score += 6;
+			}
+			return { symbol, score };
+		});
 		candidates.sort((a, b) => b.score - a.score);
 		const top = candidates.slice(0, limit);
 		// Well-connected symbols are better entry points.
@@ -529,6 +551,7 @@ function toEdge(row: EdgeRow): Edge {
 					endLine: row.endLine,
 					signature: row.signature,
 					exported: row.exported === 1,
+					parentId: row.parentId ?? null,
 				} as SymbolInfo)
 			: null;
 	return {
@@ -546,12 +569,13 @@ function edgeLabel(edge: Edge): string {
 }
 
 /** Task text → search terms. Identifiers keep a high exact-match weight; their parts a lower one. */
-export function extractTerms(text: string): { term: string; exactWeight: number }[] {
-	const terms = new Map<string, number>();
-	const add = (term: string, weight: number) => {
+export function extractTerms(text: string): { term: string; root: string; exactWeight: number }[] {
+	const terms = new Map<string, { root: string; exactWeight: number }>();
+	const add = (term: string, weight: number, root = term) => {
 		const lower = term.toLowerCase();
 		if (lower.length < 3 || STOPWORDS.has(lower)) return;
-		terms.set(lower, Math.max(terms.get(lower) ?? 0, WEAK_WORDS.has(lower) ? 4 : weight));
+		const exactWeight = Math.max(terms.get(lower)?.exactWeight ?? 0, WEAK_WORDS.has(lower) ? 4 : weight);
+		terms.set(lower, { root: terms.get(lower)?.root ?? root.toLowerCase(), exactWeight });
 	};
 	for (const token of text.split(/[^A-Za-z0-9_$\\]+/)) {
 		if (!token) continue;
@@ -559,8 +583,13 @@ export function extractTerms(text: string): { term: string; exactWeight: number 
 		for (const segment of token.split("\\")) add(segment, isIdentifier ? 15 : 10);
 		const parts = token.split(/(?<=[a-z0-9])(?=[A-Z])|[_\\]+/);
 		if (parts.length > 1) for (const part of parts) add(part, 6);
+		// Crude stemming for prose: "updated" also finds updateCart, "caching" finds cache.
+		if (!isIdentifier && token.length >= 5) {
+			const stem = token.toLowerCase().replace(/(ing|ed|es|s)$/, "");
+			if (stem.length >= 4 && stem !== token.toLowerCase()) add(stem, 6, token);
+		}
 	}
-	return [...terms].slice(0, 16).map(([term, exactWeight]) => ({ term, exactWeight }));
+	return [...terms].slice(0, 16).map(([term, { root, exactWeight }]) => ({ term, root, exactWeight }));
 }
 
 function escapeLike(text: string): string {
