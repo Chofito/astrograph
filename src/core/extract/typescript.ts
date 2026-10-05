@@ -70,6 +70,18 @@ export function extractTypeScript(tree: Tree): Extraction {
 		if (body) visitClassBody(body, inner);
 	};
 
+	/** `constructor(private db: Database)` declares a `db` property. */
+	const addParameterProperties = (ctor: Node, scope: Scope) => {
+		const params = ctor.childForFieldName("parameters");
+		for (let i = 0; i < (params?.namedChildCount ?? 0); i++) {
+			const param = params?.namedChild(i);
+			const pattern = param?.childForFieldName("pattern");
+			if (param && pattern?.type === "identifier" && hasModifier(param)) {
+				addSymbol(param, pattern.text, "property", scope, false);
+			}
+		}
+	};
+
 	const visitHeritage = (node: Node, scope: Scope) => {
 		const line = node.startPosition.row + 1;
 		for (let i = 0; i < node.namedChildCount; i++) {
@@ -100,6 +112,7 @@ export function extractTypeScript(tree: Tree): Extraction {
 				case "abstract_method_signature": {
 					if (!name) break;
 					const index = addSymbol(member, name, "method", scope, false);
+					if (name === "constructor") addParameterProperties(member, scope);
 					visitChildren(member, { ...scope, owner: index, types: new Map(scope.types) }, 0);
 					break;
 				}
@@ -145,6 +158,15 @@ export function extractTypeScript(tree: Tree): Extraction {
 					for (let j = 0; j < child.namedChildCount; j++) {
 						addRef("extends", child.namedChild(j), inner, child.startPosition.row + 1);
 					}
+				}
+				// Members, so calls through an interface-typed receiver have a target.
+				const body = node.childForFieldName("body");
+				for (let i = 0; i < (body?.namedChildCount ?? 0); i++) {
+					const member = body?.namedChild(i);
+					const memberName = member ? memberNameOf(member) : undefined;
+					if (!member || !memberName) continue;
+					if (member.type === "method_signature") addSymbol(member, memberName, "method", inner, false);
+					else if (member.type === "property_signature") addSymbol(member, memberName, "property", inner, false);
 				}
 				return name;
 			}
@@ -401,6 +423,10 @@ function splitTarget(node: Node): { name: string | undefined; receiver: string |
 	}
 }
 
+function memberNameOf(member: Node): string | undefined {
+	return memberName(member.childForFieldName("name"));
+}
+
 function memberName(node: Node | null): string | undefined {
 	if (!node) return undefined;
 	if (node.type === "computed_property_name") return undefined;
@@ -461,12 +487,26 @@ function declaredType(node: Node): string | undefined {
 	return undefined;
 }
 
+/**
+ * The type a symbol evaluates to: a function's declared return type, or the
+ * declared / constructed type of a field, constant or parameter property.
+ */
 function returnTypeOf(node: Node): string | undefined {
-	const fn =
-		node.type === "variable_declarator" || node.type === "public_field_definition" || node.type === "field_definition"
-			? node.childForFieldName("value")
-			: node;
-	return typeName(fn?.childForFieldName("return_type")?.namedChild(0) ?? null);
+	switch (node.type) {
+		case "variable_declarator":
+		case "public_field_definition":
+		case "field_definition": {
+			const value = node.childForFieldName("value");
+			if (value && FUNCTION_VALUES.has(value.type)) return returnTypeOf(value);
+			return declaredType(node);
+		}
+		case "property_signature":
+		case "required_parameter":
+		case "optional_parameter":
+			return declaredType(node);
+		default:
+			return typeName(node.childForFieldName("return_type")?.namedChild(0) ?? null);
+	}
 }
 
 function typeName(node: Node | null): string | undefined {

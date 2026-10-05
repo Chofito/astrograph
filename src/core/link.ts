@@ -218,6 +218,16 @@ class Linker {
 			return unresolved();
 		}
 
+		const field = /^this\.([\w$]+)$/.exec(receiver);
+		if (field) {
+			const typed = this.fieldType(ref.from_id, field[1] as string, false);
+			if (typed === "external") return external();
+			if (typed !== undefined) {
+				const hit = this.member(typed, name);
+				if (hit !== undefined) return exact(hit);
+			}
+		}
+
 		if (receiver === "this" || receiver === "super") {
 			const cls = this.classOf(ref.from_id);
 			if (cls !== undefined) {
@@ -235,18 +245,42 @@ class Linker {
 				const owner = this.importTarget(binding, binding.imported);
 				if (owner === "external") return external();
 				if (owner !== undefined) {
-					const hit = this.member(owner, name);
-					if (hit !== undefined) return exact(hit);
+					const hit = this.memberOfValue(owner, name);
+					if (hit !== undefined) return hit;
 				}
 			}
-			const localClass = this.pick(this.topLevel.get(ref.file_id)?.get(receiver), TYPES);
-			if (localClass !== undefined) {
-				const hit = this.member(localClass, name);
-				if (hit !== undefined) return exact(hit);
+			const local = this.pick(this.topLevel.get(ref.file_id)?.get(receiver));
+			if (local !== undefined) {
+				const hit = this.memberOfValue(local, name);
+				if (hit !== undefined) return hit;
 			}
-			if (!binding && localClass === undefined && GLOBALS.has(receiver)) return external();
+			if (!binding && local === undefined && GLOBALS.has(receiver)) return external();
 		}
 		return BUILTIN_MEMBERS.has(name) ? external() : this.memberFallback(name);
+	}
+
+	/** `Foo.bar()` on a class, or `foo.bar()` on a constant whose type is known (`const foo = new Foo()`). */
+	private memberOfValue(owner: number, name: string): Outcome | undefined {
+		const symbol = this.symbols.get(owner);
+		let cls: ExportHit = owner;
+		if (symbol && !TYPES.has(symbol.kind)) {
+			if (!symbol.return_type) return undefined;
+			cls = this.resolveTypeName(symbol.file_id, symbol.return_type);
+		}
+		if (cls === "external") return external();
+		if (cls === undefined) return undefined;
+		const hit = this.member(cls, name);
+		return hit === undefined ? undefined : exact(hit);
+	}
+
+	/** Type of `this.<field>` (PHP `$this-><field>`), declared on the class or any ancestor. */
+	private fieldType(fromId: number | null, field: string, php: boolean): ExportHit {
+		const cls = this.classOf(fromId);
+		const prop = cls === undefined ? undefined : this.member(cls, field);
+		const symbol = prop === undefined ? undefined : this.symbols.get(prop);
+		if (!symbol?.return_type) return undefined;
+		if (php) return this.pick(this.byFqn.get(symbol.return_type.toLowerCase()), TYPES) ?? "external";
+		return this.resolveTypeName(symbol.file_id, symbol.return_type);
 	}
 
 	private resolveTypeName(fileId: number, typeName: string, depth = 0): ExportHit {
@@ -317,6 +351,16 @@ class Linker {
 		}
 
 		const receiver = ref.receiver;
+		const field = receiver ? /^\$this->(\w+)$/.exec(receiver) : null;
+		if (field) {
+			const typed = this.fieldType(ref.from_id, field[1] as string, true);
+			if (typed === "external") return external();
+			if (typed !== undefined) {
+				const hit = this.member(typed, ref.name);
+				if (hit !== undefined) return exact(hit);
+				if (this.hasExternalAncestor(typed)) return external();
+			}
+		}
 		if (receiver === "this" || receiver === "self" || receiver === "static" || receiver === "parent") {
 			const cls = this.classOf(ref.from_id);
 			if (cls !== undefined) {

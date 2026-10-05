@@ -74,7 +74,14 @@ export function extractPhp(tree: Tree): Extraction {
 		return ctx.namespace ? [qualify(text), text] : [text];
 	};
 
-	const addSymbol = (node: Node, name: string, qualifiedName: string, kind: SymbolKind, scope: Scope): number => {
+	const addSymbol = (
+		node: Node,
+		name: string,
+		qualifiedName: string,
+		kind: SymbolKind,
+		scope: Scope,
+		returnType?: string,
+	): number => {
 		out.symbols.push({
 			name,
 			qualifiedName,
@@ -84,6 +91,7 @@ export function extractPhp(tree: Tree): Extraction {
 			startLine: node.startPosition.row + 1,
 			endLine: node.endPosition.row + 1,
 			signature: signatureOf(node.text),
+			returnType,
 		});
 		return out.symbols.length - 1;
 	};
@@ -246,7 +254,9 @@ export function extractPhp(tree: Tree): Extraction {
 			case "method_declaration": {
 				const name = member.childForFieldName("name")?.text;
 				if (!name) return;
-				const index = addSymbol(member, name, `${classFqn}::${name}`, "method", scope);
+				const returnType = typeOf(member.childForFieldName("return_type"));
+				const index = addSymbol(member, name, `${classFqn}::${name}`, "method", scope, returnType);
+				if (name === "__construct") addPromotedProperties(member, classFqn, scope);
 				const types = new Map(scope.types);
 				for (const [variable, type] of paramTypes(member)) types.set(variable, type);
 				visitChildren(member, { owner: index, cls: scope.cls, types }, 0);
@@ -258,7 +268,10 @@ export function extractPhp(tree: Tree): Extraction {
 					if (element?.type !== "property_element") continue;
 					const variable = element.namedChild(0);
 					const name = variable?.text.replace(/^\$/, "");
-					if (name) addSymbol(member, name, `${classFqn}::$${name}`, "property", scope);
+					if (name) {
+						const type = scope.types.get(`$this->${name}`);
+						addSymbol(member, name, `${classFqn}::$${name}`, "property", scope, type);
+					}
 				}
 				return;
 			case "const_declaration":
@@ -279,6 +292,18 @@ export function extractPhp(tree: Tree): Extraction {
 				return;
 			default:
 				visit(member, scope, 0);
+		}
+	};
+
+	/** `__construct(private Mailer $mailer)` declares a `mailer` property. */
+	const addPromotedProperties = (ctor: Node, classFqn: string, scope: Scope) => {
+		const params = ctor.childForFieldName("parameters");
+		for (let i = 0; i < (params?.namedChildCount ?? 0); i++) {
+			const param = params?.namedChild(i);
+			if (param?.type !== "property_promotion_parameter") continue;
+			const name = param.childForFieldName("name")?.text.replace(/^\$/, "");
+			const type = typeOf(param.childForFieldName("type"));
+			if (name) addSymbol(param, name, `${classFqn}::$${name}`, "property", scope, type);
 		}
 	};
 

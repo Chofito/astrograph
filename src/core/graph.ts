@@ -207,9 +207,11 @@ export class Graph {
 			if (hits.length > 0) return this.best(hits);
 		}
 		// `Class.method` written against a PHP `Class::method` symbol, or vice versa.
+		// A qualified suffix also matches (`Signup::register` → `App\Services\Signup::register`),
+		// as does `Class.method` written against a PHP `Class::method`, and vice versa.
 		const alt = text.includes("::") ? text.replace("::", ".") : text.replace(".", "::");
-		if (alt !== text) {
-			const hits = this.symbolsWhere("s.qualified_name LIKE ?1 ESCAPE '\\'", [`%${escapeLike(alt)}`], 20);
+		for (const form of new Set([text, alt])) {
+			const hits = this.symbolsWhere("s.qualified_name LIKE ?1 ESCAPE '\\'", [`%${escapeLike(form)}`], 20);
 			if (hits.length > 0) return this.best(hits);
 		}
 		return { symbol: undefined, alternatives: this.search({ query: text, limit: 5 }) };
@@ -341,8 +343,8 @@ export class Graph {
 			const entry: ContextEntry = {
 				symbol,
 				score,
-				callers: this.callers(symbol, 5).map(edgeLabel),
-				callees: this.callees(symbol, { limit: 5 }).map(edgeLabel),
+				callers: [...new Set(this.callers(symbol, 20).map(edgeLabel))].slice(0, 5),
+				callees: [...new Set(this.callees(symbol, { limit: 20 }).map(edgeLabel))].slice(0, 5),
 			};
 			if (input.includeCode !== false && budget > 0) {
 				const code = this.code(symbol, 120);
@@ -427,7 +429,12 @@ export class Graph {
 			}
 		}
 		const candidates = [...scores.values()];
-		for (const entry of candidates) entry.score += KIND_WEIGHT[entry.symbol.kind] ?? 0;
+		for (const entry of candidates) {
+			entry.score += KIND_WEIGHT[entry.symbol.kind] ?? 0;
+			// "indexer sync" should prefer Indexer.sync over any other sync.
+			const owner = entry.symbol.qualifiedName.slice(0, -entry.symbol.name.length).toLowerCase();
+			for (const { term } of terms) if (owner.includes(term)) entry.score += 6;
+		}
 		candidates.sort((a, b) => b.score - a.score);
 		const top = candidates.slice(0, limit);
 		// Well-connected symbols are better entry points.
