@@ -28,7 +28,7 @@ const surfaces = [
 		title: "Local & fast",
 		icon: Zap,
 		blurb:
-			"A local SQLite graph, watcher-fresh. No API keys, nothing leaves your machine.",
+			"A local SQLite graph, re-synced on every query. No API keys, nothing leaves your machine.",
 	},
 ];
 
@@ -48,9 +48,9 @@ export default function HomePage() {
 					</h1>
 					<p className="astro-subhead">
 						Astrograph indexes symbols, calls, imports, inheritance, and
-						references into a local graph — tree-sitter structure plus language
-						enrichers (TypeScript Compiler for JS/TS). Fast CLI and MCP for
-						agents. Exact answers, fewer tokens, no grep loops.
+						references in TypeScript, JavaScript and PHP into a local graph.
+						Fast CLI and MCP for agents. Exact answers, fewer tokens, no grep
+						loops.
 					</p>
 					<div className="astro-actions">
 						<Link
@@ -121,11 +121,11 @@ export default function HomePage() {
 			<section className="astro-why astro-reveal" aria-labelledby="why-heading">
 				<div className="astro-why-head">
 					<p className="astro-kicker">Why it&apos;s different</p>
-					<h2 id="why-heading">Breadth everywhere, depth where it counts.</h2>
+					<h2 id="why-heading">Real references, honestly labeled.</h2>
 					<p className="astro-why-sub">
-						tree-sitter parses every supported language into one structural
-						graph; language enrichers (the TypeScript Compiler for JS/TS) add
-						compiler-backed evidence. One question, one command — the graph
+						tree-sitter parses every file; imports, namespaces and declared types
+						link each call to its target, and anything that cannot be proven is
+						labeled instead of guessed. One question, one command — the graph
 						already did the exploration, so these are real answers, not text
 						matches.
 					</p>

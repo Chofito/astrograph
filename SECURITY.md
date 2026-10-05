@@ -12,7 +12,7 @@ That shape means the realistic risk surface is small and specific: the integrity
 
 ## Supported versions
 
-Astrograph is a **public preview** (`v0.1.0`). Only the latest published release receives security fixes. There are no long-term support branches, and older preview releases are not patched.
+Astrograph is pre-1.0. Only the latest published release receives security fixes. There are no long-term support branches, and older preview releases are not patched.
 
 ## Reporting a vulnerability
 

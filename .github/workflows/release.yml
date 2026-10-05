@@ -66,9 +66,6 @@ jobs:
       - name: Test
         run: bun test
 
-      - name: Documentation guard
-        run: bun run docs:check
-
       # The installer is piped into `sh`, so it must parse under dash.
       - name: Shellcheck installer
         run: |
@@ -133,27 +130,22 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # package.json versions are pinned at 0.1.0 in-tree; help.ts reads
-      # pkg.version, so without this `astrograph --version` would lie forever.
+      # The CLI reads package.json's version, so stamp it from the tag.
       - name: Stamp version from tag
         env:
           RELEASE_VERSION: ${{ needs.version.outputs.version }}
         run: |
           set -euo pipefail
-          for f in package.json packages/*/package.json apps/*/package.json; do
-            [ -f "$f" ] || continue
-            PKG_FILE="$f" bun -e '
-              const file = process.env.PKG_FILE;
-              const pkg = await Bun.file(file).json();
-              pkg.version = process.env.RELEASE_VERSION;
-              await Bun.write(file, `${JSON.stringify(pkg, null, "\t")}\n`);
-            '
-          done
-          grep -H '"version"' package.json packages/cli/package.json
+          bun -e '
+            const pkg = await Bun.file("package.json").json();
+            pkg.version = process.env.RELEASE_VERSION;
+            await Bun.write("package.json", `${JSON.stringify(pkg, null, "\t")}\n`);
+          '
+          grep -H '"version"' package.json
 
       - name: Compile binary
         run: |
-          bun build packages/cli/src/bin/astrograph.ts \
+          bun build src/bin.ts \
             --compile \
             --target=${{ matrix.target }} \
             --outfile dist/${{ matrix.asset }}

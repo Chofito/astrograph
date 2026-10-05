@@ -1,80 +1,46 @@
 ---
 title: Quick Start
-description: Install Astrograph, index a repository, and run your first graph queries.
+description: Index a project and ask your first questions.
 ---
 
-Get from zero to a queryable code graph in a couple of minutes.
-
-## Install the binary
+## 1. Install and connect your agents
 
 ```bash
 curl -fsSL https://www.chofito.dev/astrograph/install.sh | sh
-```
-
-Make sure `~/.local/bin` is on your `PATH`. Details: **[Install](/docs/install)**.
-
-### Optional: configure agent hosts
-
-```bash
 astrograph install
 ```
 
-This writes MCP config and the agent guide into Claude Code, Cursor, Codex, or opencode.
-It does **not** install the binary — that is the curl step above.
+`astrograph install` registers the MCP server and the Astrograph skill with Claude Code, Cursor,
+Codex and opencode. See [MCP & skills](/docs/mcp).
 
-### Contributors (from source)
-
-```bash
-bun run build
-bun run install:local
-```
-
-## Index a project
-
-From the root of a repository (JS/TS gets Compiler enrichment; PHP gets name-resolution enrichment for heritage, types, and calls):
+## 2. Index a project
 
 ```bash
+cd my-project
 astrograph init
 ```
 
-This creates a local `.astrograph/` directory (the SQLite graph, config, and watcher metadata) and
-runs the first full index. Later syncs use hashes and affected-file processing; configuration changes
-or backend-wide indexes can intentionally widen the work beyond the directly changed file.
+This creates `.astrograph/` (the SQLite graph plus its own `.gitignore`) and indexes every
+supported file git knows about. A few thousand files take a few seconds.
 
-## Run your first queries
+## 3. Ask questions
 
 ```bash
-# find symbols
-astrograph search useAccount
+astrograph context "how does checkout work"
+astrograph search Cart
+astrograph callers CartService.addItem
+astrograph impact "App\Models\Order::total"
+astrograph trace CheckoutPage PaymentGateway.charge
+```
 
-# build task context (entry points + relevant code + coverage)
-astrograph context "how does session refresh work?"
+Every query re-syncs changed files first, so the answers match your working tree. To bring the
+index up to date explicitly, run `astrograph index`; `astrograph index --force` rebuilds it.
 
-# call flow
-astrograph callers useAccount
-astrograph callees AuthProvider
+## 4. Check the result
 
-# blast radius before a change
-astrograph impact AuthProvider
-
-# how does one symbol reach another
-astrograph trace login refreshToken
-
-# index health
+```bash
 astrograph status
 ```
 
-## Keep it fresh
-
-Astrograph watches the project and re-syncs changed files automatically. You can also reconcile on demand:
-
-```bash
-astrograph sync
-```
-
-## Next steps
-
-- Install details → **[Install](/docs/install)**.
-- Wire it into your agents → **[MCP & skills](/docs/mcp)**.
-- Browse the full command set → **[Commands](/docs/commands)**.
-- Understand the data model → **[Concepts](/docs/concepts)**.
+Status shows how many references were linked to a project symbol, how many leave the project
+(libraries, builtins), how many could not be pinned down, and which files failed to parse.

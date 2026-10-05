@@ -1,64 +1,47 @@
 ---
 title: MCP & skills
-description: Connect AI agents to the Astrograph graph over MCP.
+description: Connect Claude Code, Cursor, Codex or opencode.
 ---
 
-Astrograph ships an **MCP server** so coding agents query the graph directly instead of running broad
-grep/read loops. The server is headless (no logs, no colors) and speaks stdio.
-
-## The tools
-
-The server exposes the graph 1:1 as `astrograph_*` tools:
-
-`search` · `context` · `trace` · `callers` · `callees` · `impact` · `node` · `explore` · `files` · `status`
-
-Agents are steered (via the MCP `initialize` instructions) to prefer `context` for "how does X work",
-`trace` for "how does X reach Y", `impact` before edits, and to treat returned code as already read —
-checking the coverage banner before trusting a result.
-
-The tools are **language-agnostic**: they answer over whatever the language backends indexed. JS/TS edges
-carry `ts-compiler` provenance; PHP edges from the name enricher carry `tree-sitter` provenance with
-honest `external` / `unresolved` states. `astrograph_status` reports the
-active backends, so an agent can tell "not in the graph" from "no backend for that file type".
-
-## Install into a host
-
-`astrograph install` writes the MCP server config and an agent guide into the hosts you choose. It is
-idempotent and non-destructive (existing config is merged, not overwritten).
+## Install
 
 ```bash
-# all supported hosts
-astrograph install
-
-# a specific host
-astrograph install --target claude
-astrograph install --target cursor,codex,opencode
-
-# preview without writing
-astrograph install --print-config claude
+astrograph install                                   # every host, global config; confirms the plan first
+astrograph install --target claude --location local  # one host, this project only (.mcp.json)
+astrograph install --yes                             # skip the confirmation
 ```
 
-Supported hosts and where they store config:
+This writes an MCP server entry and links the Astrograph skill (guidance on when to use which
+tool) into each host. `astrograph uninstall` removes both.
 
-| Host | Config | Format |
-| --- | --- | --- |
-| Claude Code | `~/.claude.json` · `./.mcp.json` | JSON `mcpServers` |
-| Cursor | `~/.cursor/mcp.json` | JSON `mcpServers` |
-| Codex | `~/.codex/config.toml` | TOML `[mcp_servers.astrograph]` |
-| opencode | `~/.config/opencode/opencode.jsonc` | JSONC `mcp.<name>` |
+To configure a host by hand:
 
-## Freshness
-
-The server keeps the graph current with a background watcher (debounced sync), a connect-time catch-up for
-edits made while it was offline, and an on-demand staleness guard. Every response carries a coverage and
-staleness banner, so an agent is told to read a still-pending file directly rather than getting a silent
-wrong answer.
-
-## Uninstall
-
-```bash
-astrograph uninstall              # all hosts
-astrograph uninstall --target codex
+```json
+{ "mcpServers": { "astrograph": { "command": "astrograph", "args": ["serve", "--mcp"] } } }
 ```
 
-Project indexes (`.astrograph/`) are left untouched.
+## Tools
+
+| Tool | Use it for |
+|---|---|
+| `astrograph_context` | "How does X work?" — ranked symbols with callers, callees and source. |
+| `astrograph_search` | Finding a symbol by (part of) its name. |
+| `astrograph_node` | One symbol's details and, optionally, its source. |
+| `astrograph_callers` | Who calls, instantiates, extends or renders a symbol. |
+| `astrograph_callees` | What a symbol calls. |
+| `astrograph_impact` | What may break before editing. |
+| `astrograph_trace` | How one symbol reaches another. |
+| `astrograph_explore` | Source for several names at once, grouped by file. |
+| `astrograph_files` | Which files are indexed. |
+| `astrograph_status` | Index health. |
+
+Every tool accepts an optional `projectPath`; by default the server uses the directory the host
+launched it in. Before each call the server re-syncs changed files, so results always match the
+working tree. Each answer ends with a one-line banner showing the index size and last sync.
+
+## Reading results
+
+References are `exact` unless tagged. `[inferred]` means the receiver's type was not known and
+the target was matched by a unique method name; `[external]` targets are in a library or the
+runtime. If a project has no `.astrograph/` index, tools say so and the agent should offer to run
+`astrograph init`.

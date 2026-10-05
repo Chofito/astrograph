@@ -1,100 +1,54 @@
 ---
 title: Commands
-description: The Astrograph CLI command reference.
+description: Every CLI command and option.
 ---
 
-Every command is one-shot, scriptable, and pipeable. Run `astrograph <command> --help` for full flags.
-
-## Index lifecycle
+## Index
 
 | Command | What it does |
-| --- | --- |
-| `astrograph init` | Create `.astrograph/` and run the first full index. Add `-d` to keep it fresh in the daemon. |
-| `astrograph index` | Rebuild or refresh the whole graph. |
-| `astrograph sync` | Reconcile the graph with on-disk changes (content-hash diff). |
-| `astrograph status` | Index health: counts, coverage, storage backend, **active language backends**, freshness. |
-| `astrograph stop` | Stop a running background watcher/daemon. |
-| `astrograph uninit` | Remove `.astrograph/` from a project. |
-| `astrograph unlock` | Clear a stale lock left by an interrupted run. |
+|---|---|
+| `astrograph init [dir]` | Create `.astrograph/` and build the index. |
+| `astrograph index [dir] [--force]` | Bring the index up to date; `--force` deletes and rebuilds it (config is kept). |
+| `astrograph uninit [dir]` | Delete `.astrograph/`. |
 
-## Querying the graph
+## Query
 
-### `search`
+All query commands accept `--path <dir>` (default: the nearest indexed parent of the current
+directory) and re-sync changed files before answering. Options accept `--kebab-case` or
+`--camelCase`; boolean options can be negated with `--no-…`.
 
-Find symbols by name across the project.
+| Command | Options | What it answers |
+|---|---|---|
+| `context <task…>` | `--max-symbols`, `--no-include-code`, `--token-budget` | The symbols most related to a task, with callers, callees and source. |
+| `search <query>` | `--kind`, `--lang`, `--limit` | Symbols whose name matches. |
+| `node <symbol>` | `--include-code` | One symbol: location, signature, members, reference counts. |
+| `callers <symbol>` | `--limit` | Code that calls, instantiates, extends or renders the symbol. |
+| `callees <symbol>` | `--limit`, `--include-external` | What the symbol (or a class's members) calls. |
+| `impact <symbol>` | `--depth` | Everything that transitively depends on the symbol. |
+| `trace <from> <to>` | `--max-depth` | The shortest call path between two symbols. |
+| `explore <terms…>` | `--max-files` | Source blocks for every matching symbol, grouped by file. |
+| `files [dir]` | `--pattern`, `--format tree\|flat\|grouped`, `--max-depth` | Indexed files with symbol counts and parse errors. |
+| `status` | | Counts, resolution quality, parse failures. |
 
-```bash
-astrograph search AuthProvider --kind class --limit 10
-```
+A `<symbol>` can be a name (`addItem`), a qualified name (`CartService.addItem`,
+`App\Cart::add`, or a suffix like `Cart::add`), `path:name` (`src/cart.ts:addItem`), or an id
+from earlier output (`#123`).
 
-### `context`
-
-Build ranked task context — entry points, related symbols, and verbatim code slices — with a coverage
-banner. The go-to for "how does X work?".
-
-```bash
-astrograph context "how does session refresh work?"
-```
-
-### `callers` / `callees`
-
-Walk the call graph in either direction.
-
-```bash
-astrograph callers useAccount
-astrograph callees AuthProvider
-```
-
-### `impact`
-
-Reverse-reachability — what could a change to this symbol affect.
-
-```bash
-astrograph impact AuthProvider --depth 2
-```
-
-### `trace`
-
-Find how one symbol reaches another.
-
-```bash
-astrograph trace login refreshToken
-```
-
-### `node` / `explore`
-
-Inspect a single symbol's source, or explore source around a query.
-
-```bash
-astrograph node refreshSession
-astrograph explore "session"
-```
-
-### `files`
-
-List indexed files as a tree, flat, or grouped.
-
-```bash
-astrograph files --format tree
-```
-
-## Agent integration
+## Agents
 
 | Command | What it does |
-| --- | --- |
-| `astrograph serve --mcp` | Start the stdio MCP server for agents. |
-| `astrograph install` | Install the MCP config + agent guide into supported hosts. |
-| `astrograph uninstall` | Remove Astrograph-owned config and guide files. |
+|---|---|
+| `astrograph serve --mcp` | Run the MCP server over stdio. Agent hosts launch this. |
+| `astrograph install` | Register the MCP server and skill. `--target`, `--location global\|local`, `--yes`, `--print-config <target>`. |
+| `astrograph uninstall` | Remove them again. |
 
-See **[MCP & skills](/docs/mcp)** for host-by-host setup.
+## Configuration
 
-## Honest results
+`.astrograph/config.json` is optional:
 
-Every query reports a coverage banner — `coverage R/T resolved · partial: yes/no` — and can flag
-`external`, `unresolved`, and `ambiguous` references. Treat negative/global answers conservatively:
-some query-domain partiality and unresolved-evidence gaps remain tracked in the architecture backlog.
+```json
+{ "exclude": ["public/vendor/", "*.generated.ts"], "maxFileSize": 512000 }
+```
 
-`astrograph status` also lists the **language backends** in play — which parser claims which extensions,
-and whether a language gets an enricher (JS/TS: the TypeScript Compiler) or tree-sitter structure only.
-If a file you expected is missing from the graph, start there: no backend claiming its extension means it
-was never indexed.
+`exclude` takes gitignore-style patterns, applied on top of `.gitignore` and the defaults
+(`node_modules/`, `vendor/`, `dist/`, `build/`, `out/`, `coverage/`, `.next/`, minified bundles).

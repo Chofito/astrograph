@@ -1,143 +1,45 @@
 ---
 name: astrograph
-description: Use Astrograph's local code graph before grep/read loops. Covers JS/TS (TypeScript Compiler enricher) and PHP (name-resolution enricher); other languages need a backend first. Prefer for architecture/call flow, dependency, impact, and symbol lookup questions.
+description: Use Astrograph's local code graph before grep/read loops in TypeScript, JavaScript and PHP projects. Prefer it for "how does X work", who calls what, what a change affects, how A reaches B, and finding symbols by approximate name.
 ---
 
 # Astrograph
 
-Astrograph is a **pre-built local code graph** powered by tree-sitter (structural extraction, per registered language backend) + language-specific enrichers (JS/TS gets the TypeScript Compiler enricher for semantic depth). Use it to answer structural code questions with fewer broad searches and fewer file reads.
+Astrograph is a pre-built graph of the project's declarations and references (TS, JS, PHP),
+stored in `.astrograph/`. One call returns the relevant symbols with their location, callers,
+callees and source, which usually replaces several searches and file reads.
 
-## First Check
+## Pick the tool by intent
 
-If Astrograph MCP tools are available, prefer them over shelling out to the CLI.
-If only the CLI is available, use the matching `astrograph <command>`.
-
-Before relying on the graph in a project, check freshness:
-
-- MCP: call `astrograph_status`.
-- CLI: run `astrograph status`.
-- If there is no `.astrograph/` index, offer to run `astrograph init`.
-- If the daemon is running, trust it as the freshness owner.
-- Always read the coverage/staleness banner before deciding whether to inspect
-  files directly.
-
-## Language Support
-
-Astrograph indexes a file only if a **language backend** claims its extension. What ships today:
-
-| Files | Coverage | Edge provenance |
+| Intent | MCP tool | CLI |
 |---|---|---|
-| `.ts` `.tsx` `.mts` `.cts` `.js` `.jsx` `.mjs` `.cjs` | structural **+ semantic** — compiler-backed import/call/type resolution with explicit unresolved/ambiguous states | `ts-compiler` |
-| `.php` | structural **+ name resolution** — heritage, `use` imports, types, calls/`new` (honest `external`/`unresolved`) | `tree-sitter` |
+| How does this feature work? | `astrograph_context` | `astrograph context "<task>"` |
+| Find a symbol | `astrograph_search` | `astrograph search <name>` |
+| Who calls / instantiates / extends X? | `astrograph_callers` | `astrograph callers <symbol>` |
+| What does X call? | `astrograph_callees` | `astrograph callees <symbol>` |
+| What breaks if I change X? | `astrograph_impact` | `astrograph impact <symbol>` |
+| How does A reach B? | `astrograph_trace` | `astrograph trace <a> <b>` |
+| Show one symbol (and its code) | `astrograph_node` | `astrograph node <symbol> --include-code` |
+| Source for several names at once | `astrograph_explore` | `astrograph explore <names…>` |
+| Which files are indexed? | `astrograph_files` | `astrograph files [dir]` |
+| Index health | `astrograph_status` | `astrograph status` |
 
-**Anything else is not in the graph.** Python, Go, Rust, Java and friends have no backend yet, so
-`astrograph` will not find their symbols — use `rg` and direct reads for those files. This is the
-extension path, not a current capability: adding a language means registering a backend, and it becomes
-useful as soon as its tree-sitter parser lands, with an enricher optional and later.
+Prefer the MCP tools when available. A symbol argument can be a name (`addItem`), a qualified
+name (`Cart.addItem`, `App\Cart::add` or just `Cart::add`), `path:name`, or an `#id` copied from
+earlier output; use `#id` when a result lists several symbols with the same name.
 
-Check `astrograph_status` (or `astrograph status`) if unsure — it lists the active backends and the
-extensions they claim. "Astrograph found nothing" and "that language isn't indexed" are different
-answers, and only status tells them apart.
+## Reading results
 
-## Tool Choice
+- Code blocks are read from disk at call time and the index re-syncs changed files before every
+  call: treat them as already read instead of opening the same file again.
+- Each reference is `exact` unless tagged. `[inferred]` means the receiver's type was unknown and
+  the target was matched by a unique method name: verify it if the answer depends on it.
+  `[external]` targets live in a library or the runtime.
+- "Nothing references X" means nothing in **indexed** code does. Dynamic calls (`obj[name]()`,
+  `$this->$method()`, string-based DI, framework magic) are invisible to the graph.
 
-Pick by intent:
+## When to use something else
 
-| Intent | Use |
-|---|---|
-| "How does this feature/module work?" | `astrograph_context` |
-| "How does X reach Y?" | `astrograph_trace` |
-| "Find the symbol named X" | `astrograph_search` |
-| "Who calls X?" | `astrograph_callers` |
-| "What does X call?" | `astrograph_callees` |
-| "What breaks if I change X?" | `astrograph_impact` |
-| "Show this one symbol and maybe its code" | `astrograph_node` |
-| "Show related code for these names/terms" | `astrograph_explore` |
-| "Which files are indexed?" | `astrograph_files` |
-| "Is the graph healthy/fresh?" | `astrograph_status` |
-
-CLI equivalents:
-
-```bash
-astrograph context "how does auth refresh work?"
-astrograph trace LoginScreen refreshToken
-astrograph search useAccount
-astrograph callers useAccount
-astrograph callees AccountScreen
-astrograph impact updateSession
-astrograph node useAccount --code
-astrograph explore session refresh token
-astrograph files
-astrograph status
-```
-
-## Prefer Astrograph Before Grep
-
-Use Astrograph first for:
-
-- cross-file control flow
-- callers/callees
-- imports and dependencies
-- impact analysis before editing
-- symbol lookup when the name is approximate
-- architecture questions
-- task context for an implementation or bug
-
-Use `rg`, glob, or direct file reads when:
-
-- the graph is missing and the user does not want to initialize it
-- the file's language has no backend (see Language Support) — the graph simply has nothing for it
-- the coverage banner says a specific file is pending or partial
-- you need raw text not modeled by the graph, such as comments, copy, env var
-  names, config keys, or test snapshots
-- the user explicitly asks for literal text search
-- Astrograph gives no useful result after one focused retry
-
-## Query Style
-
-Make graph queries precise:
-
-- Prefer symbol names when known: `useAccount`, `CheckoutScreen`, `AuthService.login`.
-- For `context`, use a natural task phrase: "how does checkout submit an order".
-- For `trace`, provide endpoints, not prose.
-- For `explore`, pass a compact bag of related symbols or terms.
-- If results are noisy, narrow by symbol name, file area, or node kind instead of
-  immediately falling back to broad grep.
-
-## Source Blocks Are Already Read
-
-When `astrograph_context`, `astrograph_trace`, `astrograph_node`, or
-`astrograph_explore` returns code blocks, treat those blocks as already read.
-Do not re-open the same files just to verify them unless the banner says the file
-is pending/partial or the answer still lacks necessary detail.
-
-## External Symbols
-
-Project symbols are the default. External `node_modules` and `.d.ts` symbols can
-be useful, but they often drown out project results.
-
-Use external results only when needed:
-
-```bash
-astrograph callers someSymbol --include-external
-astrograph callees someSymbol --include-external
-```
-
-## After Editing
-
-If the daemon is running, it should sync changes in the background.
-
-If not using the daemon:
-
-```bash
-astrograph sync
-```
-
-After edits that affect a question, check `astrograph_status` or the next tool's
-coverage banner before trusting old graph results.
-
-## Answering Users
-
-When Astrograph answers the question, cite the symbols and files it returned and
-avoid narrating a separate grep/read expedition. If the graph is partial, say what
-may be missing and inspect only the pending or relevant files directly.
+- Files in other languages (Python, Go, CSS, templates, config): use search and direct reads.
+- Literal text (error messages, SQL, config keys): use text search.
+- No `.astrograph/` directory: offer to run `astrograph init` in the project root.

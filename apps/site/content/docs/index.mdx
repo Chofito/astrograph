@@ -1,72 +1,49 @@
 ---
 title: What is Astrograph
-description: A local-first code graph with a tree-sitter base and language enrichers, built for humans and AI agents.
+description: A local code graph for TypeScript, JavaScript and PHP, built for coding agents.
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
 
-Astrograph indexes a repository into a **local graph of symbols and relationships** — functions,
-classes, imports, exports, calls, inheritance, references — stored in SQLite. It exposes that graph
-through a fast **CLI** and an **MCP server**, so humans and coding agents can ask sharp structural
-questions instead of grepping blindly.
+Astrograph indexes a repository into a **local graph of declarations and references** — classes,
+functions, methods, calls, instantiations, inheritance, JSX renders — stored in SQLite. It exposes
+that graph through a **CLI** and an **MCP server**, so coding agents (and you) can ask structural
+questions instead of grepping.
 
-## Why it exists
+## Why
 
-Most coding workflows start with text search. It works, but it is noisy and shallow:
+Agents waste most of their context finding code: search, open a file, search again. Astrograph
+answers "who calls this", "what breaks if I change it" or "how does checkout work" in one call,
+with the relevant source attached.
 
-```bash
-rg "useAccount"
-rg "AccountService"
-rg "login"
-```
+## How it works
 
-Astrograph builds the semantic map **once**, locally, then answers precise questions:
+1. Files come from `git ls-files` (respecting `.gitignore`), filtered to `.ts .tsx .mts .cts .js .jsx .mjs .cjs .php`.
+2. Each file is parsed with tree-sitter into symbols, references and imports.
+3. A linking pass resolves every reference through imports, re-exports, `tsconfig` paths,
+   PHP namespaces and `use` imports, and declared types.
+4. Every reference is labeled `exact`, `inferred`, `ambiguous`, `external` or `unresolved`.
 
-```bash
-astrograph callers useAccount
-astrograph trace login refreshToken
-astrograph context "how does session refresh work?"
-```
-
-## What makes it different
-
-Astrograph uses a **modular extraction pipeline**:
-
-- **Pass A — tree-sitter** for fast structural symbols, in every language that has a backend.
-- **Pass B — language enrichers** for semantic depth where available. JS/TS ships with the
-  **TypeScript Compiler** enricher (compiler-backed module resolution, aliases, inheritance, and re-exports, while retaining unresolved or ambiguous evidence).
-
-Two backends ship today: **JS/TS** (`.ts` `.tsx` `.mts` `.cts` `.js` `.jsx` `.mjs` `.cjs`) with the Compiler enricher, and **PHP**
-(`.php`) with a name-resolution enricher (heritage, types, calls). A language without an enricher still gets a real, queryable graph — its
-edges are marked `tree-sitter` rather than `ts-compiler`, so you can see exactly how much they prove.
-A file type no backend claims is not indexed; `astrograph status` tells you which are active.
-
-The result contract has explicit `external`, `unresolved`, `ambiguous`, and `partial` states instead of
-forcing every relation into a resolved target. Current global-query honesty gaps remain documented and
-should be considered before turning an empty result into an absence claim.
-
-## Explore the docs
-
-<Cards>
-  <Card title="Install" href="/docs/install">
-    curl|sh binary install, upgrades, and uninstall.
-  </Card>
-  <Card title="Quick Start" href="/docs/quick-start">
-    Index a repo and run your first queries.
-  </Card>
-  <Card title="Commands" href="/docs/commands">
-    The full CLI reference.
-  </Card>
-  <Card title="MCP &amp; skills" href="/docs/mcp">
-    Connect agents — Claude Code, Cursor, Codex, opencode.
-  </Card>
-  <Card title="Concepts" href="/docs/concepts">
-    The graph model: nodes, edges, and honest coverage.
-  </Card>
-</Cards>
+Only changed files are re-parsed. The MCP server re-syncs before every call, so there is no
+daemon or watcher to manage.
 
 ## Principles
 
-- **100% local.** No API keys, no external services — everything lives in `.astrograph/`.
-- **Incremental.** A file watcher keeps the graph fresh by re-indexing only what changed.
-- **Honest.** Coverage, freshness, and resolution confidence are first-class in every answer.
+- **Local only.** No network, no telemetry, no LLM calls.
+- **Honest.** Unproven links are labeled, not guessed.
+- **Small.** One binary, one SQLite file per project.
+
+<Cards>
+  <Card title="Install" href="/docs/install">
+    One command, verified against published checksums.
+  </Card>
+  <Card title="Quick Start" href="/docs/quick-start">
+    Index a project and ask your first questions.
+  </Card>
+  <Card title="Commands" href="/docs/commands">
+    Every CLI command and option.
+  </Card>
+  <Card title="MCP &amp; skills" href="/docs/mcp">
+    Connect Claude Code, Cursor, Codex or opencode.
+  </Card>
+</Cards>
