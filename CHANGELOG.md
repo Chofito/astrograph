@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 — 2026-10-05
+
+- `astrograph install` now upgrades agent guides written by an older release (any file whose
+  frontmatter is `name: astrograph`) instead of skipping them, so skills stay in sync with the
+  binary. Files that are not Astrograph guides, such as your own `AGENTS.md`, are still never touched.
+
 ## 0.2.0 — 2026-10-05
 
 A rewrite. The CLI commands and the MCP tool names stay the same; the index format does not,
