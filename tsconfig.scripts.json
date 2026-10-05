@@ -1,6 +1,0 @@
-{
-	"extends": "./tsconfig.base.json",
-	// `scripts/` is not a workspace either, so `bun run --filter '*' typecheck`
-	// never saw it. The documentation guard runs in CI; keep it compiling.
-	"include": ["scripts"]
-}

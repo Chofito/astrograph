@@ -1,9 +1,0 @@
-# build output
-dist/
-*.tsbuildinfo
-
-# test scratch indexes
-.astrograph/
-*.db
-*.db-wal
-*.db-shm
