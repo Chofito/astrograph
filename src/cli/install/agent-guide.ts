@@ -155,19 +155,24 @@ async function installEmbeddedAgentGuide(link: AgentGuideLink): Promise<AgentGui
 	}
 
 	const current = readInstalledGuide(link);
-	if (current !== undefined && current !== embeddedGuideText) {
+	if (current === embeddedGuideText) return { path: link.path, action: "unchanged" };
+	// An older Astrograph guide is ours to upgrade; any other file (a user's own AGENTS.md) is not.
+	if (current !== undefined && !isAstrographGuide(current)) {
 		return {
 			path: link.path,
 			action: "skipped",
-			reason: "existing non-symlink file",
+			reason: "existing file is not an Astrograph guide",
 		};
 	}
 
 	await writeEmbeddedGuide(link);
-	return {
-		path: link.path,
-		action: current === embeddedGuideText ? "unchanged" : "installed",
-	};
+	return { path: link.path, action: current === undefined ? "installed" : "updated" };
+}
+
+/** A guide this installer wrote: its frontmatter names the astrograph skill. */
+export function isAstrographGuide(text: string): boolean {
+	const frontmatter = /^---\n([\s\S]*?)\n---/.exec(text)?.[1];
+	return frontmatter !== undefined && /^name:\s*astrograph\s*$/m.test(frontmatter);
 }
 
 async function writeEmbeddedGuide(link: AgentGuideLink): Promise<void> {
