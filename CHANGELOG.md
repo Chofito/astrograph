@@ -15,7 +15,8 @@ so existing `.astrograph/graph.db` files are rebuilt on first use.
 - The MCP server re-syncs changed files before each call. The daemon, `stop`, `unlock`, `sync`
   locking and the watcher are gone.
 - Removed: `--json` output, the opentui reporter, the eval/bench harnesses and the docs tree.
-  Documentation is now `README.md` and `ARCHITECTURE.md`.
+  Documentation is now `README.md` and `ARCHITECTURE.md`, plus `ROADMAP.md` (direction),
+  `DECISIONS.md` (why) and `bun run bench` (indexing time / memory budget).
 
 ## 0.1.0
 

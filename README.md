@@ -102,6 +102,11 @@ See [ARCHITECTURE.md](ARCHITECTURE.md). In short: `git ls-files` → tree-sitter
 symbols, references and imports into SQLite → a linking pass resolves references using imports,
 namespaces and declared types. Nothing but SQLite stays in memory between files.
 
+## Project
+
+[ROADMAP.md](ROADMAP.md) (where it is going) · [DECISIONS.md](DECISIONS.md) (why it is built this
+way) · [CHANGELOG.md](CHANGELOG.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
+
 ## Develop
 
 ```bash
