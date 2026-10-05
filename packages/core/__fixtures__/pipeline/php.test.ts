@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { assertGraphIntegrity } from "../../src/testing/graph-assertions";
+import {
+	assertGraphIntegrity,
+	assertNoDanglingResolved,
+	edgeDedupKey,
+} from "../../src/testing/graph-assertions";
 import type { NormalizedIndex } from "../../src/testing/normalize";
 import { expectMatchesGolden } from "./assert";
 import { runCleanPipeline, withPipeline } from "./harness";
@@ -51,10 +55,23 @@ describe("PHP production goldens", () => {
 			`${manifest.id} matches its reviewed golden`,
 			async () => {
 				const snapshot = await runCleanPipeline(manifest);
-				assertGraphIntegrity({
-					nodes: snapshot.graph.nodes,
-					edges: snapshot.graph.edges,
-				});
+				if (manifest.id === "php-grouped-use-mixed") {
+					// DEV-010 emits two external `imports` from one mixed grouped
+					// `use` — `Vendor\\baz` and `Vendor\\QUX` — that share the
+					// TypeScript resolver dedup key (source, kind, null target,
+					// line). Persistence keeps both rows; treating that collision
+					// as integrity failure would reject the pin. Resolved targets
+					// must still exist.
+					assertNoDanglingResolved(
+						snapshot.graph.edges,
+						snapshot.graph.nodes,
+					);
+				} else {
+					assertGraphIntegrity({
+						nodes: snapshot.graph.nodes,
+						edges: snapshot.graph.edges,
+					});
+				}
 				await expectMatchesGolden(manifest.id, snapshot);
 			},
 			PIPELINE_TEST_TIMEOUT_MS,
@@ -176,6 +193,105 @@ describe("receiver-aware resolution stays inside STEP 3", () => {
 			expect(call?.resolutionState).toBe("external");
 			expect(call?.target).toBeNull();
 			expect(call?.targetName).toContain("MIXEDCASE");
+		},
+		PIPELINE_TEST_TIMEOUT_MS,
+	);
+
+	test(
+		"DEV-010 mixed grouped-use contaminates the type alias map",
+		async () => {
+			const manifest = MANIFESTS.find(
+				(candidate) => candidate.id === "php-grouped-use-mixed",
+			);
+			expect(manifest).toBeDefined();
+			if (manifest === undefined) return;
+
+			const { graph } = await runCleanPipeline(manifest);
+
+			// Correct PHP: `use Vendor\{Bar, function baz, const QUX}` imports
+			// only `Bar` as a class. `baz` is a function and `QUX` is a constant;
+			// neither belongs in class or type resolution.
+			//
+			// Astrograph AS-IS (DEV-010, still open): `collectUseDeclaration`
+			// copies every grouped clause into the type alias map, so `baz` and
+			// `QUX` become class aliases for `Vendor\\baz` and `Vendor\\QUX`.
+			// The assertions below are the current wrong behaviour, not the
+			// intended one. Repairing DEV-010 must change this test and its
+			// recorded golden; nothing here endorses the outcome.
+
+			const barClass = graph.nodes.find(
+				(node) => node.kind === "class" && node.name === "Bar",
+			);
+			expect(barClass).toBeDefined();
+
+			const instantiatesBar = graph.edges.find(
+				(edge) =>
+					edge.kind === "instantiates" && edge.targetName === "Bar",
+			);
+			expect(instantiatesBar?.resolutionState).toBe("resolved");
+			expect(instantiatesBar?.target).toBe(barClass?.id);
+
+			// The defect: `new baz()` is treated as constructing a class named
+			// through the contaminated alias, not as a function import. There is
+			// no `Vendor\\baz` class on disk, so the edge is `external` rather
+			// than absent. An assertion that only checked `Bar` would hide this.
+			const instantiatesBaz = graph.edges.find(
+				(edge) =>
+					edge.kind === "instantiates" &&
+					(edge.targetName === "baz" ||
+						edge.targetName?.endsWith("\\baz") === true),
+			);
+			expect(instantiatesBaz).toBeDefined();
+			expect(instantiatesBaz?.resolutionState).toBe("external");
+			expect(instantiatesBaz?.target).toBeNull();
+
+			const typeOfQux = graph.edges.find(
+				(edge) =>
+					edge.kind === "type_of" &&
+					(edge.targetName === "QUX" ||
+						edge.targetName?.endsWith("\\QUX") === true),
+			);
+			expect(typeOfQux).toBeDefined();
+			expect(typeOfQux?.resolutionState).toBe("external");
+			expect(typeOfQux?.target).toBeNull();
+
+			const imported = graph.edges.filter((edge) => edge.kind === "imports");
+			expect(
+				imported.some(
+					(edge) =>
+						edge.resolutionState === "resolved" &&
+						edge.target === barClass?.id,
+				),
+			).toBe(true);
+			expect(
+				imported.some(
+					(edge) =>
+						edge.resolutionState === "external" &&
+						edge.target === null &&
+						edge.targetName?.endsWith("\\baz") === true,
+				),
+			).toBe(true);
+			expect(
+				imported.some(
+					(edge) =>
+						edge.resolutionState === "external" &&
+						edge.target === null &&
+						edge.targetName?.endsWith("\\QUX") === true,
+				),
+			).toBe(true);
+
+			// The two contaminating imports share the TypeScript resolver
+			// dedup key. That is why this fixture cannot use
+			// `assertUniqueEdgeKeys`: dropping either row would hide DEV-010.
+			const contaminatingImports = imported.filter(
+				(edge) =>
+					edge.resolutionState === "external" &&
+					edge.target === null &&
+					(edge.targetName?.endsWith("\\baz") === true ||
+						edge.targetName?.endsWith("\\QUX") === true),
+			);
+			expect(contaminatingImports.length).toBe(2);
+			expect(new Set(contaminatingImports.map(edgeDedupKey)).size).toBe(1);
 		},
 		PIPELINE_TEST_TIMEOUT_MS,
 	);

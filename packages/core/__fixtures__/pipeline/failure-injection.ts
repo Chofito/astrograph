@@ -3,6 +3,7 @@ import {
 	createDefaultRegistry,
 	LanguageRegistry,
 	TreeSitterParser,
+	treeSitterLangFromPath,
 } from "../../src/extraction";
 import type { LanguageBackend, PassAResult } from "../../src/types";
 
@@ -175,4 +176,87 @@ export function registryWithThrowingParser(
 					};
 				}),
 		);
+}
+
+/**
+ * The shipped registry with one backend reporting `TREE_SITTER_GRAMMAR_MISSING`
+ * for named files.
+ *
+ * Distinct from {@link registryWithGrammarlessBackend}: that fixture uses an
+ * extension tree-sitter does not map, so production emits
+ * `TREE_SITTER_UNAVAILABLE`. This one keeps a *recognized* extension (the path
+ * maps to a `TreeSitterLang`) and then fails the grammar for that language —
+ * the `TREE_SITTER_GRAMMAR_MISSING` branch in `TreeSitterParser.extractNodes`.
+ *
+ * The process-global grammar cache cannot be the trigger. Marking `typescript`
+ * or `php` unavailable would leak into every later test in the same process,
+ * and skipping `loadGrammars` is order-dependent once an earlier fixture has
+ * already loaded the language. The wrapper therefore reproduces the production
+ * file-only result `TreeSitterParser` emits when `createParserFor` returns
+ * `undefined` after `treeSitterLangFromPath` has already recognized the path:
+ * the file node is minted by the real parser (it is constructed *before* the
+ * grammar check), structure is dropped, and the structured code is
+ * `TREE_SITTER_GRAMMAR_MISSING`. Nothing here is exported from a barrel.
+ */
+export function registryWithMissingGrammar(
+	backendId: string,
+	filePaths: readonly string[],
+): (options: CreateRegistryOptions) => LanguageRegistry {
+	const paths = new Set(filePaths);
+
+	return (options) =>
+		new LanguageRegistry(
+			createDefaultRegistry(options)
+				.list()
+				.map((backend) => {
+					if (backend.id !== backendId) return backend;
+					return withMissingGrammar(backend, paths);
+				}),
+		);
+}
+
+function withMissingGrammar(
+	backend: LanguageBackend,
+	paths: ReadonlySet<string>,
+): LanguageBackend {
+	return {
+		id: backend.id,
+		languages: backend.languages,
+		extensions: backend.extensions,
+		parser: {
+			extractNodes(filePath: string, source: string): PassAResult {
+				if (!paths.has(filePath)) {
+					return backend.parser.extractNodes(filePath, source);
+				}
+				const tsLang = treeSitterLangFromPath(filePath);
+				if (tsLang === undefined) {
+					throw new Error(
+						`TREE_SITTER_GRAMMAR_MISSING injection requires a recognized tree-sitter extension, got ${filePath}`,
+					);
+				}
+				// File-node identity matches the production GRAMMAR_MISSING branch:
+				// `TreeSitterParser` constructs the file node before `createParserFor`.
+				const produced = backend.parser.extractNodes(filePath, source);
+				const fileNode = produced.nodes.find((node) => node.kind === "file");
+				if (fileNode === undefined) {
+					throw new Error(`Pass A produced no file node for ${filePath}`);
+				}
+				return {
+					nodes: [fileNode],
+					edges: [],
+					errors: [
+						{
+							message: `tree-sitter grammar not loaded for ${tsLang}`,
+							filePath,
+							severity: "warning",
+							code: "TREE_SITTER_GRAMMAR_MISSING",
+						},
+					],
+				};
+			},
+		},
+		...(backend.enricher === undefined ? {} : { enricher: backend.enricher }),
+		capabilities: backend.capabilities,
+		versionKeys: () => backend.versionKeys(),
+	};
 }

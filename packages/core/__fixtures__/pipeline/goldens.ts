@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import {
 	PIPELINE_ROOT,
+	type PipelineManifest,
 	type PipelineSnapshot,
 	type ProbeOutcome,
 } from "./harness";
@@ -28,6 +29,25 @@ export interface GoldenPaths {
 export function goldenPaths(fixtureId: string): GoldenPaths {
 	const dir = `${GOLDENS_ROOT}/${fixtureId}`;
 	return { graph: `${dir}/graph.json`, envelopes: `${dir}/envelopes.json` };
+}
+
+/**
+ * Which golden artifacts a manifest is required to have on disk.
+ *
+ * Every known fixture owns `graph.json`. A fixture that declares probes also
+ * owns `envelopes.json`. A fixture with no probes may omit the envelope file —
+ * that is the same contract {@link writePipelineGolden} uses, so the inventory
+ * test and the writer cannot disagree about what "complete" means.
+ */
+export function requiredGoldenArtifacts(manifest: PipelineManifest): {
+	graph: string;
+	envelopes: string | undefined;
+} {
+	const paths = goldenPaths(manifest.id);
+	return {
+		graph: paths.graph,
+		envelopes: (manifest.probes ?? []).length > 0 ? paths.envelopes : undefined,
+	};
 }
 
 /**

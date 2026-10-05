@@ -23,13 +23,14 @@ import {
  * golden is exactly what `DEV-014` says has to be observable: same input, and
  * now the persisted, queryable answer next to the extracted one.
  *
- * Three projects, one per matrix cluster:
+ * Four projects: three STEP 3 clusters plus the isolated DEV-010 pin:
  *
  * | Fixture | Matrix rows |
  * |---|---|
  * | `php-calls-*` | Receiver buckets STEP 3 promises, unresolved and dynamic calls, vendor/external parents, case-insensitive lookup. |
  * | `php-heritage-enriched` | Classes, interfaces, inheritance, plain/aliased/grouped/absolute imports, a missing generated class. |
  * | `php-types-enriched` | Imported types in parameter, promoted-property, property and return positions; scalars that must produce nothing. |
+ * | `php-grouped-use-mixed` | DEV-010 AS-IS: mixed grouped `use` contaminates the type alias map. |
  *
  * Out of scope by ticket, and therefore absent: Magento XML, DI, plugins,
  * generated-code semantics and `.phtml`.
@@ -64,6 +65,55 @@ class CasingConsumer
     public function go(): void
     {
         $this->service->doWork();
+    }
+}
+`;
+
+/**
+ * DEV-010: mixed grouped-use as PHP actually writes it.
+ *
+ * Correct PHP: only `Bar` is a class import. `function baz` and `const QUX`
+ * live in other symbol tables and must never enter class or type resolution.
+ *
+ * Astrograph AS-IS: `collectUseDeclaration` copies every grouped clause into
+ * the type alias map, so `baz` and `QUX` become class aliases for
+ * `Vendor\\baz` and `Vendor\\QUX`. `new baz()` and `QUX $flag` are then treated
+ * as class references. This fixture exists so that repairing DEV-010 has to
+ * change a reviewed production golden rather than slipping through as a
+ * silent alias-table edit.
+ */
+const GROUPED_USE_BAR_SOURCE = `<?php
+
+namespace Vendor;
+
+class Bar
+{
+    public function run(): void
+    {
+    }
+}
+`;
+
+const GROUPED_USE_CONSUMER_SOURCE = `<?php
+
+namespace App;
+
+// Correct PHP: only Bar is a class import. function baz and const QUX must
+// not enter class/type resolution. Astrograph AS-IS (DEV-010) copies every
+// grouped clause into the type alias map, so new baz() and QUX \$flag become
+// class-shaped external relations. Fixing DEV-010 must change this golden.
+use Vendor\\{Bar, function baz, const QUX};
+
+class Consumer
+{
+    public function __construct(private readonly QUX $flag)
+    {
+    }
+
+    public function make(): Bar
+    {
+        new baz();
+        return new Bar();
     }
 }
 `;
@@ -135,6 +185,23 @@ export async function phpManifests(): Promise<PipelineManifest[]> {
 				searchProbe("Worker"),
 				nodeProbe("Worker"),
 				calleesProbe("run"),
+				filesProbe(),
+				statusProbe(),
+			],
+		},
+		{
+			id: "php-grouped-use-mixed",
+			description:
+				"DEV-010 AS-IS: mixed grouped use (`use Vendor\\{Bar, function baz, const QUX}`) contaminates the type alias map so function and const clauses participate in class resolution. Correct PHP would not. Repairing DEV-010 must change this golden.",
+			modes: { php: "enriched", typescript: "disabled" },
+			files: {
+				"src/Bar.php": GROUPED_USE_BAR_SOURCE,
+				"src/Consumer.php": GROUPED_USE_CONSUMER_SOURCE,
+			},
+			probes: [
+				searchProbe("Bar"),
+				nodeProbe("Consumer"),
+				calleesProbe("make"),
 				filesProbe(),
 				statusProbe(),
 			],

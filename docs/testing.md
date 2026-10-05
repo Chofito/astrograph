@@ -229,7 +229,11 @@ Direct assertions on [extraction/typescript.md §2](extraction/typescript.md#2-r
 
 ## 6. Performance budget tests
 
-Turn "linear / performance-friendly" into thresholds (ROADMAP §1 / premortem #2). Numbers are starting targets on a dev laptop; tune with real measurements, but **fail the test if exceeded by >2×**.
+Turn "linear / performance-friendly" into thresholds (ROADMAP §1 / premortem #2). The current
+`bench` helper exits only when sampled RSS exceeds twice its configured target; that is a wide
+diagnostic guard, not release certification. Stage 0.1-D must preserve ordinary regression signals
+while enforcing the separate preview gate: **peak RSS ≤ 1.5 GiB on the accepted representative
+~2k-file corpus**.
 
 | Metric | Target (V1) |
 |---|---|
@@ -237,10 +241,12 @@ Turn "linear / performance-friendly" into thresholds (ROADMAP §1 / premortem #2
 | Incremental sync (1 file) | < 300 ms p95 |
 | `search` / `node` latency | < 50 ms p95 |
 | `context` latency | < 500 ms p95 |
-| Peak RSS, ~2k-file repo | < 1.5 GB |
+| Peak RSS, accepted ~2k-file corpus | ≤ 1.5 GiB |
 | Linearity check | index time of `perf/` (1k symbols) ≈ 2× of 500-symbol variant (±30%) |
 
-Measured via a `bench` helper; recorded to `docs/benchmarks/` over time.
+Measured via a `bench` helper and recorded to `docs/benchmarks/` over time. Release evidence also
+records the corpus revision, Astrograph revision, configuration, platform, command, elapsed time,
+peak/end RSS, and route; a passing run on an arbitrary repository does not satisfy the gate.
 
 ---
 
@@ -265,7 +271,7 @@ Historically modeled after a sibling `codegraph/__tests__/evaluation/` directory
 
 ## 8. What CI runs (when the user runs it)
 1. `bun test` — unit + golden + sync + resolution + determinism (fast, always).
-2. `bun run bench` — performance budgets (medium; gate on >2× regressions).
+2. `bun run bench` — current wide diagnostic guard; 0.1-D adds the representative hard-gate protocol.
 3. `bun run eval` — manual/periodic on real repos (slow).
 
 Reminder: the **agent writes** these; the **user runs** them.

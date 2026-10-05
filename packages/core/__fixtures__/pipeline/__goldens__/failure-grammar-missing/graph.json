@@ -1,0 +1,153 @@
+{
+  "nodes": [
+    {
+      "id": "17230373323808485358",
+      "project": "root",
+      "kind": "file",
+      "name": "gapped.ts",
+      "qualifiedName": "src/gapped.ts",
+      "filePath": "src/gapped.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 4,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "4114604165447085705",
+      "project": "root",
+      "kind": "file",
+      "name": "ok.ts",
+      "qualifiedName": "src/ok.ts",
+      "filePath": "src/ok.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 8,
+        "startColumn": 0,
+        "endColumn": 0
+      },
+      "isExported": false,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "15303676503015854983",
+      "project": "root",
+      "kind": "function",
+      "name": "helper",
+      "qualifiedName": "src/ok.ts::helper",
+      "filePath": "src/ok.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 1,
+        "endLine": 3,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    },
+    {
+      "id": "3023701341406684353",
+      "project": "root",
+      "kind": "function",
+      "name": "useHelper",
+      "qualifiedName": "src/ok.ts::useHelper",
+      "filePath": "src/ok.ts",
+      "language": "typescript",
+      "range": {
+        "startLine": 5,
+        "endLine": 7,
+        "startColumn": 0,
+        "endColumn": 1
+      },
+      "isExported": true,
+      "isAsync": false,
+      "isStatic": false,
+      "isAbstract": false,
+      "isExternal": false,
+      "isGenerated": false,
+      "isTest": false,
+      "metadata": {
+        "provenance": "tree-sitter"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "4114604165447085705",
+      "target": "15303676503015854983",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 1
+    },
+    {
+      "source": "4114604165447085705",
+      "target": "3023701341406684353",
+      "kind": "contains",
+      "resolutionState": "resolved",
+      "confidence": "high",
+      "provenance": "tree-sitter",
+      "line": 5
+    }
+  ],
+  "files": [
+    {
+      "path": "src/gapped.ts",
+      "project": "root",
+      "contentHash": "18290638471426562941",
+      "language": "typescript",
+      "size": 48,
+      "nodeCount": 1,
+      "state": "resolved",
+      "errors": [
+        {
+          "message": "tree-sitter grammar not loaded for typescript",
+          "filePath": "src/gapped.ts",
+          "severity": "warning",
+          "code": "TREE_SITTER_GRAMMAR_MISSING"
+        }
+      ]
+    },
+    {
+      "path": "src/ok.ts",
+      "project": "root",
+      "contentHash": "13986654319930986408",
+      "language": "typescript",
+      "size": 107,
+      "nodeCount": 3,
+      "state": "resolved",
+      "errors": []
+    }
+  ]
+}

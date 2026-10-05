@@ -14,7 +14,7 @@
 - **Enriches, not replaces.** Adds compiler-backed symbols and edges with explicit confidence and resolution states. Creates external nodes for `node_modules`/`.d.ts` symbols only when needed.
 - **Project nodes only.** Project files are indexed as nodes; external code stays external.
 - **Lazy resolution.** Enricher runs on demand (progressive indexing) or once per full index. Resolves cross-file imports, calls, type relationships via `TypeChecker`.
-- **V1 scope.** Primary `tsconfig.json`/`jsconfig.json` only. Multi-`tsconfig`, project references → Stage 4.
+- **`v0.1.0` scope.** Primary `tsconfig.json`/`jsconfig.json` only. Multi-`tsconfig` and project references wait for `v0.2.0`.
 
 ---
 

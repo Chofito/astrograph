@@ -129,20 +129,40 @@ describe("ownership is exclusive", () => {
 		"a name that exists only in the other language stays unresolved",
 		async () => {
 			const { graph } = await runCleanPipeline(MIXED_ENRICHED_MANIFEST);
+			const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
 
-			// `handle` is a PHP method; `src/js/consumer.ts` calls it on a structural
-			// type. `compute` is a TypeScript function; `Consumer::stray` calls it on
-			// an untyped variable. Both are name matches across languages.
-			for (const targetName of ["handle", "compute"]) {
-				const edges = graph.edges.filter(
-					(edge) => edge.targetName === targetName && edge.kind === "calls",
-				);
-				expect(edges.length).toBeGreaterThan(0);
-				expect(edges.every((edge) => edge.resolutionState !== "resolved")).toBe(
-					true,
-				);
-				expect(edges.every((edge) => edge.target === null)).toBe(true);
-			}
+			// `handle` is a PHP method; `src/js/consumer.ts` calls it on a
+			// structural type. The TypeScript enricher cannot prove a target, so
+			// the contract and the golden both record `unresolved`, not
+			// `external` or any other non-resolved bucket.
+			const handle = graph.edges.find(
+				(edge) =>
+					edge.kind === "calls" &&
+					edge.targetName === "handle" &&
+					nodeById.get(edge.source)?.filePath === "src/js/consumer.ts",
+			);
+			expect(handle).toBeDefined();
+			expect(handle?.resolutionState).toBe("unresolved");
+			expect(handle?.target).toBeNull();
+			expect(handle?.provenance).toBe("ts-compiler");
+			expect(nodeById.get(handle?.source ?? "")?.language).toBe("typescript");
+
+			// `compute` is a TypeScript function; `Consumer::stray` calls it on
+			// an untyped PHP variable. PHP Pass A records the call with no
+			// receiver proof, so the golden pins `unresolved` with tree-sitter
+			// provenance — a different edge from the TypeScript one above, not
+			// a homonymous relation elsewhere in the graph.
+			const compute = graph.edges.find(
+				(edge) =>
+					edge.kind === "calls" &&
+					edge.targetName === "compute" &&
+					nodeById.get(edge.source)?.filePath === "src/php/Consumer.php",
+			);
+			expect(compute).toBeDefined();
+			expect(compute?.resolutionState).toBe("unresolved");
+			expect(compute?.target).toBeNull();
+			expect(compute?.provenance).toBe("tree-sitter");
+			expect(nodeById.get(compute?.source ?? "")?.language).toBe("php");
 		},
 		PIPELINE_TEST_TIMEOUT_MS,
 	);

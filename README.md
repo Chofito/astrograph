@@ -78,8 +78,11 @@ Instead of dumping files, Astrograph returns structured results with locations, 
 
 ## Current Status
 
-Stage 1 (core graph + CLI) is complete and in polish; Stage 2 (MCP server + agent skills) is built and
-in use. Stage 3 (promo/docs site) is live and being filled in.
+The product surfaces are built; the active work is release hardening rather than
+another product-surface stage. `ROADMAP.md` owns the release sequence:
+0.1-A and 0.1-B are implemented, 0.1-C has implementation and review records but
+still requires owner-run verification, and 0.1-D is the next stage for memory,
+CPU, delta cost, and lifecycle viability.
 
 ```text
 Core storage              done
@@ -89,7 +92,7 @@ Edge resolution           done
 Read tools                done
 CLI                       done, in polish
 MCP server                done, in polish
-Tier 1 eval harness       active (calibrating on real repos)
+Tier 1 eval harness       built; validity work remains
 Promo/docs site           active (Stage 3)
 3D explorer               parked
 ```

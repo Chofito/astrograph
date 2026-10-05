@@ -84,6 +84,7 @@ This per-file output is not itself a global completeness claim. The indexer reco
 - `packages/core/src/extraction/tree-sitter/parser.ts`: file-only failures, ownership rules, candidate filtering, node creation, and `contains` emission.
 - `packages/core/src/extraction/shared/language.ts` and `qualified-name.ts`: language and qualified-name support.
 - `packages/core/src/extraction/php/backend.ts`: borrowed PHP tree path.
+- `packages/core/__fixtures__/pipeline/failure-grammar-missing`: production-pipeline pin of `TREE_SITTER_GRAMMAR_MISSING` after a recognized extension.
 
 ## Known deviations
 

@@ -2,6 +2,7 @@ import {
 	GRAMMARLESS_EXTENSION,
 	registryWithFailingParser,
 	registryWithGrammarlessBackend,
+	registryWithMissingGrammar,
 } from "./failure-injection";
 import type { FixtureFiles, PipelineManifest } from "./harness";
 import {
@@ -27,6 +28,7 @@ import {
  * |---|---|---|
  * | `failure-coverage-gaps` | Oversized owned file | `FILE_TOO_LARGE` |
  * | `failure-coverage-gaps` | Owned extension with no grammar | `TREE_SITTER_UNAVAILABLE` |
+ * | `failure-grammar-missing` | Recognized extension whose grammar fails to load | `TREE_SITTER_GRAMMAR_MISSING` |
  * | `failure-coverage-gaps` | Unresolved and ambiguous relations | edge states, `PHP_CALL_UNRESOLVED`-equivalent evidence |
  * | `failure-backend-extraction` | Backend Pass A failure, enricher present | `PARSE_ERROR` |
  * | `failure-backend-extraction-pass-a` | Backend Pass A failure, nothing to fall back on | `PARSE_ERROR`, zero nodes |
@@ -223,8 +225,17 @@ export const FAILURE_BACKEND_DISABLED_MANIFEST: PipelineManifest = {
 	modes: { typescript: "enriched", php: "enriched" },
 	files: { ...BASE_FILES, "src/Service.php": PHP_SERVICE_SOURCE },
 	// Turning a backend off is only observable against an index that already
-	// contains its rows: with PHP off from the start the scanner never yields a
-	// `.php` path at all, and there is nothing to retire.
+	// contains its rows. Before R2-1, with PHP off from the start the scanner
+	// never yielded a `.php` path at all — `registry.allExtensions()` omitted
+	// the disabled backend — so there was nothing to retire and nothing to
+	// record. After R2-1 the scanner includes every shipped backend's
+	// extensions even when that backend is disabled, so a PHP-off-from-the-
+	// start run would still persist a `NO_BACKEND` row; it would never have
+	// created the nodes this fixture exists to prove are retired. The
+	// sequence below is therefore still required: index while PHP is on, then
+	// reopen with it off. The surviving row uses `NO_BACKEND`; the envelope
+	// reason remains `coverage_incomplete` rather than a capability limit
+	// (`DEV-004`/`NEW-002`).
 	async run(session) {
 		await session.indexAll();
 		await session.reopen({
@@ -281,11 +292,38 @@ export const FAILURE_CAPABILITY_GAP_MANIFEST: PipelineManifest = {
 	probes: HONESTY_PROBES,
 };
 
+/**
+ * A recognized extension whose grammar is not loaded.
+ *
+ * Distinct from the `.frag` `TREE_SITTER_UNAVAILABLE` row: the path maps to a
+ * `TreeSitterLang`, the runtime is ready, and Pass A still emits only the file
+ * node plus `TREE_SITTER_GRAMMAR_MISSING`. Pass-A-only so the TypeScript
+ * enricher cannot recover structure and hide the file-only contract. The
+ * injection lives on the private `createRegistry` seam and does not mutate the
+ * process-global grammar cache.
+ */
+export const FAILURE_GRAMMAR_MISSING_MANIFEST: PipelineManifest = {
+	id: "failure-grammar-missing",
+	description:
+		"A recognized TypeScript file whose grammar fails to load: the file remains represented, Pass A keeps only the file node, TREE_SITTER_GRAMMAR_MISSING is persisted, and query envelopes stay honest.",
+	modes: { typescript: "pass-a-only", php: "disabled" },
+	files: {
+		...BASE_FILES,
+		"src/gapped.ts":
+			"export function gapped(): number {\n\treturn 4;\n}\n",
+	},
+	injection: {
+		createRegistry: registryWithMissingGrammar("typescript", ["src/gapped.ts"]),
+	},
+	probes: HONESTY_PROBES,
+};
+
 export const FAILURE_MANIFESTS = [
 	FAILURE_BACKEND_DISABLED_MANIFEST,
 	FAILURE_BACKEND_EXTRACTION_MANIFEST,
 	FAILURE_BACKEND_EXTRACTION_PASS_A_MANIFEST,
 	FAILURE_CAPABILITY_GAP_MANIFEST,
 	FAILURE_COVERAGE_GAPS_MANIFEST,
+	FAILURE_GRAMMAR_MISSING_MANIFEST,
 	FAILURE_UNOWNED_AND_DISABLED_MANIFEST,
 ] as const;

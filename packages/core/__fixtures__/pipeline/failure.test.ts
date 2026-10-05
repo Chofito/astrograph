@@ -10,6 +10,7 @@ import {
 	FAILURE_BACKEND_EXTRACTION_PASS_A_MANIFEST,
 	FAILURE_CAPABILITY_GAP_MANIFEST,
 	FAILURE_COVERAGE_GAPS_MANIFEST,
+	FAILURE_GRAMMAR_MISSING_MANIFEST,
 	FAILURE_MANIFESTS,
 	FAILURE_UNOWNED_AND_DISABLED_MANIFEST,
 } from "./failure-fixtures";
@@ -175,40 +176,159 @@ describe("every failure leaves attributable persisted evidence", () => {
 	test(
 		"a disabled backend retires its nodes and keeps an actionable record",
 		async () => {
+			await withPipeline(
+				{ ...FAILURE_BACKEND_DISABLED_MANIFEST, run: undefined },
+				async (session) => {
+					await session.indexAll();
+					const before = session.snapshotGraph();
+					const retiredIds = new Set(
+						before.nodes
+							.filter((node) => node.filePath === "src/Service.php")
+							.map((node) => node.id),
+					);
+					// Guard: retirement can only be proven against facts that existed.
+					// Node ids are decimal hashes, so a substring of `Service` on
+					// `edge.source` would never match and the assertion would be vacuous.
+					expect(retiredIds.size).toBeGreaterThan(0);
+
+					await session.reopen({
+						modes: { typescript: "enriched", php: "disabled" },
+					});
+					await session.indexAll();
+					const after = await session.snapshot(
+						FAILURE_BACKEND_DISABLED_MANIFEST.probes ?? [],
+					);
+
+					expect(
+						after.graph.nodes.filter(
+							(node) => node.filePath === "src/Service.php",
+						),
+					).toEqual([]);
+					expect(
+						after.graph.edges.filter(
+							(edge) =>
+								retiredIds.has(edge.source) ||
+								(edge.target !== null && retiredIds.has(edge.target)),
+						),
+					).toEqual([]);
+
+					const remainingIds = new Set(
+						after.graph.nodes.map((node) => node.id),
+					);
+					expect(
+						after.graph.edges.filter(
+							(edge) =>
+								!remainingIds.has(edge.source) ||
+								(edge.target !== null && !remainingIds.has(edge.target)),
+						),
+					).toEqual([]);
+
+					// And the row survives with the reason. This is the regression
+					// guard for the gap this fixture used to document: the scanner
+					// covers every shipped backend's extensions, so membership
+					// classifies the path `backend_disabled` instead of dropping it
+					// as `out_of_scope`.
+					const record = fileRecord(after.graph, "src/Service.php");
+					expect(record).toBeDefined();
+					expect(record?.nodeCount).toBe(0);
+					expect(codesFor(after.graph, "src/Service.php")).toEqual([
+						"NO_BACKEND",
+					]);
+					expect(record?.errors[0]?.message).toContain("disabled");
+
+					// The healthy file is untouched by its neighbour's retirement.
+					expect(fileRecord(after.graph, "src/ok.ts")?.errors).toEqual([]);
+
+					// The envelopes are now honest: a project half of which is
+					// unindexed no longer answers a global question with
+					// `partial: false`, while the local answer inside the healthy
+					// file stays complete.
+					const search = after.envelopes["search:handle"];
+					expect(search && "partial" in search && search.partial).toBe(true);
+					const callers = after.envelopes["callers:helper"];
+					expect(
+						callers && "partial" in callers && callers.partial,
+					).toBe(true);
+					const callees = after.envelopes["callees:useHelper"];
+					expect(
+						callees && "partial" in callees && callees.partial,
+					).toBe(false);
+				},
+			);
+		},
+		PIPELINE_TEST_TIMEOUT_MS,
+	);
+
+	test(
+		"a recognized extension whose grammar is missing keeps a file-only node",
+		async () => {
 			const { graph, envelopes } = await runCleanPipeline(
-				FAILURE_BACKEND_DISABLED_MANIFEST,
+				FAILURE_GRAMMAR_MISSING_MANIFEST,
 			);
 
-			// Retirement is complete: no stale node, no stale edge.
+			expect(codesFor(graph, "src/gapped.ts")).toEqual([
+				"TREE_SITTER_GRAMMAR_MISSING",
+			]);
+			expect(categoryOf("TREE_SITTER_GRAMMAR_MISSING")).toBe("configuration");
+
+			const gapped = graph.nodes.filter(
+				(node) => node.filePath === "src/gapped.ts",
+			);
+			expect(gapped.map((node) => node.kind)).toEqual(["file"]);
 			expect(
-				graph.nodes.filter((node) => node.filePath === "src/Service.php"),
-			).toEqual([]);
-			expect(
-				graph.edges.filter((edge) => edge.source.includes("Service")),
+				graph.edges.filter((edge) =>
+					gapped.some((node) => node.id === edge.source),
+				),
 			).toEqual([]);
 
-			// And the row survives with the reason. This is the regression guard for
-			// the gap this fixture used to document: the scanner covers every
-			// shipped backend's extensions, so membership classifies the path
-			// `backend_disabled` instead of dropping it as `out_of_scope`.
-			const record = fileRecord(graph, "src/Service.php");
+			const record = fileRecord(graph, "src/gapped.ts");
 			expect(record).toBeDefined();
-			expect(record?.nodeCount).toBe(0);
-			expect(codesFor(graph, "src/Service.php")).toEqual(["NO_BACKEND"]);
-			expect(record?.errors[0]?.message).toContain("disabled");
+			expect(record?.nodeCount).toBe(1);
 
-			// The healthy file is untouched by its neighbour's retirement.
 			expect(fileRecord(graph, "src/ok.ts")?.errors).toEqual([]);
+			expect(
+				graph.nodes.some(
+					(node) =>
+						node.filePath === "src/ok.ts" && node.kind === "function",
+				),
+			).toBe(true);
 
-			// The envelopes are now honest: a project half of which is unindexed no
-			// longer answers a global question with `partial: false`, while the
-			// local answer inside the healthy file stays complete.
-			const search = envelopes["search:handle"];
-			expect(search && "partial" in search && search.partial).toBe(true);
+			// Pass-A-only so the enricher cannot recover structure and hide the
+			// file-only contract. Global questions therefore report both the
+			// missing grammar (coverage) and the missing enricher (capability).
+			// `useHelper`'s local domain is only `src/ok.ts`, so it must not
+			// blame `gapped.ts` — that would make partiality meaningless.
 			const callers = envelopes["callers:helper"];
 			expect(callers && "partial" in callers && callers.partial).toBe(true);
+			const callerKinds =
+				callers && "reasons" in callers
+					? (callers.reasons ?? []).map((reason) => reason.kind)
+					: [];
+			expect(callerKinds).toContain("coverage_incomplete");
+			expect(callerKinds).toContain("capability_unsupported");
+			expect(
+				callers &&
+					"reasons" in callers &&
+					(callers.reasons ?? []).some(
+						(reason) =>
+							reason.kind === "coverage_incomplete" &&
+							reason.files?.includes("src/gapped.ts") === true,
+					),
+			).toBe(true);
+
 			const callees = envelopes["callees:useHelper"];
-			expect(callees && "partial" in callees && callees.partial).toBe(false);
+			expect(callees && "partial" in callees && callees.partial).toBe(true);
+			expect(
+				callees &&
+					"reasons" in callees &&
+					(callees.reasons ?? []).map((reason) => reason.kind),
+			).toEqual(["capability_unsupported"]);
+
+			const status = envelopes.status;
+			expect(status && "partial" in status && status.partial).toBe(false);
+			expect(status && "domain" in status && status.domain).toBe(
+				"descriptive",
+			);
 		},
 		PIPELINE_TEST_TIMEOUT_MS,
 	);

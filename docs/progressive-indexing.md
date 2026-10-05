@@ -2,7 +2,7 @@
 
 > 🌐 Languages: **English** (this file) · [Español](progressive-indexing.es.md)
 
-> Historical/target design. The background priority queue and demand-boost flow below are **not implemented** at baseline `8c6e9ad`. Current behavior is full `init`, explicit/hash-based delta sync, and watcher batching before reads; see [Incremental synchronization](architecture/incremental-sync.md). This document remains a future design input, not AS-IS evidence.
+> Historical/target design. The background priority queue and demand-boost flow below are **not implemented** at baseline `8c6e9ad`. Current behavior is full `init`, explicit/hash-based delta sync, and watcher batching before reads; see [Incremental synchronization](architecture/incremental-sync.md). This document remains a future design input, not AS-IS evidence. Its V1/v1.5/v2 and Stage 4/5 labels are historical and superseded by [the current roadmap](../ROADMAP.md#11-v020--broader-code-intelligence-still-code-only); do not use them as release commitments.
 
 ## 1. Idea
 

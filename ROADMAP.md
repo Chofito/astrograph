@@ -42,7 +42,7 @@ Preview means CLI, MCP, and config may change deliberately between 0.x releases 
 - **tree-sitter is always the base.** Pass A always runs and owns structural nodes. Enrichers add edges and may **insert** nodes Pass A skipped; they must **not delete** Pass A nodes (`dropped > 0` is an identity bug).
 - **Performance-friendly.** Extraction ~linear in repo size; incremental delta reindex; peak RAM bounded (see §10 Track 2).
 - **Pluggable language backends.** Registry of `LanguageBackend`s. Shipping: JS/TS + PHP.
-- **Single-app repos first.** Primary `tsconfig.json` / `jsconfig.json`. Monorepos / project references wait for Stage 4.
+- **Single-app repos first.** Primary `tsconfig.json` / `jsconfig.json`. Monorepos / project references wait for `v0.2.0`.
 - **Runtime-decoupled.** Bun-specific bits live behind adapters.
 
 > **Parked:** the 3D "constellation" explorer lives on `feat/web-embedded`; design in [docs/web.md](docs/web.md).
@@ -130,15 +130,19 @@ Eval vs grep/ripgrep is the **post-preview quality gate**, not a ship blocker.
 
 ---
 
-## 9. Differentiator vs codegraph
+## 9. Differentiator and reference policy
 
 tree-sitter **base** (breadth) + **enrichers** (depth). JS/TS gets a real type checker instead of heuristic resolvers. PHP gets honest FQN/`use` resolution, not a second parser. Agents see `external` / `unresolved` instead of invented edges.
 
+CodeGraph is an operational reference, not a target architecture. Astrograph adopts the invariants that make a persistent local index trustworthy: bounded work, SQLite as persisted truth, deterministic ordering, short-lived per-file results, explicit lifecycle, proportional deltas, recovery, and normalized set equivalence. Backpressure, windows, LRU caches, workers, or a separate writer are introduced only when an Astrograph profile shows they address the measured bottleneck. Its Rust kernel, daemon topology, worker pools, telemetry, hosted scope, and language breadth are not requirements.
+
+Graphify is a product-boundary reference. Its broad document ingestion reinforces the decision to keep PDF, Markdown, ADR/document knowledge, and LLM workflows out of Astrograph. That direction belongs to the separate AstroDocs product.
+
 ---
 
-## 10. `v0.1.0` preview cut (current source of truth)
+## 10. `v0.1.0` preview release program
 
-Work lives on `refactor/tree-sitter-enrichers` until this cut lands on `main`. PHP retains at most one live Tree (the old Magento-scale all-trees cache is gone). Tag **`v0.1.0` after merge**.
+Work lives on `refactor/tree-sitter-enrichers` until this cut lands on `main`. Tag **`v0.1.0` only after the accepted release revision is merged and its required owner-run evidence is recorded**. A committed test or an agent-reported run is implementation evidence, not owner verification.
 
 ### Principle B (locked)
 
@@ -147,72 +151,63 @@ Work lives on `refactor/tree-sitter-enrichers` until this cut lands on `main`. P
 - Enricher must **not delete** Pass A nodes. `PASS_A_NODE_DROPPED` is a warning + identity bug; the row stays.
 - Cross-file lookup uses Pass A rows in SQLite, not an in-memory Compiler dump of the whole project.
 
-PHP already follows this (enricher returns edges only). JS/TS must.
+The release program is deliberately ordered so correctness can detect an optimization that changes the graph:
 
-### Track 1 — Finish JS/TS and PHP
+| Stage | Purpose | Current repository state | Gate |
+|---|---|---|---|
+| **0.1-A** (`AG-101`–`AG-106`) | Freeze version/config/enricher contracts, documentation governance, and the static-quality floor | Implemented on the branch | Keep its contract and review evidence intact |
+| **0.1-B** (`AG-201`–`AG-209`) | Establish persisted trust, one eligibility decision, backend-owned invalidation, four-route reconciliation, query-specific completeness, and unresolved evidence | Implemented; see [0.1-B review](docs/architecture/operations/0.1-b-review.md) | No unresolved correctness finding in its reviewed boundary |
+| **0.1-C** (`AG-301`–`AG-309`) | Build the production oracle over registry → Indexer → SQLite → queries, with JS/TS, PHP, mixed, failure, and four-route matrices | Implemented and independently reviewed; owner verification is still a separate gate | Close only from the evidence checklist in [0.1-C review](docs/architecture/operations/0.1-c-review.md) |
+| **0.1-D** | Prove and fix memory, CPU, delta cost, and lifecycle while preserving the 0.1-C oracle | Next implementation stage | Meet the resource budget and graph-equivalence gates below |
+| **0.1-E** | Close remaining shipped-language correctness, static/eval quality, real-team usefulness, installation, upgrade, and exact-revision release evidence | Planned; no new product breadth | Every preview claim has attributable owner-run evidence |
 
-**PHP STEP 3** (spec: [docs/superpowers/specs/2026-07-29-php-call-resolution-design.md](docs/superpowers/specs/2026-07-29-php-call-resolution-design.md)):
+The detailed `*.local.md` backlog is working material, not portable project truth and not completion evidence. This roadmap, contracts, ADRs, canonical architecture documents, and stage review records own durable decisions.
 
-- `calls` from `member_call_expression` / `scoped_call_expression`; `instantiates` from `new`.
-- Intra-class type table (promoted properties, typed properties, constructor assignment).
-- Four buckets: resolved / external (incomplete chain) / unresolved+warning / unresolved unknown receiver.
-- Out of scope: `di.xml`, Factories/Proxies, return-type chaining, `__call`, traits as method bodies.
+### 0.1-D — resource viability before breadth
 
-**JS/TS:**
+Owned gaps: `DEV-008`, `DEV-011`, `DEV-012`, `DEV-013`, and the remaining lifecycle portion of `DEV-018` in [Known deviations](docs/architecture/deviations.md).
 
-- Drop `warmAllTsNodes`; pass `loadNodesForFile` through to the resolver.
-- `rootNames` = indexed files, not the full tsconfig enumeration.
-- CommonJS `require` / `module.exports` as `imports` / `exports`.
-- `export * from` export edges.
-- Dynamic `import()` stays honest `unresolved` when non-literal.
+1. Freeze a reproducible baseline for clean full, reused full, one-file delta, mutation burst, repeated live-session, and open/close behavior.
+2. Bound `Indexer.resolveFor()` result retention without changing persisted files, nodes, edges, errors, or query envelopes.
+3. Remove duplicated TypeScript source/node retention before replacing the compiler architecture.
+4. Make PHP name-index and delta work proportional to changed declarations and real referrers.
+5. Dispose watcher, queued work, backends/parsers, and SQLite in an explicit safe order.
+6. Compare every optimized route against the 0.1-C normalized oracle. A faster run with different truth is a failed optimization.
 
-**Ready when:** a JS/TS app repo and a Magento-like PHP tree answer `search` / `context` / `callers` / `trace` with honest edges; `status.backends` matches emitted `edgeKinds`.
+The hard preview gate is **peak RSS ≤ 1.5 GiB on the accepted representative corpus of approximately 2,000 files**. The benchmark record must pin the corpus revision, Astrograph revision, command, platform, elapsed time, peak/end RSS, and route. A warning threshold may be lower; it cannot weaken the 1.5 GiB publication gate. Profile first: workers, LRU, backpressure, a separate writer, or a Rust kernel require evidence that the simpler bounded design cannot meet the gate.
 
-### Track 2 — RAM and CPU
+### 0.1-E — correctness, usefulness, and release
 
-Documented target ([docs/testing.md](docs/testing.md) §6): **peak RSS &lt; 1.5 GB on ~2k files**. Magento-scale PHP previously peaked around **3 GB** because `PhpAstCache` retained every WASM `Tree` + source for the whole pass.
-
-**PHP:** parse → extract nodes / contribute FQN → emit that file's edges → `tree.delete()`. Peak = O(1 tree) + O(FQN map). Up to **two parses per file** is acceptable. No global tree map. LRU is Stage 5.
-
-**JS/TS:** no whole-project node warm. `createProgram` stays in 0.1; `LanguageService` is Stage 4 unless RSS still blows the budget after the warm removal.
-
-**Measure:** `bun run bench -- <repo>` records RSS around `indexAll` into `docs/benchmarks/`. Gate: fail if peak &gt; 2× target.
-
-### Track 3 — Docs, installer, site
-
-Align **after** capabilities match code:
-
-- One story: tree-sitter + enrichers; PHP has a name enricher (heritage, types, calls).
-- Canonical installer URL: **`https://www.chofito.dev/astrograph/install.sh`** (script SoT: `apps/site/public/install.sh`). GitHub Pages may mirror the same file; docs do not advertise `github.io` as the install command.
-- First GitHub Release: tag **`v0.1.0` after merge to `main`**.
-- Spanish mirrors stay STALE. No `TODO.md` (gitignored; not project truth).
-
-### Sequence
-
-1. This roadmap (identity + tracks).
-2. JS/TS subset contract + PHP tree streaming + bench (parallel).
-3. PHP STEP 3.
-4. JS/TS CommonJS / `export *` + fixture backlog trim.
-5. Docs / site / SKILL.
-6. Merge to `main` when RAM is in budget → tag `v0.1.0`.
-7. After the preview: eval vs grep, `LanguageService`, stricter token budgets, Stage 4.
+- Finish the bounded PHP STEP 3 obligations, including the casing (`DEV-009`) and mixed grouped-use (`DEV-010`) gaps recorded in [Known deviations](docs/architecture/deviations.md), without Magento framework synthesis.
+- Validate bounded team tasks for correctness, actionable uncertainty, and reduced discovery effort. The formal same-task A/B against `rg`/`grep` plus direct reading belongs to `v0.2.0`; indexing, sync, and query microbenchmarks remain separate from that comparison.
+- Certify one representative JS/TS app and one Magento-like PHP repository using sanitized evidence for external reviewers.
+- Align CLI, MCP, agent guide, installer, site, changelog, compatibility/rebuild behavior, and release notes with the exact accepted revision.
+- Canonical installer URL remains **`https://www.chofito.dev/astrograph/install.sh`**. Spanish mirrors remain explicitly stale until separately resynchronized.
 
 ---
 
-## 11. After the `v0.1.0` preview (Stage 4, Stage 5)
+## 11. `v0.2.0` — broader code intelligence, still code only
 
-**Stage 4:** monorepos / multi-tsconfig · `LanguageService` · diff-aware graph · richer index debt · context recipes.
+`v0.2.0` expands the validated code-indexing core; it does not turn Astrograph into a document or LLM knowledge system.
 
-**Stage 5:** mature progressive indexing · worker/LRU eviction · exporters (JSON/Mermaid/DOT) · optional embeddings · frameworks-aware routes · `astrograph why`.
+Priority outcomes:
 
-**Parked:** 3D constellation (`feat/web-embedded`).
+1. Scale and incremental work: monorepos/multiple project configs, measured reindexing, and long-running freshness/recovery.
+2. Magento-aware code intelligence: explicit DI and plugin relationships built as a bounded framework layer, never generic name healing.
+3. A generic structural-backend path proven by **Python**, the only new language required for `v0.2.0`. Start useful with tree-sitter structure; add a semantic enricher only for separately accepted capabilities.
+4. Real-task A/B evaluation against `rg`/`grep` plus direct reading, with indexing/sync/query microbenchmarks reported separately.
+5. Revisit CodeGraph-inspired windows, backpressure, caches, workers, and recovery mechanisms only from measured 0.1-D/0.2 bottlenecks.
+
+The expansion order after Python is **Go → Kotlin → Swift → Rust**. Those four languages are directional priorities, not promises for `v0.2.0`; each enters a release only after a capability slice, ownership rules, fixtures, convergence behavior, resource budget, and query-honesty contract are accepted.
+
+LLM calls, embeddings, PDF/Markdown/ADR ingestion, and document knowledge are not scheduled Astrograph features. They belong to AstroDocs unless a later explicit product decision changes the boundary. The 3D constellation remains parked on `feat/web-embedded`.
 
 ---
 
 ## 12. Premortem (`v0.1.0` preview)
 
 - **#1 — Agents trust a graph that deletes Pass A nodes** → subset contract + no-delete reconcile.
-- **#2 — Magento-scale RAM** → stream PHP trees; bench RSS; do not merge until &lt; 1.5 GB on ~2k files (or &lt; 2× that gate).
+- **#2 — Magento-scale RAM** → bound retained per-file/compiler/parser state; do not merge until peak RSS is ≤ 1.5 GiB on the accepted ~2k-file corpus.
 - **#3 — Wrong `calls` on vendor Magento types** → four-bucket honesty (external incomplete chain, not fake resolved).
 - **#4 — Docs say PHP is tree-sitter-only** → Track 3 after capabilities are real.
 - **#5 — Installer URL / no release** → one canonical URL + `v0.1.0` after merge.

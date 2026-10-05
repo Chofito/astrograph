@@ -241,13 +241,13 @@ SELECT state, COUNT(*) FROM files WHERE path IN (:scope) GROUP BY state;
 - A tool whose answer only depends on `resolved` files in scope → `partial=false`.
 - A global-reverse tool (`callers`, `impact`) is `partial=true` until **every** in-scope file is `resolved` (a caller may hide in a `pending` file) — see [docs/progressive-indexing.md §4](progressive-indexing.md#4-what-works-progressively-and-what-doesnt).
 
-Edge-level coverage (e.g. "nodes done, calls pending") is a Stage 4/5 refinement; the column model already supports it because edges are level-separable from nodes.
+Edge-level coverage (e.g. "nodes done, calls pending") is a post-preview refinement; the column model already supports it because edges are level-separable from nodes.
 
 ---
 
 ## 8. Project scope & config invalidation
 
-- **`project` column on `nodes`/`files`/edges-by-join** (default `'root'`) is pre-added now so the Stage 4 monorepo work (per-`tsconfig`) is a *data* change, not a *schema* migration. V1 writes `'root'` everywhere.
+- **`project` column on `nodes`/`files`/edges-by-join** (default `'root'`) is pre-added now so the `v0.2.0` monorepo work (per-`tsconfig`) is a *data* change, not a *schema* migration. `v0.1.0` writes `'root'` everywhere.
 - **Config invalidation:** `project_metadata.configHash` = hash of `tsconfig.json`/`jsconfig.json` + `package.json` + lockfile + `.gitignore` + `.astrograph/config.json` + TypeScript version + tree-sitter grammar versions. On `sync`, if it changed, mark affected coverage stale even when source files didn't change (ROADMAP §11). This catches "you upgraded TS / changed grammar / changed paths" cases that pure content hashing misses.
 
 ---
@@ -267,7 +267,7 @@ How each kind of growth lands **without breaking the schema**:
 | **Monorepo / multi-`tsconfig`** | populate `project` with per-project keys; add per-project coverage | **No** schema change (column exists) |
 | A new **language** | register a `LanguageBackend` (tree-sitter `Parser` + optional `Enricher`); it emits the same nodes/edges contract. Already how TypeScript and PHP ship. | **No** |
 | A new **enricher for an existing language** | add `enricher` to that backend, flip its `mode`; files re-resolve on the next `configHash` change | **No** |
-| **Embeddings** (Stage 5, optional) | new `node_vectors` table keyed by `nodes.id` (sqlite-vec/extension), never touches core tables | additive table |
+| **Document/embedding knowledge** | outside the Astrograph 0.1/0.2 roadmap; evaluate in AstroDocs unless an explicit later product decision changes the boundary | not scheduled |
 
 Guardrail: the JSON `metadata` hatch is for the **long tail**, not a dumping ground. If a tool needs to *filter or rank* by something, it gets promoted to a column. Reads stay index-backed (§0 corollary).
 
@@ -327,5 +327,5 @@ Deliberately **omitted**: source-only / target-only edge indexes (the composites
 ## 13. References
 - Tool contract this serves: [docs/tools.md](tools.md).
 - Progressive coverage model: [docs/progressive-indexing.md](progressive-indexing.md).
-- Roadmap data contract and future scope: [ROADMAP §3](../ROADMAP.md#3-graph-model-short), [§11](../ROADMAP.md#11-after-the-v010-preview-stage-4-stage-5).
+- Roadmap data contract and future scope: [ROADMAP §3](../ROADMAP.md#3-graph-model-short), [§11](../ROADMAP.md#11-v020--broader-code-intelligence-still-code-only).
 - codegraph for contrast: `src/db/schema.sql`, `src/db/queries.ts`, `src/db/migrations.ts`, `src/types.ts` in the sibling `codegraph` project. Those paths are not vendored into this repository, so they are named rather than linked.

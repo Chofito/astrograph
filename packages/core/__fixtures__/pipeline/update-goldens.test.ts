@@ -1,9 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
-import { GOLDENS_ROOT, goldenPaths, requirePipelineGolden } from "./goldens";
+import {
+	GOLDENS_ROOT,
+	goldenPaths,
+	requiredGoldenArtifacts,
+	requirePipelineGolden,
+} from "./goldens";
 import { PIPELINE_ROOT } from "./harness";
-import { pipelineFixtureIds } from "./manifests";
+import { allPipelineManifests, pipelineFixtureIds } from "./manifests";
 
 /**
  * AG-308: the golden-update workflow's guardrails.
@@ -100,8 +105,10 @@ describe("the updater refuses to guess", () => {
 	test(
 		"no route script is updatable",
 		async () => {
-			// AG-307's rows compare four routes against each other, so they have no
-			// checked-in expectation to update. Naming one has to fail.
+			// AG-307's rows compare each route individually against a clean-full
+			// index of the same final state, not against each other. They therefore
+			// have no checked-in golden to update: the clean-full snapshot is
+			// computed in the test. Naming a route script has to fail.
 			const { exitCode, stderr } = await runUpdater(["jsts-modify"]);
 			expect(exitCode).toBe(1);
 			expect(stderr).toContain("Unknown fixture id");
@@ -146,14 +153,26 @@ describe("normal test runs are read-only", () => {
 	);
 
 	test(
-		"every fixture that owns a golden has one recorded",
+		"every known fixture has the golden artifacts its manifest requires",
 		async () => {
-			// A fixture added without recording its expectation would otherwise fail
-			// only inside its own suite, with a message about a missing file. Here it
-			// fails as what it is: an incomplete change.
-			for (const id of await pipelineFixtureIds()) {
-				expect(existsSync(goldenPaths(id).graph)).toBe(true);
+			// Driven from the manifests themselves, not from a duplicated id list:
+			// a fixture added without recording its expectation, or a fixture with
+			// probes that never wrote `envelopes.json`, fails here as an incomplete
+			// change. The message names the missing artifact.
+			const missing: string[] = [];
+			for (const manifest of await allPipelineManifests()) {
+				const required = requiredGoldenArtifacts(manifest);
+				if (!existsSync(required.graph)) {
+					missing.push(`${manifest.id}: missing graph.json`);
+				}
+				if (
+					required.envelopes !== undefined &&
+					!existsSync(required.envelopes)
+				) {
+					missing.push(`${manifest.id}: missing envelopes.json`);
+				}
 			}
+			expect(missing).toEqual([]);
 		},
 		PIPELINE_TEST_TIMEOUT_MS,
 	);

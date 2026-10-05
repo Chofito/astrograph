@@ -24,7 +24,7 @@
 | Installer | **`install`/`uninstall` for Claude Code + Cursor + Codex + opencode** (write/remove the MCP config + Astrograph guide; see §6) |
 | Lifecycle | **one project per server process**, lazy-open on first tool call; single-writer for all index mutations |
 
-Out of scope (later): full progressive serve-while-indexing (Stage 5), agents beyond Claude Code/Cursor, multi-project daemon.
+Out of scope for `v0.1.0`: full progressive serve-while-indexing, additional host adapters, and a multi-project daemon. Any later adoption follows `ROADMAP.md`; this document does not assign those features to a release.
 
 ## 2. Architecture
 

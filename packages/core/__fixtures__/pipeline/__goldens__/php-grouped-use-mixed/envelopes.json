@@ -1,0 +1,81 @@
+{
+  "callees:make": {
+    "coverage": {
+      "total": 1,
+      "resolved": 1,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "local_outgoing",
+    "evidence": {
+      "counts": [
+        {
+          "resolutionState": "external",
+          "kind": "instantiates",
+          "count": 1
+        },
+        {
+          "resolutionState": "resolved",
+          "kind": "instantiates",
+          "count": 1
+        }
+      ],
+      "samples": [
+        {
+          "source": "7544704425141874460",
+          "kind": "instantiates",
+          "resolutionState": "external",
+          "provenance": "tree-sitter",
+          "targetName": "Vendor\\baz",
+          "line": 19,
+          "col": 8
+        }
+      ],
+      "truncated": false
+    },
+    "notes": [
+      "1 external instantiates relation(s) could not be shown as nodes."
+    ]
+  },
+  "files": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "explicit_scope"
+  },
+  "node:Consumer": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_reverse"
+  },
+  "search:Bar": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "global_discovery"
+  },
+  "status": {
+    "coverage": {
+      "total": 2,
+      "resolved": 2,
+      "parsed": 0,
+      "pending": 0
+    },
+    "partial": false,
+    "domain": "descriptive"
+  }
+}

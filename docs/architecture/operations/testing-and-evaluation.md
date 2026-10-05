@@ -245,7 +245,8 @@ graph, and a path outside the project is left alone because it is identical on t
 Nodes, edges, files and diagnostics are sorted by **total** orders. A partial order leaves ties to
 a stable sort, which means SQLite row order decides them — so two indexes with identical content
 but different insertion history would normalize differently and the oracle would report a
-divergence that is not one. Edge order ends at `provenance`; node order ends at the node ID.
+divergence that is not one. Edge order ends at canonicalized `metadata`; node order ends at the
+node ID.
 
 ## The 0.1-C production-pipeline fixtures
 
@@ -299,10 +300,12 @@ alone, for the failure conditions that have no other trigger.
 | `php-calls-pass-a-only` | php Pass A only | The same sources with declarations and containment only. |
 | `php-heritage-enriched` | php enriched | Plain, aliased, grouped and absolute `use`; same-namespace resolution; a class absent from disk. |
 | `php-types-enriched` | php enriched | Type-position edges for imported types; scalars produce nothing. |
+| `php-grouped-use-mixed` | php enriched | DEV-010 AS-IS: mixed grouped `use` (`use Vendor\{Bar, function baz, const QUX}`) contaminates the type alias map; `new baz()` and `QUX $flag` are class-shaped `external` relations. Repairing DEV-010 must change this golden. |
 | `mixed-enriched` | both enriched | Exclusive ownership, homonyms, and no bare-name cross-language resolution. |
 | `mixed-php-pass-a-only` | ts enriched, php Pass A | A capability reduction in one backend does not degrade the other. |
 | `mixed-ts-pass-a-only` | ts Pass A, php enriched | The mirror configuration. |
-| `failure-coverage-gaps` | typescript enriched | Oversized file, owned extension with no grammar, ambiguous and unresolved relations. |
+| `failure-coverage-gaps` | typescript enriched | Oversized file, owned extension with no grammar (`TREE_SITTER_UNAVAILABLE`), ambiguous and unresolved relations. |
+| `failure-grammar-missing` | typescript Pass A only | A recognized extension whose grammar fails to load: file-only node, persisted `TREE_SITTER_GRAMMAR_MISSING`. |
 | `failure-backend-extraction` | typescript enriched | An injected Pass A failure whose diagnostic survives the enricher recovering the content. |
 | `failure-backend-extraction-pass-a` | typescript Pass A only | The same failure with nothing to fall back on: a visibly known-and-empty file. |
 | `failure-unowned-and-disabled` | typescript enriched, php disabled, `include` naming `.txt` | An extension no shipped backend claims, next to a disabled backend's extension: both `NO_BACKEND`, with distinct messages. |
@@ -347,9 +350,13 @@ this repository — and pulled `bun-types` and `@types/bun` into every fixture's
 `unresolved`/`low`. A fixture asserting that an unprovable target stays unproven was passing because
 the harness had quietly made it provable, and the recorded goldens encoded whichever type packages
 this checkout happened to have installed. Every fixture now gets `HERMETIC_TSCONFIG`
-(`types: []`, `typeRoots: []`); real module resolution is untouched, so a package genuinely
-installed inside a fixture's own root still resolves — that is what `jsts-external-package` proves,
-and it is now the *only* fixture producing an `external` state.
+(`types: []` and `typeRoots: []`); real module resolution is untouched, so a package genuinely
+installed inside a fixture's own root still resolves — that is what `jsts-external-package` proves.
+It is the fixture that persists an *external node* for an installed dependency. Other fixtures also
+contain `external` *relations* without that node class: PHP goldens record vendor parents and
+unresolvable FQNs as `external` edges with a null target, and `php-grouped-use-mixed` pins DEV-010
+the same way. Those are a different claim from "the declaration lives in `node_modules` and was
+written as a node".
 
 **Fixed in the oracle:** the `node_modules` path rewrite ran before root removal and collapsed
 `<root>/packages/a/node_modules/x` and `.../b/node_modules/x` onto one path; `stripRoot` was an
@@ -364,13 +371,19 @@ order. Each has a regression test in `normalize.test.ts`.
    `coverage_incomplete`, because coverage is what the unindexed files move. The honest reason is a
    capability limit — "the PHP backend is switched off" — and `capabilityReasons` cannot produce it:
    `registry.summary()` lists only constructed backends, so a disabled one is invisible to it. Doing
-   this properly needs a shipped-but-disabled capability table. Recorded as a residual finding in
-   the [0.1-C review](0.1-c-review.md).
+   this properly needs a shipped-but-disabled capability table (`DEV-004`/`NEW-002`). The owner
+   accepted this as later work; it does not block 0.1-C. Recorded in the
+   [0.1-C review](0.1-c-review.md).
 2. **PHP lookup is still case-sensitive.** `php-calls-enriched` contains a `MIXEDCASE` type hint for
    an in-project `MixedCase` class. PHP class names are case-insensitive, so that is a real
    in-project relation; the shipped lookup keys classify it as `external`. This is `DEV-009`, still
    open, and the golden pins its cost. AG-304's matrix row is therefore only half met: display
    casing is preserved, the lookup is not case-insensitive.
+3. **Mixed grouped `use` contaminates the type alias map.** `php-grouped-use-mixed` contains
+   `use Vendor\{Bar, function baz, const QUX}`. Correct PHP imports only `Bar` as a class;
+   Astrograph copies every grouped clause into the type alias map, so `new baz()` and `QUX $flag`
+   become class-shaped `external` relations. This is `DEV-010`, still open, and the golden pins its
+   cost. Repairing it must change that golden.
 
 ### Updating a golden
 
@@ -388,6 +401,10 @@ The updater is the **only** writer. Its guardrails, each covered by a test in
   deliberate act recorded in shell history.
 - An unrecognized option fails instead of being ignored.
 - Output is deterministic: two-space JSON, one trailing newline, oracle key order.
+- The inventory test, driven from `allPipelineManifests()`, requires `graph.json` for every known
+  fixture and `envelopes.json` for every fixture that declares probes. A fixture with no probes may
+  omit the envelope file. An orphan `__goldens__/<id>` directory fails. Normal `bun test` runs never
+  write goldens.
 
 `bun test` cannot rewrite an expectation: `goldens.ts` has no update branch in its read path, so
 unlike the extractor goldens there is no `UPDATE_GOLDENS=1` mode to leave switched on. CI runs
@@ -430,6 +447,12 @@ The target quality model has four distinct layers:
 3. deterministic full-index versus delta-sync equivalence plus performance probes with representative corpora;
 4. an external, versioned case manifest for a separately-run agent comparison against a defined grep/Read baseline.
 
+Stage 0.1-D must replace the current benchmark's wide `> 2×` exit condition as release evidence
+with the `ROADMAP.md` hard gate: peak RSS ≤ 1.5 GiB on an accepted representative corpus of
+approximately 2,000 files. The evidence pins corpus and Astrograph revisions, configuration,
+platform, exact command, route, elapsed time, peak/end RSS, and the normalized before/after graph.
+The existing helper remains an AS-IS diagnostic until that protocol is implemented and owner-run.
+
 ```mermaid
 flowchart TB
     A[unit extraction fixtures] --> E[quality evidence]
@@ -442,7 +465,7 @@ The intended eval gate is every required case passing, an explicit case-manifest
 
 ## Known deviations
 
-- **DEV-014 — golden integration:** current snapshots bypass registry, indexer, SQLite, and persisted resolution/coverage behavior. Preserve extractor tests but add genuine pipeline goldens.
+- **DEV-014 — golden integration:** implemented. Extractor goldens still call `TsExtractor` directly; `packages/core/__fixtures__/pipeline/` runs the production composition root and snapshots persisted SQLite state plus query envelopes through `testing/normalize.ts`. The row stays `implemented, awaiting verification` until the owner runs the commands in the [0.1-C review](0.1-c-review.md).
 - **DEV-015 — eval validity:** exit status ignores individual case failures; a stale case is present; built-in cases are not portable despite accepting a repository argument. Do not claim agent-vs-grep results from this runner.
 - **DEV-017 — static quality:** Biome is gated in CI and at tag time, and the tracked sources were brought to a green state with narrow, documented fixture exceptions. The row stays `implemented, awaiting verification` until the owner runs `bun run check` and reports the output; typecheck and static check are still reported independently.
 

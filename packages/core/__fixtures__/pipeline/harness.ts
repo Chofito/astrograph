@@ -219,7 +219,7 @@ export class PipelineSession {
 	readonly root: string;
 	readonly dbPath: string;
 
-	private graph: Astrograph;
+	private graph: Astrograph | undefined;
 	private modes: BackendModes;
 	private baseConfig: Omit<AstrographConfig, "backends">;
 	private injection: PipelineInjection | undefined;
@@ -285,6 +285,9 @@ export class PipelineSession {
 	/** The production facade. Use it exactly as a CLI or MCP caller would. */
 	get astrograph(): Astrograph {
 		if (this.closed) throw new Error("pipeline session is closed");
+		if (this.graph === undefined) {
+			throw new Error("pipeline session has no open graph");
+		}
 		return this.graph;
 	}
 
@@ -320,10 +323,19 @@ export class PipelineSession {
 	 * config hash and the scanner's extension list are all decided at
 	 * composition time, exactly as they are when a user edits their config file
 	 * and runs the CLI again.
+	 *
+	 * Ownership is explicit: the previous facade is dropped from `this.graph`
+	 * before it is closed, then the new composition is assigned only after it
+	 * succeeds. A failed open therefore leaves no usable reference to the
+	 * closed facade, and `close()` cannot close it a second time. Storage
+	 * created by a failed `openProject` is already closed exactly once by that
+	 * function's catch path; the session must not close it again.
 	 */
 	async reopen(options: ReopenOptions = {}): Promise<void> {
 		if (this.closed) throw new Error("pipeline session is closed");
-		this.graph.close();
+		const previous = this.graph;
+		this.graph = undefined;
+		previous?.close();
 		if (options.modes !== undefined) this.modes = options.modes;
 		if (options.config !== undefined) this.baseConfig = options.config;
 		if (options.injection !== undefined) this.injection = options.injection;
@@ -389,8 +401,10 @@ export class PipelineSession {
 	async close(): Promise<void> {
 		if (this.closed) return;
 		this.closed = true;
+		const graph = this.graph;
+		this.graph = undefined;
 		try {
-			this.graph.close();
+			graph?.close();
 		} finally {
 			await rm(this.root, { recursive: true, force: true });
 		}

@@ -183,7 +183,7 @@ All 10 are deterministic and offline — none calls a model. ✅
 
 ## 6. Out of scope for V1 (candidate future tools)
 
-These only get added if they clear the same two bars (utility + offline viability). Tracked under ROADMAP §13 (Stage 4 / v1.5, Stage 5 / v2):
+These only get added if they clear the same two bars (utility + offline viability). Future product scope is owned by [ROADMAP §11](../ROADMAP.md#11-v020--broader-code-intelligence-still-code-only); this list is candidate design, not a release promise:
 
 - `astrograph_coverage` — **not implemented.** Explicit index-debt view (stale/partial/ambiguous zones). Parked after v1.0.
 - `astrograph_diff` — what changed in the graph between commit A and B / a PR's impact. *Viable offline (needs git read).*

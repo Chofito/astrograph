@@ -99,9 +99,10 @@ scanned, classified `backend_disabled` and recorded with an actionable `NO_BACKE
 being dropped as `out_of_scope` — which had made a project with an entire language unindexed answer
 every query with `partial: false`. Such a file is still never parsed.
 
-Two gaps remain, pinned as AS-IS by those fixtures rather than described as intended: the envelope
-reports that situation as a coverage gap rather than a capability limit, and PHP lookup keys are
-still case-sensitive (`DEV-009`). Both are documented in
+Three gaps remain, pinned as AS-IS by those fixtures rather than described as intended: the envelope
+reports a disabled backend as a coverage gap rather than a capability limit, PHP lookup keys are
+still case-sensitive (`DEV-009`), and mixed grouped `use` contaminates the type alias map
+(`DEV-010`). All three are documented in
 [Testing and evaluation](operations/testing-and-evaluation.md#what-the-fixtures-found-and-what-they-still-pin).
 
 ## Source evidence

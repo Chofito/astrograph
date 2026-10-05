@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
+import { BunSqliteStorageAdapter } from "../../src/adapters/bun/sqlite";
 import { assertGraphIntegrity } from "../../src/testing/graph-assertions";
 import type { StorageAdapter } from "../../src/types";
 import { expectMatchesGolden, expectSnapshotsAgree } from "./assert";
@@ -277,6 +278,81 @@ describe("a session owns its resources", () => {
 			expect(grammarLoads).toBe(0);
 			const root = observedPath.slice(0, observedPath.indexOf("/.astrograph"));
 			expect(existsSync(root)).toBe(false);
+		},
+		PIPELINE_TEST_TIMEOUT_MS,
+	);
+
+	test(
+		"a successful reopen keeps the same root and database",
+		async () => {
+			await withPipeline(SMOKE_MANIFEST, async (session) => {
+				const { root, dbPath } = session;
+				await session.indexAll();
+				await session.reopen();
+				expect(session.root).toBe(root);
+				expect(session.dbPath).toBe(dbPath);
+				await session.indexAll();
+			});
+		},
+		PIPELINE_TEST_TIMEOUT_MS,
+	);
+
+	test(
+		"a failed reopen closes each storage handle once and still releases the root",
+		async () => {
+			const instances: { path: string; closes: number }[] = [];
+			const createStorage = (path: string): StorageAdapter => {
+				const inner = new BunSqliteStorageAdapter(path);
+				const record = { path, closes: 0 };
+				instances.push(record);
+				return {
+					prepare: (sql) => inner.prepare(sql),
+					exec: (sql) => inner.exec(sql),
+					transaction: (fn) => inner.transaction(fn),
+					pragma: (s, opts) => inner.pragma(s, opts),
+					get open() {
+						return inner.open;
+					},
+					close() {
+						record.closes += 1;
+						if (record.closes > 1) {
+							throw new Error(`storage closed more than once: ${path}`);
+						}
+						inner.close();
+					},
+				};
+			};
+
+			const session = await PipelineSession.open({
+				...SMOKE_MANIFEST,
+				id: "smoke-reopen-failure",
+				injection: { createStorage },
+			});
+			const root = session.root;
+			await session.indexAll();
+			expect(instances.length).toBe(1);
+
+			await expect(
+				session.reopen({
+					injection: {
+						createStorage,
+						async loadGrammars() {
+							throw new Error("reopen refused");
+						},
+					},
+				}),
+			).rejects.toThrow("reopen refused");
+
+			expect(instances.length).toBe(2);
+			expect(instances.map((instance) => instance.closes)).toEqual([1, 1]);
+			expect(() => session.astrograph).toThrow("no open graph");
+			expect(existsSync(root)).toBe(true);
+
+			await session.close();
+			expect(existsSync(root)).toBe(false);
+			expect(instances.map((instance) => instance.closes)).toEqual([1, 1]);
+			await session.close();
+			expect(instances.map((instance) => instance.closes)).toEqual([1, 1]);
 		},
 		PIPELINE_TEST_TIMEOUT_MS,
 	);
