@@ -55,3 +55,40 @@ jobs:
           sudo apt-get install -y -qq dash shellcheck
           dash -n apps/site/public/install.sh
           shellcheck --shell=sh apps/site/public/install.sh
+
+  # Indexing budget (AGENTS.md): this pull request may not index the reference
+  # repositories more than 20% slower or bigger than its base branch. Both are
+  # measured on the same runner, so the comparison is between code, not machines.
+  bench:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      BENCH_REPOS: fastify umami trpc koel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Cache reference repositories
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/astrograph-eval
+          key: bench-repos-${{ hashFiles('eval/repos/*.json') }}
+
+      - name: Check out the base branch
+        run: |
+          set -euo pipefail
+          git fetch --depth 1 origin "$GITHUB_BASE_REF"
+          git worktree add /tmp/base FETCH_HEAD
+          cd /tmp/base && bun install --frozen-lockfile
+
+      - name: Measure the base branch
+        run: bun run bench --save --baseline /tmp/bench.json --bin /tmp/base/src/bin.ts $BENCH_REPOS
+
+      - name: Measure this pull request
+        run: bun run bench --baseline /tmp/bench.json $BENCH_REPOS

@@ -75,9 +75,10 @@ Releases are cut from `main` when a set of user-visible changes is worth shippin
   above assigns it to, in the same change.
 - **Keep tests green.** Add or update tests under `test/` with every behavior change and run
   `bun test`, `bun run typecheck` and `bun run check` before finishing.
-- **Indexing performance is a budget.** For changes to `scan`, `extract`, `indexer` or `link`,
-  run `bun run bench <repo>...` (clones, not working copies) before and after; more than 20%
-  slower or bigger is a regression to fix or justify in DECISIONS.md.
+- **Indexing performance is a budget.** CI's `bench` job indexes the reference repositories
+  (`eval/repos/`) with the base branch and with the pull request; more than 20% slower or bigger
+  fails it, and is a regression to fix or justify in DECISIONS.md. Locally, for changes to `scan`,
+  `extract`, `indexer` or `link`, run `bun run bench <repo|name>...` before and after.
 - **Never write outside `.astrograph/`** of the indexed project, and never store source code in
   the index.
 
@@ -89,7 +90,7 @@ bun run dev -- <command>   # run the CLI from source, e.g. `bun run dev -- calle
 bun run typecheck
 bun run check              # `bun run check:fix` to apply formatting
 bun run build              # dist/astrograph
-bun run bench <repo>...    # indexing time / peak memory vs. the saved baseline (--save to record)
+bun run bench <repo|name>... # indexing time / peak memory vs. the saved baseline (--save to record)
 bun run eval [filter...]   # A/B eval: Claude Code with vs without Astrograph on eval/repos (+ eval/local)
 ```
 
