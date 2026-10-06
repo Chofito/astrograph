@@ -19,6 +19,7 @@
 		"check": "biome check .",
 		"check:fix": "biome check --write .",
 		"bench": "bun scripts/bench.ts",
+		"eval": "bun scripts/eval.ts",
 		"build": "bun build src/bin.ts --compile --outfile dist/astrograph",
 		"build:all": "for t in darwin-arm64 darwin-x64 linux-x64 linux-arm64; do echo \"building $t\" && bun build src/bin.ts --compile --target=bun-$t --outfile dist/astrograph-$t || exit 1; done",
 		"install:local": "bun run build && mkdir -p ~/.local/bin && install -m 755 dist/astrograph ~/.local/bin/astrograph && ~/.local/bin/astrograph --version",

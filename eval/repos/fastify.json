@@ -1,0 +1,39 @@
+{
+	"url": "https://github.com/fastify/fastify",
+	"commit": "0d945819bebc08f4ca666d8283c03a26ed9706a0",
+	"stack": "js-commonjs",
+	"tasks": [
+		{
+			"id": "fastify-trace-request",
+			"prompt": "Trace how an incoming HTTP request reaches the user's route handler function in fastify. List the functions it passes through, in order, with their files.",
+			"expect": [
+				"routeHandler",
+				["onRequestHookRunner", "hookRunnerGenerator"],
+				"runPreParsing",
+				"handleRequest",
+				"preValidationCallback",
+				"preHandlerCallback",
+				"context.handler"
+			]
+		},
+		{
+			"id": "fastify-callers-wrapthenable",
+			"prompt": "Which functions call wrapThenable, and in which files?",
+			"expect": ["handle-request.js", "preHandlerCallbackInner", "error-handler.js", "handleError"]
+		},
+		{
+			"id": "fastify-impact-hookrunner",
+			"prompt": "If I change the signature of hookRunnerGenerator in lib/hooks.js, which hook runners and which files are affected?",
+			"expect": [
+				"onRequestHookRunner",
+				"preValidationHookRunner",
+				"preHandlerHookRunner",
+				"onTimeoutHookRunner",
+				"onResponseHookRunner",
+				"route.js",
+				"handle-request.js",
+				"reply.js"
+			]
+		}
+	]
+}

@@ -1,0 +1,44 @@
+{
+	"url": "https://github.com/pingdotgg/t3code",
+	"commit": "4df84a7d03ff084ff4c6dd7aef54623984690fb7",
+	"stack": "ts-monorepo",
+	"tasks": [
+		{
+			"id": "t3code-trace-link-pr",
+			"prompt": "How does the link_pull_request MCP tool end up changing the pull requests linked to a thread? Trace it from the tool handler to the orchestrator code that updates the thread.",
+			"expect": [
+				"apps/server/src/mcp/toolkits/pullRequests/handlers.ts",
+				"requireWritableThread",
+				"resolveTarget",
+				"thread.pull-request.link",
+				"dispatch",
+				"Orchestrator.ts",
+				"threadPullRequestKeysEqual"
+			]
+		},
+		{
+			"id": "t3code-callers-link-command",
+			"prompt": "Which code builds or dispatches the \"thread.pull-request.link\" orchestration command, outside of tests?",
+			"expect": [
+				"linkCreatedPullRequest",
+				"pullRequests/handlers.ts",
+				"client-runtime/src/operations/commands.ts",
+				"threadPullRequestCompatibility"
+			]
+		},
+		{
+			"id": "t3code-impact-pr-keys",
+			"prompt": "If I change the signature of threadPullRequestKeysEqual in packages/shared, which files outside of tests have to change?",
+			"expect": [
+				"pullRequests/handlers.ts",
+				"Orchestrator.ts",
+				"PullRequestSyncReactor",
+				"LegacyV1ThreadImporter",
+				"linkedThreads",
+				"RightPanelTabs",
+				"pullRequestDetail.logic",
+				"usePullRequestLinking"
+			]
+		}
+	]
+}

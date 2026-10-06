@@ -1,0 +1,38 @@
+{
+	"url": "https://github.com/trpc/trpc",
+	"commit": "d756e591a5e37ef20b8d75ecd4d736c195497289",
+	"stack": "ts-monorepo",
+	"tasks": [
+		{
+			"id": "trpc-trace-server",
+			"prompt": "On the server, how does an HTTP request handled by the fetch adapter reach a procedure's resolver, passing through its middlewares? Trace the functions in order.",
+			"expect": [
+				"fetchRequestHandler",
+				"resolveResponse",
+				"getProcedureAtPath",
+				"createProcedureCaller",
+				"callRecursive",
+				"middlewares",
+				"createResolver"
+			]
+		},
+		{
+			"id": "trpc-callers-resolveresponse",
+			"prompt": "Which server adapters call resolveResponse?",
+			"expect": ["fetchRequestHandler", "nodeHTTPRequestHandler", "fastifyRequestHandler", "aws-lambda"]
+		},
+		{
+			"id": "trpc-how-client",
+			"prompt": "On the client, what happens when code calls client.post.byId.query(input)? Trace it from createTRPCClient to the point where the request is handed to the links.",
+			"expect": [
+				"createTRPCClient",
+				"createTRPCClientProxy",
+				"createRecursiveProxy",
+				"clientCallTypeToProcedureType",
+				"TRPCUntypedClient",
+				"requestAsPromise",
+				"createChain"
+			]
+		}
+	]
+}
