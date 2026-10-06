@@ -20,6 +20,10 @@ dist/
 # Personal repo files
 STATS.md
 
+# Eval: private repositories and tasks, transcripts (scripts/eval.ts)
+eval/local/
+eval/results/
+
 # Machine-specific bench baseline (`bun run bench --save`)
 .bench-baseline.json
 

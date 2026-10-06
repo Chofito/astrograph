@@ -1,0 +1,40 @@
+{
+	"url": "https://github.com/umami-software/umami",
+	"commit": "ec0ff50388c264ed8ce46f00967e92f7e71476ae",
+	"stack": "ts-nextjs",
+	"tasks": [
+		{
+			"id": "umami-trace-send",
+			"prompt": "When the tracker POSTs a pageview to /api/send, how does it end up stored? Trace it from the route handler to the database write, for both the Postgres and the ClickHouse setup.",
+			"expect": [
+				"src/app/api/send/route.ts",
+				"saveEvent",
+				"runQuery",
+				"CLICKHOUSE_URL",
+				["websiteEvent.create", "prisma"],
+				"clickhouseQuery",
+				["website_event", "insert("],
+				"kafka"
+			]
+		},
+		{
+			"id": "umami-callers-getclientinfo",
+			"prompt": "Which API routes call getClientInfo from src/lib/detect.ts, and which fields of its result does each one use?",
+			"expect": ["src/app/api/send/route.ts", "src/app/api/record/route.ts", "userAgent", "country"]
+		},
+		{
+			"id": "umami-how-auth",
+			"prompt": "How does umami authenticate an API request? Explain the path from parseRequest to the user being loaded, covering API keys, login tokens and share tokens.",
+			"expect": [
+				"parseRequest",
+				"checkAuth",
+				"getBearerToken",
+				"checkApiKeyAuth",
+				"parseSecureToken",
+				"parseShareToken",
+				"getUser",
+				["redis", "authKey"]
+			]
+		}
+	]
+}

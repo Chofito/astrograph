@@ -1,0 +1,36 @@
+{
+	"url": "https://github.com/koel/koel",
+	"commit": "ba2951584026a3a8f1e4f26d28632e12b35880df",
+	"stack": "php-laravel",
+	"tasks": [
+		{
+			"id": "koel-how-stream",
+			"prompt": "When a user plays a song stored on the local disk, how does koel decide how to stream it? Explain from the route and controller down to the class that sends the bytes, including when it transcodes.",
+			"expect": [
+				"PlayController",
+				"Streamer",
+				"resolveAdapter",
+				"shouldTranscode",
+				"TranscodingStreamerAdapter",
+				"LocalStreamerAdapter",
+				"StreamerServiceProvider",
+				["XSendFileStreamerAdapter", "XAccelRedirectStreamerAdapter", "PhpStreamerAdapter"]
+			]
+		},
+		{
+			"id": "koel-callers-streamer",
+			"prompt": "Which classes construct the Streamer class or call its static methods?",
+			"expect": [
+				"PlayController",
+				"StreamEmbedController",
+				["Subsonic\\StreamController", "Subsonic/StreamController"],
+				"TranscodeOnScan"
+			]
+		},
+		{
+			"id": "koel-impact-playcount",
+			"prompt": "If I change the signature of InteractionService::increasePlayCount, which call sites have to change?",
+			"expect": ["RegisterPlayController", "ScrobbleController"]
+		}
+	]
+}
