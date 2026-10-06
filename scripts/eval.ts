@@ -3,6 +3,7 @@
  * Astrograph MCP server, recording tool calls, tokens, cost and correctness.
  *
  *   bun run eval [--model <id>] [--arm with|without] [filter...]
+ *   bun run eval --clean      delete the cached clones of public repositories
  *
  * A filter keeps the repositories whose name, or the tasks whose id, starts
  * with it. Repositories and tasks come from eval/repos/ and eval/local/ (see
@@ -12,16 +13,19 @@
  * but the one given here (--strict-mcp-config) and no user settings or skills
  * (--setting-sources project). The run with Astrograph gets what
  * `astrograph install` sets up: the MCP server, run from this checkout so the
- * eval measures this branch, and the skill, as a project skill of the clone.
+ * eval measures this branch, and the skill, loaded as a plugin (--plugin-dir)
+ * so nothing is written into the repository.
  */
-import { cpSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { loadRepos, materialize, type Task } from "./repos";
+import { cleanCache, loadRepos, materialize, revision, type Task } from "./repos";
 
 type Arm = "with" | "without";
 
 interface Run {
 	repo: string;
+	commit: string;
+	dirty: boolean;
 	task: string;
 	arm: Arm;
 	ok: boolean;
@@ -71,6 +75,10 @@ function option(args: string[], name: string): string | undefined {
 }
 
 const args = process.argv.slice(2);
+if (args.includes("--clean")) {
+	cleanCache();
+	process.exit(0);
+}
 const model = option(args, "--model") ?? "claude-sonnet-5-5";
 const onlyArm = option(args, "--arm") as Arm | undefined;
 const arms: Arm[] = onlyArm ? [onlyArm] : ["without", "with"];
@@ -83,6 +91,9 @@ await Bun.write(
 	mcpConfig,
 	JSON.stringify({ mcpServers: { astrograph: { command: "bun", args: [BIN, "serve", "--mcp"] } } }),
 );
+const plugin = join(outDir, "plugin");
+await Bun.write(join(plugin, ".claude-plugin", "plugin.json"), JSON.stringify({ name: "astrograph-eval" }));
+cpSync(SKILL, join(plugin, "skills", "astrograph"), { recursive: true });
 
 function grade(answer: string, expect: Task["expect"]): { score: number; missing: string[] } {
 	const text = answer.toLowerCase();
@@ -93,7 +104,12 @@ function grade(answer: string, expect: Task["expect"]): { score: number; missing
 	return { score: expect.length === 0 ? 1 : 1 - missing.length / expect.length, missing };
 }
 
-async function runTask(dir: string, repo: string, task: Task, arm: Arm): Promise<Run> {
+async function runTask(
+	dir: string,
+	repo: { name: string; commit: string; dirty: boolean },
+	task: Task,
+	arm: Arm,
+): Promise<Run> {
 	const cmd = [
 		"claude",
 		"-p",
@@ -107,7 +123,7 @@ async function runTask(dir: string, repo: string, task: Task, arm: Arm): Promise
 		"--setting-sources",
 		"project",
 		"--strict-mcp-config",
-		...(arm === "with" ? ["--mcp-config", mcpConfig] : []),
+		...(arm === "with" ? ["--mcp-config", mcpConfig, "--plugin-dir", plugin] : []),
 		"--tools",
 		TOOLS.join(","),
 		"--permission-mode",
@@ -115,9 +131,6 @@ async function runTask(dir: string, repo: string, task: Task, arm: Arm): Promise
 		"--allowedTools",
 		[...ALLOWED, ...(arm === "with" ? ["mcp__astrograph"] : [])].join(","),
 	];
-	const skill = join(dir, ".claude", "skills", "astrograph");
-	rmSync(skill, { recursive: true, force: true });
-	if (arm === "with") cpSync(SKILL, skill, { recursive: true });
 	const started = performance.now();
 	const proc = Bun.spawn(cmd, { cwd: dir, env: CLEAN_ENV, stdout: "pipe", stderr: "pipe" });
 	const [transcript, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
@@ -152,7 +165,9 @@ async function runTask(dir: string, repo: string, task: Task, arm: Arm): Promise
 		console.error(`  ${task.id} ${arm}: failed (${why || `exit ${proc.exitCode}`})`);
 	}
 	return {
-		repo,
+		repo: repo.name,
+		commit: repo.commit,
+		dirty: repo.dirty,
 		task: task.id,
 		arm,
 		ok,
@@ -178,6 +193,9 @@ for (const repo of await loadRepos()) {
 	if (tasks.length === 0) continue;
 
 	const dir = materialize(repo);
+	const seen = { name: repo.name, ...revision(dir) };
+	if (repo.private)
+		console.error(`${repo.name}: ${seen.commit.slice(0, 12)}${seen.dirty ? " + uncommitted changes" : ""}`);
 	if (arms.includes("with")) {
 		const started = performance.now();
 		const index = Bun.spawnSync(["bun", BIN, "init", dir], { stdout: "ignore", stderr: "pipe" });
@@ -186,7 +204,7 @@ for (const repo of await loadRepos()) {
 	}
 	for (const task of tasks) {
 		for (const arm of arms) {
-			const run = await runTask(dir, repo.name, task, arm);
+			const run = await runTask(dir, seen, task, arm);
 			runs.push(run);
 			await Bun.write(join(outDir, "runs.json"), `${JSON.stringify(runs, null, "\t")}\n`);
 			console.error(

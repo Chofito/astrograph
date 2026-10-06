@@ -91,7 +91,7 @@ bun run typecheck
 bun run check              # `bun run check:fix` to apply formatting
 bun run build              # dist/astrograph
 bun run bench <repo|name>... # indexing time / peak memory vs. the saved baseline (--save to record)
-bun run eval [filter...]   # A/B eval: Claude Code with vs without Astrograph on eval/repos (+ eval/local)
+bun run eval [filter...]   # A/B eval: Claude Code with vs without Astrograph (--clean frees the clone cache)
 ```
 
 ## Where things go

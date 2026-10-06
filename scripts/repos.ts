@@ -1,15 +1,17 @@
 /**
- * Reference repositories for the eval (and the bench), pinned to a commit.
+ * Reference repositories for the eval (and the bench).
  *
- *   eval/repos/<name>.json   public: { url, commit, stack, tasks }   committed
- *   eval/local/<name>.json   private: { path, commit, stack, tasks }  gitignored
+ *   eval/repos/<name>.json   public: { url, commit, stack, tasks }  committed
+ *   eval/local/<name>.json   private: { path, stack, tasks }        gitignored
  *
- * A private entry whose `path` does not exist on this machine is skipped, so
- * anyone can run the public set. Each repository is materialized as a fresh
- * checkout of its commit under the cache directory: working copies are never
- * touched, and uncommitted changes in them are ignored.
+ * A public repository is cloned once at its pinned commit into the cache
+ * directory and kept there for later runs (`bun run eval --clean` deletes the
+ * cache). A private repository is used in place, as it is on disk: nothing is
+ * copied, the eval follows the code as it changes, and runs record the commit
+ * they saw. Only `.astrograph/` is written into it. A private entry whose path
+ * does not exist on this machine is skipped, so anyone can run the public set.
  */
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -23,8 +25,8 @@ export interface Task {
 export interface Repo {
 	name: string;
 	stack: string;
-	commit: string;
 	url?: string;
+	commit?: string;
 	path?: string;
 	private: boolean;
 	tasks: Task[];
@@ -60,29 +62,40 @@ export async function loadRepos(): Promise<Repo[]> {
 	});
 }
 
-function git(cwd: string, ...args: string[]): void {
-	const run = Bun.spawnSync(["git", ...args], { cwd, stdout: "ignore", stderr: "pipe" });
+function git(cwd: string, ...args: string[]): string {
+	const run = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" });
 	if (run.exitCode !== 0) throw new Error(`git ${args.join(" ")} failed in ${cwd}\n${run.stderr.toString()}`);
+	return run.stdout.toString().trim();
 }
 
-/** A clean checkout of the pinned commit, reused across runs. */
+/** The directory to run in: the private path itself, or the cached clone of the public commit. */
 export function materialize(repo: Repo): string {
+	if (repo.path) return repo.path;
+	if (!repo.url || !repo.commit) throw new Error(`${repo.name}: needs a path, or a url and a commit`);
 	const dir = join(CACHE, `${repo.name}-${repo.commit.slice(0, 12)}`);
 	if (existsSync(join(dir, ".git", "eval-ready"))) return dir;
-	Bun.spawnSync(["rm", "-rf", dir]);
+	rmSync(dir, { recursive: true, force: true });
 	Bun.spawnSync(["mkdir", "-p", dir]);
-	const source = repo.url ?? repo.path;
-	if (!source) throw new Error(`${repo.name}: needs a url or a path`);
-	console.error(`fetching ${repo.name} @ ${repo.commit.slice(0, 12)}`);
+	console.error(`cloning ${repo.name} @ ${repo.commit.slice(0, 12)} into ${dir}`);
 	git(dir, "init", "-q");
-	git(dir, "fetch", "-q", "--depth", "1", source, repo.commit);
+	git(dir, "fetch", "-q", "--depth", "1", repo.url, repo.commit);
 	git(dir, "-c", "advice.detachedHead=false", "checkout", "-q", "FETCH_HEAD");
-	// Keep the index and the eval's skill out of grep/rg results.
-	Bun.spawnSync(
-		["sh", "-c", "printf '.astrograph/\\n.claude/skills/astrograph/\\n' >> .git/info/exclude && touch .git/eval-ready"],
-		{
-			cwd: dir,
-		},
-	);
+	writeFileSync(join(dir, ".git", "eval-ready"), "");
 	return dir;
+}
+
+/** The commit a run saw, and whether the working tree had uncommitted changes. */
+export function revision(dir: string): { commit: string; dirty: boolean } {
+	return { commit: git(dir, "rev-parse", "HEAD"), dirty: git(dir, "status", "--porcelain") !== "" };
+}
+
+/** Deletes the cached clones of public repositories; private repositories are never touched. */
+export function cleanCache(): void {
+	if (!existsSync(CACHE)) {
+		console.log(`nothing to clean at ${CACHE}`);
+		return;
+	}
+	const size = Bun.spawnSync(["du", "-sh", CACHE]).stdout.toString().split("\t")[0];
+	rmSync(CACHE, { recursive: true, force: true });
+	console.log(`removed ${CACHE} (${size})`);
 }
