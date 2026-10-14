@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `astrograph install` / `uninstall` follow `CLAUDE_CONFIG_DIR` and `CODEX_HOME`: with a second
+  Claude Code profile (`CLAUDE_CONFIG_DIR=~/.claude-work`), the MCP entry goes to
+  `$CLAUDE_CONFIG_DIR/.claude.json` and the skill to `$CLAUDE_CONFIG_DIR/skills/`. Run it once per profile.
+
 ## 0.2.1 — 2026-10-05
 
 - `astrograph install` now upgrades agent guides written by an older release (any file whose

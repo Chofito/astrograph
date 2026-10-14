@@ -7,13 +7,13 @@ export const codexTarget: Target = {
 	label: "Codex",
 
 	configPath(_location: Location, _cwd: string, homeDir: string): string {
-		return join(homeDir, ".codex", "config.toml");
+		return join(codexHome(homeDir), "config.toml");
 	},
 
 	agentGuide(location: Location, _cwd: string, homeDir: string): AgentGuideLink | undefined {
 		if (location !== "global") return undefined;
 		return {
-			path: join(homeDir, ".codex", "skills", "astrograph"),
+			path: join(codexHome(homeDir), "skills", "astrograph"),
 			source: "directory",
 		};
 	},
@@ -53,3 +53,7 @@ export const codexTarget: Target = {
 		return serializeToml(doc as TomlDoc);
 	},
 };
+
+function codexHome(homeDir: string): string {
+	return process.env.CODEX_HOME || join(homeDir, ".codex");
+}
