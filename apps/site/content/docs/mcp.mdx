@@ -14,6 +14,10 @@ astrograph install --yes                             # skip the confirmation
 This writes an MCP server entry and links the Astrograph skill (guidance on when to use which
 tool) into each host. `astrograph uninstall` removes both.
 
+Claude Code and Codex profiles are honored: with `CLAUDE_CONFIG_DIR` or `CODEX_HOME` set, the entry
+and the skill go into that directory, so run it once per profile
+(`CLAUDE_CONFIG_DIR=~/.claude-work astrograph install --target claude`).
+
 To configure a host by hand:
 
 ```json

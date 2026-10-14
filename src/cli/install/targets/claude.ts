@@ -6,15 +6,18 @@ export const claudeTarget: Target = {
 	id: "claude",
 	label: "Claude Code",
 
+	// `CLAUDE_CONFIG_DIR` (one directory per Claude Code profile) holds both `.claude.json` and `skills/`.
 	configPath(location: Location, cwd: string, homeDir: string): string {
-		return location === "global" ? join(homeDir, ".claude.json") : join(cwd, ".mcp.json");
+		return location === "global"
+			? join(process.env.CLAUDE_CONFIG_DIR || homeDir, ".claude.json")
+			: join(cwd, ".mcp.json");
 	},
 
 	agentGuide(location: Location, cwd: string, homeDir: string): AgentGuideLink {
 		return {
 			path:
 				location === "global"
-					? join(homeDir, ".claude", "skills", "astrograph")
+					? join(process.env.CLAUDE_CONFIG_DIR || join(homeDir, ".claude"), "skills", "astrograph")
 					: join(cwd, ".claude", "skills", "astrograph"),
 			source: "directory",
 		};

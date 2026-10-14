@@ -3,6 +3,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { installAgentGuide, isAstrographGuide } from "../src/cli/install/agent-guide";
+import { claudeTarget } from "../src/cli/install/targets/claude";
+import { codexTarget } from "../src/cli/install/targets/codex";
 
 const root = mkdtempSync(join(tmpdir(), "astrograph-install-"));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
@@ -38,5 +40,36 @@ describe("agent guide install", () => {
 		const result = await installAgentGuide({ path: file, source: "file" });
 		expect(result.action).toBe("skipped");
 		expect(readFileSync(file, "utf8")).toBe("# My rules\nAlways use tabs.\n");
+	});
+});
+
+describe("host config locations", () => {
+	const saved = { claude: process.env.CLAUDE_CONFIG_DIR, codex: process.env.CODEX_HOME };
+	afterAll(() => {
+		for (const [key, value] of [
+			["CLAUDE_CONFIG_DIR", saved.claude],
+			["CODEX_HOME", saved.codex],
+		] as const) {
+			if (value === undefined) delete process.env[key];
+			else process.env[key] = value;
+		}
+	});
+
+	test("default to the home directory", () => {
+		delete process.env.CLAUDE_CONFIG_DIR;
+		delete process.env.CODEX_HOME;
+		expect(claudeTarget.configPath("global", "/p", "/h")).toBe(join("/h", ".claude.json"));
+		expect(claudeTarget.agentGuide?.("global", "/p", "/h")?.path).toBe(join("/h", ".claude", "skills", "astrograph"));
+		expect(codexTarget.configPath("global", "/p", "/h")).toBe(join("/h", ".codex", "config.toml"));
+	});
+
+	test("follow CLAUDE_CONFIG_DIR and CODEX_HOME", () => {
+		process.env.CLAUDE_CONFIG_DIR = "/h/.claude-work";
+		process.env.CODEX_HOME = "/h/codex-work";
+		expect(claudeTarget.configPath("global", "/p", "/h")).toBe(join("/h/.claude-work", ".claude.json"));
+		expect(claudeTarget.agentGuide?.("global", "/p", "/h")?.path).toBe(join("/h/.claude-work", "skills", "astrograph"));
+		expect(claudeTarget.configPath("local", "/p", "/h")).toBe(join("/p", ".mcp.json"));
+		expect(codexTarget.configPath("global", "/p", "/h")).toBe(join("/h/codex-work", "config.toml"));
+		expect(codexTarget.agentGuide?.("global", "/p", "/h")?.path).toBe(join("/h/codex-work", "skills", "astrograph"));
 	});
 });
