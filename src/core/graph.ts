@@ -245,7 +245,10 @@ export class Graph {
 
 	callees(symbol: SymbolInfo, opts: { limit?: number; includeExternal?: boolean } = {}): Edge[] {
 		const ids = [symbol.id, ...this.memberIds(symbol.id)];
-		const resolvedOnly = opts.includeExternal ? "" : "AND r.target_id IS NOT NULL";
+		// Types a symbol mentions are not things it calls; `callers` and `impact` still count them.
+		const resolvedOnly = opts.includeExternal
+			? "AND r.kind != 'type'"
+			: "AND r.target_id IS NOT NULL AND r.kind != 'type'";
 		const rows = this.db
 			.query<EdgeRow, number[]>(
 				`SELECT r.kind AS edgeKind, r.line, r.name AS refName, r.resolution, rf.path AS refPath, ${SYMBOL_COLUMNS}
@@ -301,7 +304,7 @@ export class Graph {
 		const prev = new Map<number, { id: number; line: number } | null>([[from.id, null]]);
 		let frontier = [from.id];
 		const edges = this.db.prepare<{ target: number; line: number }, [number]>(
-			"SELECT target_id AS target, line FROM refs WHERE from_id = ? AND target_id IS NOT NULL",
+			"SELECT target_id AS target, line FROM refs WHERE from_id = ? AND target_id IS NOT NULL AND kind != 'type'",
 		);
 		for (let depth = 0; depth < maxDepth && frontier.length > 0; depth++) {
 			const next: number[] = [];

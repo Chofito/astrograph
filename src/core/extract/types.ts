@@ -12,7 +12,8 @@ export type SymbolKind =
 	| "constant"
 	| "variable";
 
-export type RefKind = "call" | "new" | "extends" | "implements" | "render";
+/** `type`: a name in a type position. `use`: a name read as a value (callback, `X.y`, `{ X }`). JS/TS only. */
+export type RefKind = "call" | "new" | "extends" | "implements" | "render" | "type" | "use";
 
 /** A declaration found in one file. `parent` indexes into the same file's symbol list. */
 export interface ExtractedSymbol {
@@ -29,7 +30,7 @@ export interface ExtractedSymbol {
 	returnType?: string;
 }
 
-/** A use of some name: a call, an instantiation, an inheritance clause, a JSX element. */
+/** A use of some name: a call, an instantiation, an inheritance clause, a JSX element, a type or a value. */
 export interface ExtractedRef {
 	kind: RefKind;
 	/** Enclosing symbol index, or null for file-level code. */

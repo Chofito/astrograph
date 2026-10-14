@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- JS/TS: type annotations and values read are references. `callers` and `impact` on a DTO,
+  interface or schema constant now list the code that annotates with it or reads it
+  (`x: UserDto`, `UserStatus.options`, `.map(toDto)`, `{ handler }`), tagged `type` / `use`.
+  `callees` and `trace` leave types out. Only names imported or declared at the top of the file
+  count. The index is rebuilt on first use.
 - `astrograph install` / `uninstall` follow `CLAUDE_CONFIG_DIR` and `CODEX_HOME`: with a second
   Claude Code profile (`CLAUDE_CONFIG_DIR=~/.claude-work`), the MCP entry goes to
   `$CLAUDE_CONFIG_DIR/.claude.json` and the skill to `$CLAUDE_CONFIG_DIR/skills/`. Run it once per profile.
