@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 — 2026-10-14
 
 - JS/TS: type annotations and values read are references. `callers` and `impact` on a DTO,
   interface or schema constant now list the code that annotates with it or reads it
