@@ -23,7 +23,7 @@ directory) and re-sync changed files before answering. Options accept `--kebab-c
 | `outline <path or symbol>` | | Signatures and line ranges in a file, directory (top-level) or class. No bodies. |
 | `search <query>` | `--kind`, `--lang`, `--limit`, `--offset` | Symbols whose name matches. |
 | `node <symbol>` | `--include-code` | One symbol: location, signature, members, reference counts. |
-| `callers <symbol>` | `--limit`, `--offset` | Code that calls, instantiates, extends or renders the symbol, by file. |
+| `callers <symbol>` | `--limit`, `--offset` | Code that calls, instantiates, extends, renders or (JS/TS) types with or reads the symbol, by file. |
 | `callees <symbol>` | `--limit`, `--offset`, `--include-external` | What the symbol (or a class's members) calls. |
 | `impact <symbol>` | `--depth`, `--limit`, `--offset` | Everything that transitively depends on the symbol. |
 | `trace <from> <to>` | `--max-depth` | The shortest call path between two symbols. |

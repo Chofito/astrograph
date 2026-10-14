@@ -52,6 +52,12 @@ export function extractTypeScript(tree: Tree): Extraction {
 		out.refs.push({ kind, from: scope.owner, name, receiver, hints: type ? [type] : null, line });
 	};
 
+	/**
+	 * Type and value uses are only kept for names bound in the file (imports and
+	 * top-level declarations), which are known once the walk ends.
+	 */
+	const uses: { kind: "type" | "use"; node: Node; owner: number | null }[] = [];
+
 	const visitChildren = (node: Node, scope: Scope, depth: number) => {
 		for (let i = 0; i < node.namedChildCount; i++) {
 			const child = node.namedChild(i);
@@ -123,6 +129,8 @@ export function extractTypeScript(tree: Tree): Extraction {
 					const value = member.childForFieldName("value");
 					const kind = value && FUNCTION_VALUES.has(value.type) ? "method" : "property";
 					const index = addSymbol(member, fieldName, kind, scope, false);
+					const type = member.childForFieldName("type");
+					if (type) visit(type, { ...scope, owner: index }, 0);
 					if (value) visit(value, { ...scope, owner: index, types: new Map(scope.types) }, 0);
 					break;
 				}
@@ -165,15 +173,19 @@ export function extractTypeScript(tree: Tree): Extraction {
 					const member = body?.namedChild(i);
 					const memberName = member ? memberNameOf(member) : undefined;
 					if (!member || !memberName) continue;
-					if (member.type === "method_signature") addSymbol(member, memberName, "method", inner, false);
-					else if (member.type === "property_signature") addSymbol(member, memberName, "property", inner, false);
+					const kind = member.type === "method_signature" ? "method" : "property";
+					if (kind === "property" && member.type !== "property_signature") continue;
+					const index = addSymbol(member, memberName, kind, inner, false);
+					visitChildren(member, { ...inner, owner: index }, 0);
 				}
 				return name;
 			}
-			case "type_alias_declaration":
+			case "type_alias_declaration": {
 				if (!name) return;
-				addSymbol(node, name, "type", scope, exported, declNode);
+				const index = addSymbol(node, name, "type", scope, exported, declNode);
+				visitChildren(node, { owner: index, cls: null, topLevel: false, types: new Map() }, 0);
 				return name;
+			}
 			case "enum_declaration":
 				if (!name) return;
 				addSymbol(node, name, "enum", scope, exported, declNode);
@@ -346,6 +358,14 @@ export function extractTypeScript(tree: Tree): Extraction {
 				if (binding?.type === "identifier" && type) scope.types.set(binding.text, type);
 				break;
 			}
+			case "type_identifier":
+			case "nested_type_identifier":
+				uses.push({ kind: "type", node, owner: scope.owner });
+				return;
+			case "identifier":
+			case "shorthand_property_identifier":
+				uses.push({ kind: "use", node, owner: scope.owner });
+				return;
 			case "jsx_opening_element":
 			case "jsx_self_closing_element": {
 				const name = node.childForFieldName("name");
@@ -369,7 +389,48 @@ export function extractTypeScript(tree: Tree): Extraction {
 
 	const root = tree.rootNode;
 	visitChildren(root, { owner: null, cls: null, topLevel: true, types: new Map() }, 0);
+	addUses(out, uses);
 	return out;
+}
+
+/**
+ * Keeps the type and value uses whose name is bound in the file, skipping the
+ * identifiers that name a declaration or are already a call, `new` or JSX ref.
+ * Namespace imports (`ns`) are only kept as the qualifier of a type (`ns.T`).
+ */
+function addUses(out: Extraction, uses: { kind: "type" | "use"; node: Node; owner: number | null }[]) {
+	if (uses.length === 0) return;
+	const bound = new Set<string>();
+	const namespaces = new Set<string>();
+	for (const s of out.symbols) if (s.parent === null) bound.add(s.name);
+	for (const i of out.imports) {
+		if (i.reexport) continue;
+		if (i.imported === "*") namespaces.add(i.local);
+		else bound.add(i.local);
+	}
+	const seen = new Set<string>();
+	for (const { kind, node, owner } of uses) {
+		const { name, receiver } = splitTarget(node);
+		if (!name) continue;
+		if (receiver === null ? !bound.has(name) : !namespaces.has(receiver)) continue;
+		if (isNameOrCallee(node)) continue;
+		const line = lineOf(node);
+		const key = `${kind} ${owner} ${receiver} ${name} ${line}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		out.refs.push({ kind, from: owner, name, receiver, hints: null, line });
+	}
+}
+
+/**
+ * Fields under which an identifier declares a name (`name`, `pattern`, `parameter`), is written
+ * (`left`), or is the target of a call / `new` ref recorded elsewhere.
+ */
+const NOT_A_USE = ["name", "pattern", "parameter", "left", "function", "constructor"];
+
+function isNameOrCallee(node: Node): boolean {
+	const parent = node.parent;
+	return !!parent && NOT_A_USE.some((field) => parent.childForFieldName(field)?.id === node.id);
 }
 
 /** The node whose start ends a symbol's signature: a body block, or an arrow/function value's body. */
@@ -408,6 +469,7 @@ function splitTarget(node: Node): { name: string | undefined; receiver: string |
 	switch (node.type) {
 		case "identifier":
 		case "type_identifier":
+		case "shorthand_property_identifier":
 			return { name: node.text, receiver: null };
 		case "member_expression":
 		case "nested_identifier":

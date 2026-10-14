@@ -34,7 +34,10 @@ src/
      is not a symbol; its references belong to the enclosing symbol.
    - *references*: `call`, `new`, `extends`, `implements`, `render` (JSX), each with the called
      name, a receiver (`this`, `$this->repo`, an identifier, or `?` when it is an expression), and
-     optional type hints computed in the file (see below).
+     optional type hints computed in the file (see below). JS/TS also records `type` (a name in a
+     type position: annotations, generics, interface and type alias bodies) and `use` (a name read
+     as a value: a callback argument, `X.y`, `{ X }`), only for names bound in the file (imports
+     and top-level declarations) so their volume stays bounded. `callees` and `trace` skip `type`.
    - *imports* (JS/TS): bindings and re-exports, all in one table.
    The tree is freed immediately, and each batch of 100 files is written in one transaction.
 4. **Link.** If anything changed, every reference is re-resolved (see Resolution). It is a linear
@@ -72,7 +75,8 @@ Rules, in order:
 
 - **Bare call `f()`**: a top-level declaration in the file; else an import binding, followed
   through re-export chains (`export *`, `export { a as b } from`); else a runtime global →
-  `external`. Files without imports are scripts, so they fall back to a unique project-wide name.
+  `external`. A `type` ref prefers a type and a `use` ref a value when a file exports both under
+  one name (`const X = z.object(…)` + `type X = z.infer<typeof X>`). Files without imports are scripts, so they fall back to a unique project-wide name.
 - **`this.m()` / `$this->m()` / `self::` / `static::`**: the enclosing class, then its parents
   (resolved `extends` and trait `use`). If an ancestor is outside the project → `external`.
 - **`super.m()` / `parent::m()`**: the parents only.

@@ -41,6 +41,15 @@ const FILES: Record<string, string> = {
 			const repo = makeRepo();
 			return <div>{repo.find(props.id)}</div>;
 		}`,
+	"src/dto.ts": `
+		export interface UserDto { id: string }
+		export const UserStatus = { options: ["active"] };
+		export function toUserDto(id: string): UserDto { return { id }; }`,
+	"src/api.ts": `
+		import { UserDto, UserStatus, toUserDto } from "./dto";
+		export function listUsers(ids: string[]): UserDto[] {
+			return ids.filter((id) => UserStatus.options.includes(id)).map(toUserDto);
+		}`,
 	"php/Models/User.php": `<?php
 		namespace App\\Models;
 		class User extends Model {
@@ -125,7 +134,18 @@ describe("JS/TS resolution", () => {
 	test("typed parameter properties, return types and new", () => {
 		expect(callerNames("Database.query").sort()).toEqual(["UserRepo.find:exact", "makeRepo:exact"]);
 		expect(callerNames("UserRepo.find")).toEqual(["Profile:exact"]);
-		expect(callerNames("UserRepo")).toEqual(["makeRepo:exact"]);
+		// `makeRepo(): UserRepo` and `new UserRepo(db)`.
+		expect(callerNames("UserRepo")).toEqual(["makeRepo:exact", "makeRepo:exact"]);
+	});
+
+	test("type annotations and value uses are references", () => {
+		expect(callerNames("UserDto").sort()).toEqual(["listUsers:exact", "toUserDto:exact"]);
+		expect(callerNames("UserStatus")).toEqual(["listUsers:exact"]);
+		expect(callerNames("toUserDto")).toEqual(["listUsers:exact"]);
+		const listUsers = project.graph.lookup("listUsers").symbol;
+		if (!listUsers) throw new Error("no listUsers");
+		// Callees are what a symbol calls and uses; the types it mentions are left out.
+		expect(project.graph.callees(listUsers).map((e) => e.symbol?.name)).toEqual(["UserStatus", "toUserDto"]);
 	});
 
 	test("JSX renders are references", () => {

@@ -17,7 +17,9 @@ Code nested inside a function is not a symbol; what it calls is attributed to th
 ## References
 
 A reference is a `call`, `new`, `extends`, `implements` or `render` (a JSX element) from one
-symbol (or file-level code) to a name. The linking pass decides what that name points to:
+symbol (or file-level code) to a name. In JS/TS it can also be a `type` (the name appears in a type
+annotation) or a `use` (the name is read as a value: passed as a callback, `X.options`, `{ X }`);
+`callers` and `impact` count those, `callees` and `trace` leave types out. The linking pass decides what that name points to:
 
 | Resolution | Meaning |
 |---|---|

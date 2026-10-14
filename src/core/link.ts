@@ -38,6 +38,7 @@ type ExportHit = number | "external" | undefined;
 const CALLABLE = new Set(["function", "method", "class"]);
 const TYPES = new Set(["class", "interface", "trait", "enum", "type"]);
 const RENDERABLE = new Set(["function", "class", "constant", "variable"]);
+const VALUES = new Set(["function", "class", "constant", "variable", "enum"]);
 const MEMBER_KINDS = new Set(["method", "property", "constant"]);
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
@@ -211,7 +212,9 @@ class Linker {
 			if (local !== undefined) return exact(local);
 			const binding = this.imports.get(ref.file_id)?.get(name);
 			if (binding)
-				return this.fromExport(this.importTarget(binding, binding.imported === "*" ? "default" : binding.imported));
+				return this.fromExport(
+					this.importTarget(binding, binding.imported === "*" ? "default" : binding.imported, kinds),
+				);
 			if (GLOBALS.has(name)) return external();
 			// Without imports the file is a script: globals may live anywhere.
 			if (!this.imports.has(ref.file_id)) return this.byNameFallback(name, kinds);
@@ -298,26 +301,27 @@ class Linker {
 		return undefined;
 	}
 
-	private importTarget(binding: ImportRow, name: string): ExportHit {
+	/** `kinds` picks between a type and a value exported under one name (`const X` + `type X`). */
+	private importTarget(binding: ImportRow, name: string, kinds?: Set<string>): ExportHit {
 		if (binding.resolved_file_id === null) return "external";
-		return this.resolveExport(binding.resolved_file_id, name, 0);
+		return this.resolveExport(binding.resolved_file_id, name, 0, kinds);
 	}
 
 	/** Follows re-export chains (barrel files) up to a fixed depth. */
-	private resolveExport(fileId: number, name: string, depth: number): ExportHit {
+	private resolveExport(fileId: number, name: string, depth: number, kinds?: Set<string>): ExportHit {
 		if (depth > 6) return undefined;
 		const reexports = this.reexports.get(fileId) ?? [];
 		for (const row of reexports) {
 			if (row.local !== name) continue;
-			if (row.source === null) return this.pick(this.topLevel.get(fileId)?.get(row.imported));
+			if (row.source === null) return this.pickPreferring(this.topLevel.get(fileId)?.get(row.imported), kinds);
 			if (row.resolved_file_id === null) return "external";
-			return this.resolveExport(row.resolved_file_id, row.imported, depth + 1);
+			return this.resolveExport(row.resolved_file_id, row.imported, depth + 1, kinds);
 		}
-		const direct = this.pick(this.topLevel.get(fileId)?.get(name));
+		const direct = this.pickPreferring(this.topLevel.get(fileId)?.get(name), kinds);
 		if (direct !== undefined) return direct;
 		for (const row of reexports) {
 			if (row.local !== "*" || row.resolved_file_id === null) continue;
-			const hit = this.resolveExport(row.resolved_file_id, name, depth + 1);
+			const hit = this.resolveExport(row.resolved_file_id, name, depth + 1, kinds);
 			if (typeof hit === "number") return hit;
 		}
 		return undefined;
@@ -421,6 +425,10 @@ class Linker {
 		return fallback(candidates);
 	}
 
+	private pickPreferring(ids: number[] | undefined, kinds?: Set<string>): number | undefined {
+		return (kinds && this.pick(ids, kinds)) ?? this.pick(ids);
+	}
+
 	private pick(ids: number[] | undefined, kinds?: Set<string>): number | undefined {
 		if (!ids) return undefined;
 		if (!kinds) return ids[0];
@@ -431,6 +439,7 @@ class Linker {
 function kindsFor(refKind: string): Set<string> {
 	if (refKind === "call") return CALLABLE;
 	if (refKind === "render") return RENDERABLE;
+	if (refKind === "use") return VALUES;
 	return TYPES;
 }
 

@@ -83,6 +83,41 @@ describe("typescript", () => {
 		]);
 	});
 
+	test("type and value uses of imported and top-level names", () => {
+		const x = extract(
+			"typescript",
+			`import { Dto, Status, toDto, Base } from "./domain";
+			import * as ns from "./ns";
+			import type { Other } from "./other";
+			export const Schema = z.object({ status: Status.optional() });
+			export type Row = { dto: Dto; other: ns.Thing };
+			interface Props { row: Row }
+			class View { private dto?: Dto; }
+			export function list(rows: Row[], s = Schema): Promise<Dto[]> {
+				const local: Local = 1;
+				return rows.map(toDto).filter(<T>(r: T) => Status.options.includes(r));
+			}
+			const handlers = { toDto, Schema };
+			function generic<T extends Other>(value: T) {}`,
+		);
+		const uses = refs(x).filter((r) => / (type|use) /.test(r));
+		expect(uses).toEqual([
+			"Schema use Status",
+			"Row type Dto",
+			"Row type ns.Thing",
+			"Props.row type Row",
+			"View.dto type Dto",
+			"list type Row",
+			"list use Schema",
+			"list type Dto",
+			"list use toDto",
+			"list use Status",
+			"handlers use toDto",
+			"handlers use Schema",
+			"generic type Other",
+		]);
+	});
+
 	test("complex receivers are marked unknown, not bare calls", () => {
 		const x = extract("typescript", "export function f() { items().filter(Boolean); }");
 		expect(refs(x)).toContain("f call ?.filter");

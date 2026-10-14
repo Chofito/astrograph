@@ -102,7 +102,7 @@ gitignore-style patterns. Files larger than `maxFileSize` bytes (default 512 KB)
 | | TypeScript / JavaScript | PHP |
 |---|---|---|
 | Symbols | classes, interfaces, functions, methods, fields, top-level constants, types, enums | classes, interfaces, traits, enums, functions, methods, properties, constants |
-| References | calls, `new`, `extends`/`implements`, JSX elements | calls, `new`, `extends`/`implements`, trait `use` |
+| References | calls, `new`, `extends`/`implements`, JSX elements, type annotations, values read | calls, `new`, `extends`/`implements`, trait `use` |
 | Resolution | imports, re-export barrels, `tsconfig` `paths`/`baseUrl`, workspace packages, `require` | namespaces and `use` imports (including grouped and `use function`) |
 | Receiver types | annotations, `new`, typed fields and parameter properties, declared return types, inherited members | typed params and properties, promoted constructor params, constructor DI assignments, `@var`, `new`, `catch` |
 

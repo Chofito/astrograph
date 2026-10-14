@@ -16,7 +16,7 @@ callees and source, which usually replaces several searches and file reads.
 | How does this feature work? | `astrograph_context` | `astrograph context "<task>"` |
 | What is in this file / directory / class? | `astrograph_outline` | `astrograph outline <path or symbol>` |
 | Find a symbol | `astrograph_search` | `astrograph search <name>` |
-| Who calls / instantiates / extends X? | `astrograph_callers` | `astrograph callers <symbol>` |
+| Who calls / instantiates / extends / uses X? | `astrograph_callers` | `astrograph callers <symbol>` |
 | What does X call? | `astrograph_callees` | `astrograph callees <symbol>` |
 | What breaks if I change X? | `astrograph_impact` | `astrograph impact <symbol>` |
 | How does A reach B? | `astrograph_trace` | `astrograph trace <a> <b>` |
