@@ -74,8 +74,8 @@ Each reference ends up as one of:
 Rules, in order:
 
 - **Bare call `f()`**: a top-level declaration in the file; else an import binding, followed
-  through re-export chains (`export *`, `export { a as b } from`); else a runtime global →
-  `external`. A `type` ref prefers a type and a `use` ref a value when a file exports both under
+  through re-export chains (`export *`, `export { a as b } from`, `import { a } …; export { a }`);
+  else a runtime global → `external`. A `type` ref prefers a type and a `use` ref a value when a file exports both under
   one name (`const X = z.object(…)` + `type X = z.infer<typeof X>`). Files without imports are scripts, so they fall back to a unique project-wide name.
 - **`this.m()` / `$this->m()` / `self::` / `static::`**: the enclosing class, then its parents
   (resolved `extends` and trait `use`). If an ancestor is outside the project → `external`.

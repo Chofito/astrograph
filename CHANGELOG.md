@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- JS/TS: barrels that import a name and export it on its own line (`import { User } from
+  "./user"; export { User }`) now resolve. References through them used to stay unresolved. The
+  index is rebuilt on first use.
+
 ## 0.2.2 — 2026-10-14
 
 - JS/TS: type annotations and values read are references. `callers` and `impact` on a DTO,
