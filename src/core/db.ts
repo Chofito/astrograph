@@ -2,8 +2,8 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
 
-/** Bump when the schema or extraction output changes; old indexes are rebuilt, never migrated. */
-export const SCHEMA_VERSION = "6";
+/** Bump when the schema, extraction or linking output changes; old indexes are rebuilt, never migrated. */
+export const SCHEMA_VERSION = "7";
 
 const SCHEMA = `
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);

@@ -313,7 +313,7 @@ class Linker {
 		const reexports = this.reexports.get(fileId) ?? [];
 		for (const row of reexports) {
 			if (row.local !== name) continue;
-			if (row.source === null) return this.pickPreferring(this.topLevel.get(fileId)?.get(row.imported), kinds);
+			if (row.source === null) return this.localExport(fileId, row.imported, depth, kinds);
 			if (row.resolved_file_id === null) return "external";
 			return this.resolveExport(row.resolved_file_id, row.imported, depth + 1, kinds);
 		}
@@ -325,6 +325,16 @@ class Linker {
 			if (typeof hit === "number") return hit;
 		}
 		return undefined;
+	}
+
+	/** `export { X }` names a declaration in the file, or a name it imported (`import { X } …; export { X }`). */
+	private localExport(fileId: number, name: string, depth: number, kinds?: Set<string>): ExportHit {
+		const local = this.pickPreferring(this.topLevel.get(fileId)?.get(name), kinds);
+		if (local !== undefined) return local;
+		const binding = this.imports.get(fileId)?.get(name);
+		if (!binding || binding.imported === "*") return undefined;
+		if (binding.resolved_file_id === null) return "external";
+		return this.resolveExport(binding.resolved_file_id, binding.imported, depth + 1, kinds);
 	}
 
 	private fromExport(hit: ExportHit): Outcome {

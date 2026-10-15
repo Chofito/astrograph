@@ -50,6 +50,11 @@ const FILES: Record<string, string> = {
 		export function listUsers(ids: string[]): UserDto[] {
 			return ids.filter((id) => UserStatus.options.includes(id)).map(toUserDto);
 		}`,
+	"src/models/account.ts": `export class Account { close() {} }`,
+	"src/models/index.ts": `import { Account } from "./account";\nexport { Account, Account as Acct };`,
+	"src/accounts.ts": `
+		import { Acct } from "./models";
+		export function openAccount(): Acct { return new Acct(); }`,
 	"php/Models/User.php": `<?php
 		namespace App\\Models;
 		class User extends Model {
@@ -121,6 +126,10 @@ describe("indexing", () => {
 describe("JS/TS resolution", () => {
 	test("barrel re-exports and aliased re-exports", () => {
 		expect(callerNames("format")).toEqual(["BaseRepo.log:exact"]);
+	});
+
+	test("barrels that import a name and export it locally", () => {
+		expect(callerNames("Account")).toEqual(["openAccount:exact", "openAccount:exact"]);
 	});
 
 	test("tsconfig paths", () => {
